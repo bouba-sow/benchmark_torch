@@ -1,0 +1,50 @@
+# Local output directories
+outputs/
+outputs_jeanzay/
+outputs_torch/
+outputs_nyu/
+reports/
+/figures/
+
+# Reference material (not ours to publish)
+papers/
+
+# Local tool/cache directories
+.uv-cache/
+.venv/
+.venv-dlt/
+.cache/
+
+# Prebuilt wheel binaries (regenerate with wheels/build_wheels.sh; keep the scripts, not the .whl)
+wheels/*.whl
+wheels/*.log
+
+# Raw data and results (too large for the repository; see docs/data.md)
+data/
+logs/
+
+# Python / notebooks / environments
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv-dlt/
+
+# Caches and unexpanded-variable folders
+.cache_*/
+.brainio_cache/
+\$\{*\}/
+
+# Crash dumps and editor/tool state
+core-*
+.claude/
+.codex/
+.agents/
+
+# LaTeX build products
+*.aux
+*.blg
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz

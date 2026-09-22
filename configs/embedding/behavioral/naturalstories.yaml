@@ -1,0 +1,54 @@
+# ============================================================================
+# Natural Stories SPR — GPU/himalaya embedding checkpoint sweep
+# ============================================================================
+#
+# Predicts aggregate self-paced reading times from LLM layer activations,
+# ridge fit on GPU via himalaya (cv_ridge_score_multioutput_gpu, one CUDA
+# stream per layer) — see neuroai/benchmarks/natural_stories_embed_gpu.py for
+# the full rationale. GPU-only, single stage: embedding extraction and ridge
+# regression both run in the same job, no CPU/prefetch split needed (unlike
+# the LME pipelines, which need R/pymer4 on CPU).
+#
+# Chosen ridge alpha is logged per layer — read the job log to pick the best
+# alpha value. Every layer's out-of-fold predictions are saved by default
+# (save_word_predictions), for post-hoc per-word difficulty splits (e.g. DLT).
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/behavioral/naturalstories.py \
+#     --config configs/embedding/behavioral/naturalstories.yaml \
+#     --from-registry --family gpt2 --array-index 0
+#
+# Jean Zay (one model x checkpoint per array task):
+#   python scripts/submit.py naturalstories embedding fit --family gpt2
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/naturalstories
+  stories: null          # null = all 10 stories
+  min_correct: 0
+  context_words: 48
+  max_length: 512
+  log_rt: true
+
+regression:
+  n_splits: 10           # leave-one-story-out (10 stories)
+  alpha: null            # null → log-spaced grid in script
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: false   # per-layer alpha is always logged by the GPU sweep itself
+
+benchmark:
+  layerwise: true
+  tokenizer_no_revision: true
+  n_layer_workers: 8
+  save_word_predictions: true
+
+cache:
+  features_dir: ${BENCHMARK_ROOT}/.cache/naturalstories_features
+  embeddings_dir: ${BENCHMARK_ROOT}/.cache/embeddings
+
+output:
+  # Per SLURM job: <save_dir>/<family>/<model_short>/spr_checkpoint_scores.csv
+  save_dir: outputs/naturalstories/embedding_sweep
+
+models: []  # unused — registry scripts use --from-registry

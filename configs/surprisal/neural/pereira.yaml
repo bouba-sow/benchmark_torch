@@ -1,0 +1,68 @@
+# ============================================================================
+# Pereira et al. (2018) fMRI — Pooled LME per LM layer (last-word logit-lens
+# surprisal)
+# ============================================================================
+#
+# y ~ sentlen_z + mean_wlen_z + mean_freq_z + surprisal_z +
+#     (1 + sentlen_z + mean_wlen_z + mean_freq_z + surprisal_z | subject) +
+#     (1 | roi) +
+#     (1 + surprisal_z | sentence_id)
+# vs. the same formula without surprisal_z, fit ONCE PER LM LAYER, pooling
+# every subject, ROI (language-atlas, 12 labels), and sentence (627, pooled
+# across the 243sentences/384sentences sub-experiments) together. See
+# neuroai/regressors/pereira_pooled_lme.py for the full formula rationale —
+# this is the EXACT dataset/formula shape Lin & Schuler (2025,
+# arXiv:2506.11338) used for their per-sentence fMRI LME, unlike Tuckute
+# (structurally identical but fixed-6-word sentences forced a substitute
+# nuisance there).
+#
+# TWO-STAGE PIPELINE (same split as every other pooled LME in this
+# codebase): on Jean Zay, R (pymer4/lme4, needed for the LME fit) is only
+# available on CPU partitions, not GPU. So:
+#   1. GPU stage — extract + cache per-layer last-word logit-lens surprisal
+#      for all 627 sentences (one forward pass each):
+#        .venv/bin/python scripts/run/surprisal/neural/pereira_extract.py \
+#          --config configs/surprisal/neural/pereira.yaml \
+#          --model_name openai-community/gpt2 --device cuda
+#   2. CPU stage — fit one LME per layer, reading surprisal from that cache
+#      (N layers fit concurrently via a spawned process pool — NOT one SLURM
+#      job per layer):
+#        .venv/bin/python scripts/run/surprisal/neural/pereira_fit.py \
+#          --config configs/surprisal/neural/pereira.yaml \
+#          --model_name openai-community/gpt2 --n_workers 10
+# ============================================================================
+
+dataset:
+  nc_path: ${BENCHMARK_ROOT}/data/pereira_fmri/Pereira2018_merged.nc
+  # "language" (12 ROIs, all 10 subjects) is the default — see
+  # neuroai/datasets/pereira.py module docstring. "auditory"/"MD"/"DMN"/
+  # "visual" are the other 4 available atlases.
+  atlas: language
+  max_length: null
+  tokenizer_no_revision: true
+  trust_remote_code: false
+  wordfreq_language: en
+  # Device for the (cheap, 627-sentence) surprisal extraction forward
+  # passes. The CPU-only LME stage overrides this to "cpu" regardless (see
+  # run/surprisal/neural/pereira_fit.py) — it only matters for the GPU extraction
+  # stage / direct single-job runs.
+  device: cpu
+
+lme:
+  train_frac: 0.75
+  split_random_state: 0
+  verbose: false
+  # Barr et al. (2013)-style simplification ladder if the full model fails
+  # to converge — see fit_pereira_lme_one_layer's docstring for the 4-step
+  # fallback order. Applied identically to both models so LRT stays valid.
+  allow_slope_fallback: true
+  layer_stride: 1
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/pereira/surprisal_sweep
+
+cache:
+  # Must already contain this model's logit-lens fulltext surprisal cache
+  # (populated by run/surprisal/neural/pereira_extract.py) before running the
+  # CPU-only LME sweep.
+  features_dir: ${PEREIRA_LME_FEATURE_CACHE_DIR}

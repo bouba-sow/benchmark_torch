@@ -1,0 +1,55 @@
+# ============================================================================
+# GECO Corpus — Go-Past / Regression-Path Duration (GP) — LME Checkpoint Sweep
+# ============================================================================
+#
+# Trial-level by-subject LME on raw go-past duration (WORD_GO_PAST_TIME, ms —
+# Clark-2025-style fit, mirroring Provo / UCL Reading / ZuCo Reading): unigram
+# (KenLM) + current-word + spillover surprisal as fixed effects, random slopes
+# by subject.
+#
+# GP = time from first fixating a word until the eyes move past it to the right
+# (including any regressive re-reading of earlier material) — captures
+# integration/regression difficulty rather than early lexical access.
+#
+# NOTE on caching: like Provo's SP/FP/GP, GECO's FP/GP measures share the exact
+# same 588-trial word set — only the outcome duration column differs. The
+# surprisal cache below is therefore NOT nested per measure; a cache built
+# while running this config is reused as-is by configs/surprisal/behavioral/geco_fp.yaml.
+#
+# Requires R + lme4 on the runtime host (Jean Zay: module load r/4.5.2).
+# Requires the ``openpyxl`` package to read the released .xlsx files.
+#
+# Run locally:
+#   .venv/bin/python scripts/run/surprisal/behavioral/geco_fit.py \
+#     --config configs/surprisal/behavioral/geco_gp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/geco
+  measure: GP                 # FP | GP (no SP — see note above)
+  trials: null                 # null = all 588 (PART, TRIAL) trials
+  min_dur: 50.0                 # ms, drop implausibly short durations
+  max_dur: 5000.0               # ms, drop implausibly long durations (regressions/blinks)
+  exclude_doc_edges: true       # also drop trial-initial/-final words
+
+lme:
+  include_surprisal: true
+  include_prev_surprisal: true
+  include_freq: true  # Zipf lexical frequency nuisance (wordfreq)
+  filter_sentence_edges: true
+  compare_baseline: true
+  out_of_sample: true
+  partition_mod: 4
+  partition_fit_indices: [0, 1, 2]   # 75% train (in-sample loglik reusable later)
+  partition_test_indices: [3]        # 25% held-out (OOS ΔLogLik, correlations)
+  verbose: false
+
+cache:
+  # Shared across FP/GP — do NOT nest per measure (see note above).
+  features_dir: ${GECO_FEATURE_CACHE_DIR}
+
+output:
+  save_dir: outputs/geco/surprisal_sweep/gp
+
+models: []

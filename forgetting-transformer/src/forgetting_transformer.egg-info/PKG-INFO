@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: forgetting-transformer
+Version: 0.0.1
+Summary: Constrained-attention transformer variants (forgetting gate, alibi, stickbreaking) — local source checkout
+Requires-Python: >=3.10

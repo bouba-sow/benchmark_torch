@@ -1,0 +1,67 @@
+# ============================================================================
+# MECo Corpus (English subset) — Scan Path / Total Dwell Time (SP) — Embedding Ridge Sweep
+# ============================================================================
+#
+# Word-level ridge regression: rt_mean (``dur``, ms, averaged across subjects
+# who fixated the word) ~ per-layer LLM contextual embedding. Behavioral
+# analogue of NeuralBenchmark's per-layer iEEG ridge regression; complements
+# configs/surprisal/behavioral/meco_sp.yaml (scalar surprisal -> RT via LME).
+#
+# Only the English (lang == "en") subset of MECo is wired up here — see
+# neuroai/datasets/meco.py module docstring.
+#
+# NOTE on caching: like the surprisal cache, embeddings are cached per
+# (model, revision, story_id) — NOT nested per measure, so a cache built while
+# running this config is reused as-is by meco_embed_sweep_{fp,gp}.yaml.
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/behavioral/meco.py \
+#     --config configs/embedding/behavioral/meco_sp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: "${BENCHMARK_ROOT}/data/meco/osfstorage/release 2.0/version 2.1/wave 1/primary data/eye tracking data"
+  measure: SP                  # SP | FP | GP
+  language: en
+  passages: null
+  rda_filename: joint_l1_data_trimmed_version2.1.rda
+  min_dur: 50.0
+  max_dur: 5000.0
+  exclude_doc_edges: true
+  context_words: 220
+  max_length: 512
+
+group_cv_by_story: true
+# Fit independently per subject (mirrors NeuralBenchmark's per-electrode
+# fitting) -- skip a subject with fewer than this many trials left after
+# filtering. n_jobs = threads per subject (layers); subject_n_jobs =
+# concurrent subject processes. Total cores used ~= n_jobs * subject_n_jobs
+# -- size against your node's cpus-per-task and RAM (each concurrent
+# subject process holds its own embedding-array copy).
+min_trials_per_subject: 20
+n_jobs: 24                     # averaged-only frees the cores per-subject processes used -> all to per-layer parallelism
+subject_n_jobs: 10
+filter_sentence_edges: true
+
+# ---- grand-average-subject methodology (de Varda et al. 2026) ----
+# Average RT across subjects per (story_id, zone) word -> one "grand-average
+# subject" -> a single ridge CV per layer. No per-subject fitting.
+average_across_subjects: true
+average_only: true
+min_subjects_per_item: 1
+
+regression:
+  n_splits: 5
+  alpha: "np.logspace(0.5, 10, 12)"   # padded FP grid, shared across measures
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: true
+
+cache:
+  features_dir: ${MECO_EMBED_CACHE_DIR}
+
+output:
+  save_dir: outputs/meco/embedding_sweep/sp
+
+models: []

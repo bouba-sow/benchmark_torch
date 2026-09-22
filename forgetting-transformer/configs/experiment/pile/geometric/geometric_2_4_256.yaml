@@ -1,0 +1,71 @@
+# @package _global_
+defaults:
+  - override /model: geometric
+  - override /optimizer: adamw
+  - override /schedule: warmup_cosine
+  - override /datamodule: npy
+  - override /strategy: fsdp
+  - _self_
+
+exp: pile_geometric_2layer
+tag: pile_l2_h256_h4_seq2048_geometric
+seed: 42
+output_dir: geometric_2_4_256_pile/
+data_dir: data/pile/tokenized
+resume: False
+log_interval: 16777216
+checkpoint_interval: 167772160
+skip_eval: false
+eval_interval: 167772160
+train_eval_interval: 167772160
+checkpoint_keep_interval: 167772160
+
+fabric:
+  devices: 1
+  precision: '16-mixed'
+
+train:
+  max_tokens: 1677721600
+  grad_acc_tokens: 16384
+  max_grad_norm: 1.0
+  gradient_checkpointing: false
+
+model:
+  config:
+    hidden_size: 256
+    num_hidden_layers: 2
+    num_heads: 4
+    use_rope: false
+    use_geometric_normalize: true
+    qk_norm: false
+    qk_norm_share_param_across_head: false
+    use_k_shift: false
+    use_v_shift: false
+    window_size: null
+    tie_word_embeddings: false
+
+optimizer:
+  lr: 0.001
+  betas: [0.9, 0.95]
+  weight_decay: 0.1
+
+schedule:
+  init_value: 0.0
+  peak_value: ${optimizer.lr}
+  warmup_steps: 16777216
+  decay_steps: ${train.max_tokens}
+  end_value: 0.0
+
+datamodule:
+  train_batch_len: 2048
+  train_batch_size: 1024
+  train_num_workers: 0
+  eval_batch_len: 2048
+  eval_local_batch_size: 1
+  eval_tokens: 16777216
+  eval_num_workers: 0
+
+wandb:
+  project: forgetting-transformer
+  mode: online
+  log_dir: ./output/wandb

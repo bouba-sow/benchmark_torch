@@ -1,0 +1,44 @@
+# ============================================================================
+# UCL Self-Paced Reading (Frank et al. 2013) — LME Checkpoint Sweep
+# ============================================================================
+#
+# Trial-level by-subject LME on raw RT (Clark-2025-style fit, mirroring the
+# Natural Stories LME): Zipf frequency (wordfreq) + current-word + spillover surprisal
+# as fixed effects, random slopes by subject.
+#
+# Requires R + lme4 on the runtime host (Jean Zay: module load r/4.5.2).
+#
+# Run locally:
+#   .venv/bin/python scripts/run/surprisal/behavioral/ucl_reading_fit.py \
+#     --config configs/surprisal/behavioral/ucl_reading.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/ucl_reading
+  sentences: null        # null = all 361 sentences
+  min_accuracy: 0.0       # keep all 117 subjects (set e.g. 0.7 to filter low-accuracy subjects)
+  min_rt: 100.0            # ms, standard SPR trimming
+  max_rt: 3000.0
+
+lme:
+  include_surprisal: true
+  include_prev_surprisal: true   # spillover surprisal (previous word)
+  include_freq: true          # Zipf lexical frequency nuisance (wordfreq)
+  filter_sentence_edges: true    # drop sentence-initial / -final words
+  compare_baseline: true
+  out_of_sample: true
+  partition_mod: 4
+  partition_fit_indices: [0, 1]   # ~50% train
+  partition_test_indices: [2, 3]  # ~50% test (OOS ΔLogLik, correlations)
+  verbose: false
+
+cache:
+  # On Jean Zay (SCRATCH set): resolves to $SCRATCH/.cache/ucl_reading_features
+  # Locally: $BENCHMARK_ROOT/.cache/ucl_reading_features
+  features_dir: ${UCL_READING_FEATURE_CACHE_DIR}
+
+output:
+  save_dir: outputs/ucl_reading/surprisal_sweep
+
+models: []

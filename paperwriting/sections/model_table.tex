@@ -1,0 +1,142 @@
+{\setlength{\tabcolsep}{3pt}
+\begin{longtable}{@{}p{1.38cm}p{5.22cm}cccc@{}}
+\caption{All models evaluated in this benchmark, grouped by family within the three model classes of Section~3.2 (rules separate each fine-grained family). Parameter and layer counts follow the originating release (or the loaded config for the memory-constrained and BabyLM checkpoints; see \texttt{neuroai/models/registry.py}). Training-token/word counts are reported only where documented with confidence by the originating source; a blank cell means this was not reliably available rather than zero. For Pythia and OLMo-2, the listed repository is evaluated both at its final (\texttt{main}) checkpoint and at multiple intermediate training steps (Section~3.2).}
+\label{tab:models} \\
+\toprule
+\textbf{Family} & \textbf{HuggingFace model ID} & \textbf{\#Params} & \textbf{\#Layers} & \textbf{Tr. tokens} & \textbf{Ref.} \\
+\midrule
+\endfirsthead
+\multicolumn{6}{c}{\tablename\ \thetable{} -- continued} \\
+\toprule
+\textbf{Family} & \textbf{HuggingFace model ID} & \textbf{\#Params} & \textbf{\#Layers} & \textbf{Tr. tokens} & \textbf{Ref.} \\
+\midrule
+\endhead
+\midrule \multicolumn{6}{r}{\textit{continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\multicolumn{6}{l}{\textbf{Standard LLMs}} \\
+\midrule
+\scriptsize GPT-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{openai-community/gpt2}} & \scriptsize 124M & \scriptsize 13 & \scriptsize  & \scriptsize \citep{radford2019gpt2} \\
+\scriptsize GPT-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{openai-community/gpt2-medium}} & \scriptsize 355M & \scriptsize 25 & \scriptsize  & \scriptsize \citep{radford2019gpt2} \\
+\scriptsize GPT-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{openai-community/gpt2-large}} & \scriptsize 774M & \scriptsize 37 & \scriptsize  & \scriptsize \citep{radford2019gpt2} \\
+\scriptsize GPT-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{openai-community/gpt2-xl}} & \scriptsize 1.6B & \scriptsize 49 & \scriptsize  & \scriptsize \citep{radford2019gpt2} \\
+\midrule
+\scriptsize GPT-Neo/J/NeoX & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/gpt-neo-125m}} & \scriptsize 125M & \scriptsize 13 & \scriptsize  & \scriptsize \citep{black2021gptneo} \\
+\scriptsize GPT-Neo/J/NeoX & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/gpt-neo-1.3B}} & \scriptsize 1.3B & \scriptsize 25 & \scriptsize  & \scriptsize \citep{black2021gptneo} \\
+\scriptsize GPT-Neo/J/NeoX & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/gpt-neo-2.7B}} & \scriptsize 2.7B & \scriptsize 33 & \scriptsize  & \scriptsize \citep{black2021gptneo} \\
+\scriptsize GPT-Neo/J/NeoX & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/gpt-j-6b}} & \scriptsize 6B & \scriptsize 29 & \scriptsize 402B & \scriptsize \citep{wang2021gptj} \\
+\scriptsize GPT-Neo/J/NeoX & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/gpt-neox-20b}} & \scriptsize 20B & \scriptsize 45 & \scriptsize 472B & \scriptsize \citep{black2022gptneox} \\
+\midrule
+\scriptsize OPT & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{facebook/opt-125m}} & \scriptsize 125M & \scriptsize 13 & \scriptsize 180B & \scriptsize \citep{zhang2022opt} \\
+\scriptsize OPT & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{facebook/opt-350m}} & \scriptsize 350M & \scriptsize 25 & \scriptsize 180B & \scriptsize \citep{zhang2022opt} \\
+\scriptsize OPT & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{facebook/opt-1.3b}} & \scriptsize 1.3B & \scriptsize 25 & \scriptsize 180B & \scriptsize \citep{zhang2022opt} \\
+\scriptsize OPT & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{facebook/opt-2.7b}} & \scriptsize 2.7B & \scriptsize 33 & \scriptsize 180B & \scriptsize \citep{zhang2022opt} \\
+\scriptsize OPT & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{facebook/opt-6.7b}} & \scriptsize 6.7B & \scriptsize 33 & \scriptsize 180B & \scriptsize \citep{zhang2022opt} \\
+\scriptsize OPT & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{facebook/opt-13b}} & \scriptsize 13B & \scriptsize 41 & \scriptsize 180B & \scriptsize \citep{zhang2022opt} \\
+\scriptsize OPT & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{facebook/opt-30b}} & \scriptsize 30B & \scriptsize 49 & \scriptsize 180B & \scriptsize \citep{zhang2022opt} \\
+\scriptsize OPT & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{facebook/opt-66b}} & \scriptsize 66B & \scriptsize 65 & \scriptsize 180B & \scriptsize \citep{zhang2022opt} \\
+\midrule
+\scriptsize Mamba & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{state-spaces/mamba-130m-hf}} & \scriptsize 130M & \scriptsize 25 & \scriptsize 300B & \scriptsize \citep{gu2024mamba} \\
+\scriptsize Mamba & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{state-spaces/mamba-370m-hf}} & \scriptsize 370M & \scriptsize 49 & \scriptsize 300B & \scriptsize \citep{gu2024mamba} \\
+\scriptsize Mamba & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{state-spaces/mamba-790m-hf}} & \scriptsize 790M & \scriptsize 49 & \scriptsize 300B & \scriptsize \citep{gu2024mamba} \\
+\scriptsize Mamba & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{state-spaces/mamba-1.4b-hf}} & \scriptsize 1.4B & \scriptsize 49 & \scriptsize 300B & \scriptsize \citep{gu2024mamba} \\
+\scriptsize Mamba & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{state-spaces/mamba-2.8b-hf}} & \scriptsize 2.8B & \scriptsize 61 & \scriptsize 300B & \scriptsize \citep{gu2024mamba} \\
+\midrule
+\scriptsize Mamba-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{AntonV/mamba2-130m-hf}} & \scriptsize 130M & \scriptsize 25 & \scriptsize 300B & \scriptsize \citep{daogu2024transformers} \\
+\scriptsize Mamba-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{AntonV/mamba2-370m-hf}} & \scriptsize 370M & \scriptsize 49 & \scriptsize 300B & \scriptsize \citep{daogu2024transformers} \\
+\scriptsize Mamba-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{AntonV/mamba2-780m-hf}} & \scriptsize 780M & \scriptsize 49 & \scriptsize 300B & \scriptsize \citep{daogu2024transformers} \\
+\scriptsize Mamba-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{AntonV/mamba2-1.3b-hf}} & \scriptsize 1.3B & \scriptsize 49 & \scriptsize 300B & \scriptsize \citep{daogu2024transformers} \\
+\scriptsize Mamba-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{AntonV/mamba2-2.7b-hf}} & \scriptsize 2.7B & \scriptsize 61 & \scriptsize 300B & \scriptsize \citep{daogu2024transformers} \\
+\midrule
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-14m-deduped}} & \scriptsize 14M & \scriptsize 6 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-31m-deduped}} & \scriptsize 31M & \scriptsize 6 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-70m-deduped}} & \scriptsize 70M & \scriptsize 6 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-160m-deduped}} & \scriptsize 160M & \scriptsize 12 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-410m-deduped}} & \scriptsize 410M & \scriptsize 24 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-1b-deduped}} & \scriptsize 1B & \scriptsize 17 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-1.4b-deduped}} & \scriptsize 1.4B & \scriptsize 25 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-2.8b-deduped}} & \scriptsize 2.8B & \scriptsize 33 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-6.9b-deduped}} & \scriptsize 6.9B & \scriptsize 33 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\scriptsize Pythia & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{EleutherAI/pythia-12b-deduped}} & \scriptsize 12B & \scriptsize 37 & \scriptsize 300B & \scriptsize \citep{biderman2023pythia} \\
+\midrule
+\scriptsize OLMo-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{allenai/OLMo-2-0425-1B}} & \scriptsize 1B & \scriptsize 17 & \scriptsize 4.0T & \scriptsize \citep{olmo20252olmo2furious} \\
+\scriptsize OLMo-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{allenai/OLMo-2-1124-7B}} & \scriptsize 7B & \scriptsize 32 & \scriptsize 3.9T & \scriptsize \citep{olmo20252olmo2furious} \\
+\scriptsize OLMo-2 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{allenai/OLMo-2-1124-13B}} & \scriptsize 13B & \scriptsize 40 & \scriptsize 5.0T & \scriptsize \citep{olmo20252olmo2furious} \\
+\midrule
+\scriptsize Qwen3 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Qwen/Qwen3-0.6B-Base}} & \scriptsize 600M & \scriptsize 29 & \scriptsize 36T & \scriptsize \citep{qwen3} \\
+\scriptsize Qwen3 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Qwen/Qwen3-1.7B-Base}} & \scriptsize 1.7B & \scriptsize 29 & \scriptsize 36T & \scriptsize \citep{qwen3} \\
+\scriptsize Qwen3 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Qwen/Qwen3-4B-Base}} & \scriptsize 4B & \scriptsize 37 & \scriptsize 36T & \scriptsize \citep{qwen3} \\
+\scriptsize Qwen3 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Qwen/Qwen3-8B-Base}} & \scriptsize 8B & \scriptsize 37 & \scriptsize 36T & \scriptsize \citep{qwen3} \\
+\scriptsize Qwen3 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Qwen/Qwen3-14B-Base}} & \scriptsize 14B & \scriptsize 41 & \scriptsize 36T & \scriptsize \citep{qwen3} \\
+\midrule
+\scriptsize Llama-3 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{meta-llama/Llama-3.2-1B}} & \scriptsize 1B & \scriptsize 17 & \scriptsize 9T & \scriptsize  \\
+\scriptsize Llama-3 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{meta-llama/Llama-3.2-3B}} & \scriptsize 3B & \scriptsize 29 & \scriptsize 9T & \scriptsize  \\
+\scriptsize Llama-3 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{meta-llama/Llama-3.1-8B}} & \scriptsize 8B & \scriptsize 33 & \scriptsize 15T & \scriptsize  \\
+\midrule
+\scriptsize Ministral & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{mistralai/Ministral-3-3B-Base-2512}} & \scriptsize 3B & \scriptsize 29 & \scriptsize  & \scriptsize  \\
+\scriptsize Ministral & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{mistralai/Ministral-3-8B-Base-2512}} & \scriptsize 8B & \scriptsize 37 & \scriptsize  & \scriptsize  \\
+\scriptsize Ministral & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{mistralai/Ministral-3-14B-Base-2512}} & \scriptsize 14B & \scriptsize 41 & \scriptsize  & \scriptsize  \\
+\midrule
+\multicolumn{6}{l}{\textbf{Memory-Constrained}} \\
+\midrule
+\scriptsize CBR-RNN & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{cclark/cbr-rnn}} & \scriptsize 17.4M & \scriptsize 1 & \scriptsize  & \scriptsize \citep{timkey2023limited} \\
+\scriptsize CBR-RNN & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{cclark/cbr-rnn-m}} & \scriptsize 17.4M & \scriptsize 1 & \scriptsize  & \scriptsize \citep{timkey2023limited} \\
+\midrule
+\scriptsize Stick-Breaking & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/stickbreaking\_pile\_2layer}} & \scriptsize 27.8M & \scriptsize 2 & \scriptsize  & \scriptsize \citep{tan2025scaling} \\
+\scriptsize Stick-Breaking & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/stickbreaking\_pile\_4layer}} & \scriptsize 48.1M & \scriptsize 4 & \scriptsize  & \scriptsize \citep{tan2025scaling} \\
+\scriptsize Stick-Breaking & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/stickbreaking\_babylm\_10m\_2layer}} & \scriptsize 27.8M & \scriptsize 2 & \scriptsize $\sim$10M w. & \scriptsize \citep{tan2025scaling} \\
+\scriptsize Stick-Breaking & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/stickbreaking\_babylm\_10m\_4layer}} & \scriptsize 48.1M & \scriptsize 4 & \scriptsize $\sim$10M w. & \scriptsize \citep{tan2025scaling} \\
+\scriptsize Stick-Breaking & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/stickbreaking\_babylm\_100m\_2layer}} & \scriptsize 27.8M & \scriptsize 2 & \scriptsize $\sim$100M w. & \scriptsize \citep{tan2025scaling} \\
+\scriptsize Stick-Breaking & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/stickbreaking\_babylm\_100m\_4layer}} & \scriptsize 48.1M & \scriptsize 4 & \scriptsize $\sim$100M w. & \scriptsize \citep{tan2025scaling} \\
+\midrule
+\scriptsize ALiBi & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/alibi\_pile\_2layer}} & \scriptsize 27.4M & \scriptsize 2 & \scriptsize  & \scriptsize \citep{press2021train} \\
+\scriptsize ALiBi & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/alibi\_pile\_4layer}} & \scriptsize 45.7M & \scriptsize 4 & \scriptsize  & \scriptsize \citep{press2021train} \\
+\scriptsize ALiBi & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/alibi\_babylm\_10m\_2layer}} & \scriptsize 27.4M & \scriptsize 2 & \scriptsize $\sim$10M w. & \scriptsize \citep{press2021train} \\
+\scriptsize ALiBi & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/alibi\_babylm\_10m\_4layer}} & \scriptsize 45.7M & \scriptsize 4 & \scriptsize $\sim$10M w. & \scriptsize \citep{press2021train} \\
+\scriptsize ALiBi & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/alibi\_babylm\_100m\_2layer}} & \scriptsize 27.4M & \scriptsize 2 & \scriptsize $\sim$100M w. & \scriptsize \citep{press2021train} \\
+\scriptsize ALiBi & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/alibi\_babylm\_100m\_4layer}} & \scriptsize 45.7M & \scriptsize 4 & \scriptsize $\sim$100M w. & \scriptsize \citep{press2021train} \\
+\midrule
+\scriptsize Forgetting-Transf. & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/forgetting\_pile\_2layer}} & \scriptsize 27.4M & \scriptsize 2 & \scriptsize  & \scriptsize \citep{lin2025forgetting} \\
+\scriptsize Forgetting-Transf. & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/forgetting\_pile\_4layer}} & \scriptsize 45.7M & \scriptsize 4 & \scriptsize  & \scriptsize \citep{lin2025forgetting} \\
+\scriptsize Forgetting-Transf. & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/forgetting\_babylm\_10m\_2layer}} & \scriptsize 27.4M & \scriptsize 2 & \scriptsize $\sim$10M w. & \scriptsize \citep{lin2025forgetting} \\
+\scriptsize Forgetting-Transf. & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/forgetting\_babylm\_10m\_4layer}} & \scriptsize 45.7M & \scriptsize 4 & \scriptsize $\sim$10M w. & \scriptsize \citep{lin2025forgetting} \\
+\scriptsize Forgetting-Transf. & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/forgetting\_babylm\_100m\_2layer}} & \scriptsize 27.4M & \scriptsize 2 & \scriptsize $\sim$100M w. & \scriptsize \citep{lin2025forgetting} \\
+\scriptsize Forgetting-Transf. & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/forgetting\_babylm\_100m\_4layer}} & \scriptsize 45.7M & \scriptsize 4 & \scriptsize $\sim$100M w. & \scriptsize \citep{lin2025forgetting} \\
+\midrule
+\scriptsize Hard 2-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_2gram\_pile\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize  & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 2-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_2gram\_pile\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize  & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 2-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_2gram\_babylm\_10m\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize $\sim$10M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 2-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_2gram\_babylm\_10m\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize $\sim$10M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 2-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_2gram\_babylm\_100m\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize $\sim$100M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 2-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_2gram\_babylm\_100m\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize $\sim$100M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\midrule
+\scriptsize Hard 3-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_3gram\_pile\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize  & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 3-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_3gram\_pile\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize  & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 3-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_3gram\_babylm\_10m\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize $\sim$10M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 3-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_3gram\_babylm\_10m\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize $\sim$10M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 3-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_3gram\_babylm\_100m\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize $\sim$100M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 3-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_3gram\_babylm\_100m\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize $\sim$100M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\midrule
+\scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_pile\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize  & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_pile\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize  & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_babylm\_10m\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize $\sim$10M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_babylm\_10m\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize $\sim$10M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_babylm\_100m\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize $\sim$100M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_babylm\_100m\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize $\sim$100M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\midrule
+\multicolumn{6}{l}{\textbf{BabyLMs}} \\
+\midrule
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{colinglab/CLASS\_IT-140M}} & \scriptsize 140M & \scriptsize 13 & \scriptsize  & \scriptsize \citep{capone2025classit} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{llm-slice/blm-gpt2s-90M-s42\_901M-s42\_submission}} & \scriptsize 90M & \scriptsize 13 & \scriptsize  & \scriptsize  \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Jtapsa/moep}} & \scriptsize 80M & \scriptsize 13 & \scriptsize  & \scriptsize \citep{tapaninaho2025moep} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict}} & \scriptsize 98.4M & \scriptsize 13 & \scriptsize $\sim$100M w. & \scriptsize \citep{charpentier2025findings} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict-Small}} & \scriptsize 98.4M & \scriptsize 13 & \scriptsize $\sim$10M w. & \scriptsize \citep{charpentier2025findings} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{BabyLM-community/babylm-baseline-100m-gpt-bert-causal-focus}} & \scriptsize 119.5M & \scriptsize 13 & \scriptsize $\sim$100M w. & \scriptsize \citep{edman2025mask} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{BabyLM-community/babylm-baseline-100m-gpt-bert-mixed}} & \scriptsize 119.5M & \scriptsize 13 & \scriptsize $\sim$100M w. & \scriptsize \citep{edman2025mask} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{BabyLM-community/babylm-baseline-100m-gpt-bert-masked-focus}} & \scriptsize 119.5M & \scriptsize 13 & \scriptsize $\sim$100M w. & \scriptsize \citep{edman2025mask} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{BabyLM-community/babylm-baseline-10m-gpt-bert-causal-focus}} & \scriptsize 33M & \scriptsize 13 & \scriptsize $\sim$10M w. & \scriptsize \citep{edman2025mask} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{BabyLM-community/babylm-baseline-10m-gpt-bert-mixed}} & \scriptsize 33M & \scriptsize 13 & \scriptsize $\sim$10M w. & \scriptsize \citep{edman2025mask} \\
+\scriptsize BabyLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{BabyLM-community/babylm-baseline-10m-gpt-bert-masked-focus}} & \scriptsize 33M & \scriptsize 13 & \scriptsize $\sim$10M w. & \scriptsize \citep{edman2025mask} \\
+\end{longtable}
+}

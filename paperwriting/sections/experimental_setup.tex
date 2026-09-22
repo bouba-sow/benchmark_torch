@@ -1,0 +1,65 @@
+\section{Experimental Setup}
+
+\subsection{Datasets}
+
+We assembled a large collection of publicly available corpora spanning two broad categories of human language processing measurements: behavioral and neural. Every dataset is reduced to the same underlying unit of analysis -- a word, embedded in its preceding sentence or discourse context -- paired with one or more measured human responses to that word. This common representation lets us route any of the model groups described in Section~3.2 through any dataset without dataset-specific modeling code, and it is what allows us to aggregate findings across the datasets in Table~\ref{tab:datasets} (Appendix~\ref{app:datasets}) rather than reporting them one at a time.
+
+\paragraph{Behavioral Datasets}
+Behavioral measures index processing difficulty indirectly, through the time it takes a reader to move past a word.
+
+\begin{itemize}
+    \item \textbf{Self-paced reading (SPR).} Participants reveal one word (or region) at a time by pressing a button, and reading time is the interval between successive presses. We use the Natural Stories corpus \citep{futrell2021natural}, a set of naturalistic narratives deliberately written to contain rare syntactic constructions, and the UCL Reading corpus \citep{frank2013reading}, 361 sentences read by 117 participants that we also use as the reference implementation for our reading-time mixed-effects models (Section~3.3).
+    \item \textbf{Eye-tracking.} Participants read naturally while an eye tracker records fixations, giving several complementary measures of processing difficulty at a word: \emph{first-pass} (or gaze) duration, the total time spent on a word before the eyes leave it in either direction; \emph{go-past time}, which additionally counts any regressive fixations back to earlier material before progressing past the word; and \emph{total (or single-fixation) dwell time}, summed over every visit to that word across the whole trial. Depending on what each corpus makes available, we extract one or more of these three measures. We draw on the Ghent Eye-tracking Corpus (GECO), the Provo Corpus \citep{luke2018provo}, the English subset of the Multilingual Eye-movement Corpus \citep[MECO;][]{siegelman2022meco}, and the OneStop corpus, together covering novel reading, norm-controlled passages, and multi-difficulty text. We additionally use the eye-tracking arm of ZuCo \citep{hollenstein2018zuco}, in which participants read isolated sentences under three separate task instructions (normal reading, sentiment judgment, and relation judgment), giving us three further behavioral sub-datasets from the same recording sessions.
+\end{itemize}
+
+\paragraph{Neural Datasets}
+Neural measures record processing directly from the brain, at complementary spatial and temporal resolutions.
+
+\begin{itemize}
+    \item \textbf{fMRI.} We use the Le Petit Prince corpus, in which participants passively listen to an audiobook narration of \emph{The Little Prince} across nine scanning runs, and the Natural Stories fMRI dataset \citep{shain2022robust}, which pairs the same narrative materials as the SPR corpus above with BOLD responses pre-averaged within functionally localized regions of the language and multiple-demand networks. We also include Tuckute et al.'s language-network dataset, which measures BOLD responses to isolated sentences, including sentences that were themselves optimized in closed loop to drive or suppress the language network, and the Pereira dataset \citep{pereira2018toward}, in which participants read isolated sentences drawn from two separate experiments.
+    \item \textbf{EEG / ERP.} We use Broderick et al.'s continuous-listening audiobook EEG corpus, which reduces to a temporal response function between word-level features and the scalp EEG signal. In parallel, we use event-related potential datasets built around the N400 component -- a centro-parietal negativity classically associated with semantic expectancy -- from controlled psycholinguistic experiments with manipulated cloze probability: a nine-site replication of the classic article/noun expectancy manipulation \citep{nieuwland2018largescale}, and a large multi-experiment corpus with continuously varying cloze probability \citep{szewczyk2022context}.
+    \item \textbf{Intracranial recordings.} We use a sentence-reading SEEG dataset with electrodes implanted for clinical monitoring \citep{fedorenko2016neural}, and a large single-story ECoG dataset recorded during naturalistic podcast listening \citep{zada2025podcast}.
+    \item \textbf{MEG.} We use the MEG-MASC corpus \citep{gwilliams2022neural}, in which participants passively listen to naturalistic stories.
+\end{itemize}
+
+Across this collection, the behavioral corpora total well over a hundred thousand word-level observations, and the neural corpora span five recording modalities (fMRI, MEG, scalp EEG, ERP, and intracranial electrophysiology) and several hundred human participants combined -- to our knowledge the widest multi-modal sweep assembled to test algorithmic convergence between LLMs and the human language system.
+
+\subsection{Models}
+
+We evaluate every dataset against a common bank of language models, organized into four groups: models built with an explicit human cognitive constraint baked into their architecture, trained either at web scale or under a human-scale data budget; models built with an explicit human developmental constraint baked into their training data alone; and models with neither constraint, trained the standard way at web scale. Crossing the architectural constraint with the data constraint this way turns what might otherwise look like two separate lines of "human-like" modeling work into a single $2\times2$ design (architecture $\times$ data), letting us ask whether either constraint helps on its own, whether they compound, or neither does. All models are evaluated as frozen feature extractors, never fine-tuned on any of our behavioral or neural targets. Table~\ref{tab:models} (Appendix~\ref{app:models}) lists every model we evaluate, with its depth, parameter count, and HuggingFace repository.
+
+\paragraph{Memory-Constrained}
+Architectures that restrict how much of the preceding context a model's attention mechanism can access or weight, motivated by capacity-limited accounts of human sentence processing such as activation-based memory retrieval \citep{lewisvasishth2005activation} and lossy-context surprisal \citep{futrell2020lossy} -- capped attention heads, distance-penalized attention, forget-gate and stick-breaking replacements for softmax attention, hard local $n$-gram windows, and a small sequential recurrent architecture (full list and citations in Appendix~\ref{app:models}). Every one of these architectures is trained at the same web scale as the Standard LLMs below (a Pile-derived corpus), isolating the architectural constraint from any data constraint.
+
+\paragraph{Constrained-BabyLM}
+The same memory-constrained architectures above, but trained on the BabyLM 10M/100M-word corpora described next instead of web-scale data -- the architecture constraint and the data constraint applied together. Keeping this as its own group, rather than folding it into either Memory-Constrained or BabyLM, is what makes the $2\times2$ crossing explicit: it isolates what changes when a human-scale-data budget is added on top of an already human-scale architecture, rather than confounding the two.
+
+\paragraph{BabyLM}
+Standard Transformer architectures trained on roughly the number of words a child hears by early adolescence -- ten to a hundred million words, several orders of magnitude below the Standard LLMs' token budgets -- following the BabyLM Challenge \citep{warstadt2023cfp,warstadt2023findings,hu2024secondbabylm}. We include submissions and baselines from the BabyLM shared tasks spanning several architectural choices under this shared data budget (Appendix~\ref{app:models}), which lets us ask whether the training-data constraint alone, independent of any architectural change, moves a model toward human-like predictions.
+
+\paragraph{Standard LLMs}
+Off-the-shelf, web-scale autoregressive language models with no human-inspired constraint on either architecture or training data, spanning both standard Transformer and state-space architectures and roughly two orders of magnitude in parameter count (Appendix~\ref{app:models} lists all twelve model families). For Pythia and OLMo-2, whose intermediate training checkpoints are publicly released, we additionally evaluate every model at several points along its own training trajectory, separating the effect of \emph{how much} a model has learned from the effect of \emph{how it is built}.
+
+\subsection{BehavScore and BrainScore Calculation}
+
+For every (model, layer, dataset) triple we compute two complementary, independently normalized scores.
+
+\paragraph{BrainScore: predicting the signal from full hidden states.}
+For each layer $\ell$ we extract contextual hidden states at every word (mean-pooled over subword tokens, full preceding context included in the forward pass) and fit a ridge regression onto the target signal $y$ -- an electrode's high-gamma envelope, a voxel's or region's BOLD time course, a scalp channel's EEG amplitude, or a reading time (a lag-matrix TRF, fit jointly across all lags, where $y$ has a temporal profile rather than one scalar per word). Regularization is chosen by nested cross-validation, and we always evaluate out-of-fold, on held-out stories, sections, or sentences. This gives an out-of-fold correlation $r_\ell = \mathrm{corr}(\hat y_\ell, y)$. We normalize by a split-half noise ceiling $r_{\mathrm{SB}}$ on $y$ (Appendix~\ref{app:corr-ceiling}), which bounds explained variance rather than $r$ itself \citep{vanbree2025noiseceiling}, so the ceiling on $r$ is $\sqrt{r_{\mathrm{SB}}}$:
+\[
+\mathrm{BrainScore}_\ell = \frac{r_\ell}{\sqrt{r_{\mathrm{SB}}}}.
+\]
+We take a model's \emph{last} layer as its primary summary score, $\mathrm{BrainScore} = \mathrm{BrainScore}_{L}$: since our groups differ enormously in depth (two-layer memory-constrained architectures to 65-layer standard LLMs), reporting $\max_\ell \mathrm{BrainScore}_\ell$ on the same held-out data used for evaluation would let deeper models post a high score by chance alone. We additionally report $\max_\ell \mathrm{BrainScore}_\ell$ as a secondary, exploratory upper bound (Appendix~\ref{app:best-layer}), but it is not the basis for any headline comparison.
+
+\paragraph{BehavScore: isolating the unique contribution of surprisal.}
+At every layer we obtain a surprisal value via a logit-lens projection \citep{logitlens2020} -- applying a model's own unembedding matrix to that layer's hidden state -- following evidence that intermediate layers already carry human-like predictive information \citep{kuribayashi2025humanlike}. We fit a linear mixed-effects model
+\[
+\texttt{signal} \sim \texttt{wlen} + \texttt{freq} + \underbrace{\texttt{surprisal}_\ell + \texttt{surprisal}_{\ell,\mathrm{prev}}}_{\text{full model only}} + (\text{random effects}),
+\]
+with the dataset-specific random-effects structure detailed in Appendix~\ref{app:lme-formulas}, and compare the full model against the baseline that omits the bracketed surprisal terms via the out-of-sample log-likelihood improvement $\Delta LL_\ell = LL_\ell^{\mathrm{full}} - LL^{\mathrm{base}}$. We normalize by a split-half filler-model ceiling $\Delta LL_{\mathrm{ceil}}$ (Appendix~\ref{app:dll-ceiling}), the $\Delta LL$ achievable by the best possible single per-item predictor given the data's own reliability \citep{timkey2026dissociation}:
+\[
+\mathrm{BehavScore}_\ell = \frac{\Delta LL_\ell}{\Delta LL_{\mathrm{ceil}}}, \qquad \mathrm{BehavScore} = \mathrm{BehavScore}_{L}.
+\]
+A model whose surprisal buys no log-likelihood over the baseline scores 0 by this measure, regardless of how large or otherwise capable it is.
+
+BrainScore and BehavScore separate two logically distinct claims: BrainScore is how much of a signal a model's full representation can account for; BehavScore is whether the model's own notion of surprise, specifically, is doing any of that work once word length and frequency are controlled for. We report both throughout, and, in Section~4, break each down by model group, model scale, and dataset modality.

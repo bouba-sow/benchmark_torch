@@ -1,0 +1,60 @@
+# @package _global_
+defaults:
+  - override /model: forgetting_transformer
+  - override /optimizer: adamw
+  - override /schedule: warmup_cosine
+  - override /datamodule: npy
+  - override /strategy: single_device
+  - _self_
+
+exp: babylm_10m_forgetting_gate_2layer
+tag: babylm_10m_l2_h256_h4_seq512_forgetting_gate
+seed: 42
+output_dir: forgetting_gate_2_4_256_babylm_10m/
+data_dir: data/babylm_10m/tokenized
+resume: False
+log_interval: 5242880
+checkpoint_interval: 16777216
+skip_eval: false
+eval_interval: 16777216
+train_eval_interval: 16777216
+checkpoint_keep_interval: 16777216
+
+fabric:
+  devices: 1
+  precision: '16-mixed'
+
+train:
+  max_tokens: 167772160
+  grad_acc_tokens: 16384
+  max_grad_norm: 1.0
+  gradient_checkpointing: true
+
+model:
+  config:
+    hidden_size: 256
+    num_hidden_layers: 2
+    num_heads: 4
+    use_rope: false
+    tie_word_embeddings: false
+
+optimizer:
+  lr: 0.001
+  betas: [0.9, 0.95]
+  weight_decay: 0.1
+
+schedule:
+  init_value: 0.0
+  peak_value: ${optimizer.lr}
+  warmup_steps: 1677721
+  decay_steps: ${train.max_tokens}
+  end_value: 0.0
+
+datamodule:
+  train_batch_len: 512
+  train_batch_size: 1024
+  train_num_workers: 0
+  eval_batch_len: 512
+  eval_local_batch_size: 1
+  eval_tokens: 4194304
+  eval_num_workers: 0

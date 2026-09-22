@@ -1,0 +1,47 @@
+# ============================================================================
+# Pereira et al. (2018) fMRI — voxelwise embedding encoding (himalaya GPU
+# ridge, per subject, per LM layer)
+# ============================================================================
+#
+# For each subject and LM layer: predict every language-atlas voxel from
+# that layer's mean-pooled-over-words sentence embedding, via
+# cv_ridge_score_multioutput_gpu (SVD-based GCV, 5-fold GroupKFold-by-
+# passage). See docs/pereira_embedding_design.md for the full design and
+# neuroai/benchmarks/pereira_embed.py for the pipeline.
+#
+# Unlike the pereira_lme.py sweep (GPU extraction + CPU-only R fit, two
+# separate jobs), BOTH stages here need a GPU (the LLM forward pass, and
+# himalaya's torch_cuda ridge backend) — one script/job handles both.
+#
+#   .venv/bin/python scripts/run/embedding/neural/pereira.py \
+#       --config configs/embedding/neural/pereira.yaml \
+#       --model_name openai-community/gpt2 --device cuda
+# ============================================================================
+
+dataset:
+  nc_path: ${BENCHMARK_ROOT}/data/pereira_fmri/Pereira2018_merged.nc
+  # "language" (12 ROIs, all 10 subjects) is the default — see
+  # neuroai/datasets/pereira.py module docstring.
+  atlas: language
+  max_length: null
+  tokenizer_no_revision: true
+  trust_remote_code: false
+  device: cuda
+
+embed:
+  # Production grid, narrowed from the wide calibration runs on gpt2
+  # (2026-09-01): all 10 subjects' GCV-selected alphas landed in
+  # 0.01-10,000, with 9/10 clustering in 1,000-10,000 — np.logspace(1, 6, 8)
+  # brackets that with margin on both sides.
+  alpha_logspace: [1, 6, 8]
+  n_splits: 5
+  random_state: 0
+  standardize_target: true
+  layer_stride: 1
+  n_layer_workers: 8
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/pereira/embedding_sweep
+
+cache:
+  features_dir: ${PEREIRA_EMBED_FEATURE_CACHE_DIR}

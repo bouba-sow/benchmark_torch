@@ -1,0 +1,111 @@
+# ============================================================================
+# Natural Stories fMRI Encoding — LME Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Predicts per-fROI BOLD (Shain et al. 2020) from PER-LAYER LLM surprisal
+# (logit-lens, Kuribayashi et al. 2025) via linear mixed-effects models
+# (pymer4/lme4), extending Lin & Schuler (2025, arXiv:2506.11338) with
+# freq_z — see neuroai/regressors/fmri_lme.py for the exact formula:
+#
+#   baseline: bold ~ wlen_z + freq_z + sentpos_z +
+#                    (1 + wlen_z + freq_z | subject) + (1 | story)
+#   full:     bold ~ wlen_z + freq_z + sentpos_z + surprisal_z +
+#                    (1 + wlen_z + freq_z + surprisal_z | subject) +
+#                    (1 + surprisal_z | story)
+#
+# All predictors are HRF-convolved (Glover), then z-scored, before fitting.
+# Unlike the ridge encoder (run/embedding/neural/ns_fmri.py, which regresses
+# full hidden-state embeddings per subject with leave-one-story-out CV), this
+# pools ALL 78 subjects and 8 stories into one mixed model per (fROI, layer)
+# pair — same per-layer sweep as the N400 datasets/Fedorenko2016/Tuckute,
+# generalized to a second grouping dimension (26 fROIs) those single-DV
+# datasets don't have.
+#
+# Scope: every registry family, including cbr_rnn (bypasses
+# AutoModelForCausalLM, single hidden-state vector per token — gets
+# batch_surprisal_cbr_rnn instead of logit-lens, a genuine n_layers=1 case
+# handled by the same (fROI, layer) task grid as every other family). Also
+# includes the FLA-based trust_remote_code families (stickbreaking, alibi,
+# forgetting, hard-n-gram) via logit_lens.py's hook-based hidden-states
+# fallback — verified on Jean Zay H100, see
+# outputs_jeanzay/_scratch_conf_method_test/logit_lens_constrained_models_handoff.md.
+# One narrow exception within babylm: the MoE model Jtapsa/moep fails
+# (variable residual-stream width across layers); the rest of that family works.
+#
+# Train/held-out split: contiguous ~30 s TR chunks (never split across the
+# boundary), shuffled and assigned by fraction — NOT leave-story-out, and NOT
+# the SPR LME's (subject + sentid) % mod hash (BOLD is autocorrelated within a
+# story, unlike per-word SPR trials). Both subject and story random-effect
+# levels appear in both partitions.
+#
+# Dataset: 78 subjects × 8 stories (~1000 words each) × 26 fROIs
+#   Language network (LANG): 6 left-hemisphere Fedorenko-lab parcels
+#   Multiple-demand network (MD): 20 bilateral parcels
+#   TR = 2 s, BOLD pre-averaged per fROI (no voxel data)
+#
+# TWO-STAGE PIPELINE (R/pymer4 is CPU-only on Jean Zay):
+#   1. GPU — extract + cache per-layer logit-lens surprisal for all 8 stories:
+#        .venv/bin/python scripts/run/surprisal/neural/ns_fmri_extract.py \
+#          --family gpt2 --array-index 0 --device cuda
+#   2. CPU — fit one LME per (fROI, layer) pair (a flattened process-pool
+#      grid, NOT one SLURM job per pair):
+#        .venv/bin/python scripts/run/surprisal/neural/ns_fmri_fit.py \
+#          --config configs/surprisal/neural/ns_fmri.yaml \
+#          --from-registry --family gpt2 --array-index 0 --device cpu \
+#          --n_workers 20
+# ============================================================================
+
+dataset:
+  data_root: ${BENCHMARK_ROOT}/data/naturalstories_fmri/osfstorage
+
+  # Which ROI table to load: "LANG", "MD", or "LANG_MD" (recommended — all 26 fROIs)
+  froi_table: LANG_MD
+
+  docs: null          # null = all 8 stories (Aqua, Boar, Elvis, HighSchool,
+                      #   KingOfBirds, MatchstickSeller, MrSticky, Tulips)
+
+  subjects: null      # null = all 78 subjects
+
+  t_r: 2.0            # repetition time in seconds
+
+  # Fixed event duration for HRF convolution (no ISI information in the data).
+  word_duration: 0.1
+
+  # Canonical double-gamma HRF (Glover 1999) via nilearn compute_regressor.
+  hrf_model: glover
+
+  max_length: null
+  tokenizer_no_revision: true
+
+lme:
+  # Contiguous TR-chunk length for the train/held-out split (seconds).
+  chunk_seconds: 30.0
+  # Fraction of chunks assigned to train (remainder = held-out).
+  train_frac: 0.75
+  split_random_state: 0
+  # Minimum valid (non-NaN) TRs required to attempt a fit for a given fROI.
+  min_valid_trs: 50
+  verbose: false
+  # Fit every Nth layer (1 = all layers).
+  layer_stride: 1
+  # Concurrent worker processes fitting (fROI, layer) pairs — each is a
+  # separate process with its own embedded R/pymer4 interpreter (pymer4/rpy2
+  # is not thread-safe). 26 fROIs × n_layers pairs per model, so this needs
+  # real parallelism to keep wall time from scaling with n_layers.
+  n_workers: 20
+  # CPU sweep runs are the LME-only half of a two-stage pipeline (surprisal
+  # already GPU-prefetched) — fail fast on cache miss instead of loading a
+  # model. Defaults to true when device=cpu (set in the sweep script).
+  require_cached_surprisal: null
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/ns_fmri/surprisal_sweep
+
+cache:
+  # Reuses the same cache root as the Natural Stories SPR LME sweep — this is
+  # the standard logit-lens fulltext cache (see
+  # neuroai/features/logit_lens.py::logit_lens_surprisal_all_layers, keyed by
+  # model/revision/section_id=doc_idx), same cache format Fedorenko2016 and
+  # Tuckute use, distinct from the SPR LME's own cache pattern even sharing
+  # a directory.
+  features_dir: ${NS_FEATURE_CACHE_DIR}

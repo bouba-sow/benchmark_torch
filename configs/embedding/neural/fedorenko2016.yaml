@@ -1,0 +1,48 @@
+# ============================================================================
+# Fedorenko2016 iEEG Encoding — Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Predicts word-level scalar electrode responses from LLM contextual activations
+# using grouped sentence-level ridge regression (GroupKFold).
+#
+# Data: 52 sentences × 8 words = 416 stimuli, 97 electrodes, 5 subjects.
+#
+# Run single array task (Jean Zay):
+#   python scripts/submit.py fedorenko2016 embedding fit --family gpt2
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/neural/fedorenko2016.py \
+#     --config configs/embedding/neural/fedorenko2016.yaml \
+#     --from-registry --family gpt2 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/fedorenko2016
+  subjects: null          # null = all subjects
+  electrodes: null        # null = all electrodes
+  # LLM context: null = unbounded up to model max context
+  context_words: null
+  max_length: null
+  zscore_targets: true
+  drop_constant_electrodes: true
+
+regression:
+  n_splits: 5             # user-requested
+  alpha: null             # null -> 5-value log-spaced grid [10^3.5 … 10^8]
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: false
+
+benchmark:
+  layerwise: true
+  tokenizer_no_revision: true
+
+cache:
+  # On Jean Zay: set by scripts/slurm/jz/jz_cache_env.sh
+  features_dir: ${FEDORENKO_FEATURE_CACHE_DIR}
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/fedorenko2016/embedding_sweep
+
+models: []  # unused — registry scripts use --from-registry
+

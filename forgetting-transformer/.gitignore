@@ -1,0 +1,15 @@
+data/
+cache/
+output/
+results/
+__pycache__/
+*.pyc
+*.log
+*.png
+*.zip
+*.tar.gz
+*.npy
+.DS_Store
+logg/
+log/
+eval/

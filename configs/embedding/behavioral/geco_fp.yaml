@@ -1,0 +1,88 @@
+# ============================================================================
+# GECO Corpus — First-Pass / Gaze Duration (FP) — Embedding Ridge Checkpoint Sweep
+# ============================================================================
+#
+# Word-level ridge regression: rt_mean (WORD_GAZE_DURATION, ms, averaged across
+# subjects who fixated the word) ~ per-layer LLM contextual embedding.
+# Behavioral analogue of NeuralBenchmark's per-layer iEEG ridge regression;
+# complements configs/surprisal/behavioral/geco_fp.yaml (scalar surprisal -> RT via LME).
+#
+# GECO has no raw per-fixation report, so — unlike Provo — no SP (scan-path /
+# total dwell) measure is available; only FP and GP are supported.
+#
+# NOTE on caching: like the surprisal cache, embeddings are cached per
+# (model, revision, story_id) — NOT nested per measure, so a cache built while
+# running this config is reused as-is by configs/embedding/behavioral/geco_gp.yaml.
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/behavioral/geco.py \
+#     --config configs/embedding/behavioral/geco_fp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/geco
+  measure: FP                 # FP | GP (no SP — see note above)
+  trials: null                 # null = all 588 (PART, TRIAL) trials
+  min_dur: 50.0                 # ms, drop implausibly short durations
+  max_dur: 5000.0               # ms, drop implausibly long durations (regressions/blinks)
+  exclude_doc_edges: true       # also drop trial-initial/-final words
+  context_words: 150            # >= longest trial (140 words) -> full cumulative context
+  max_length: 512
+
+# Leave-screens-out CV (GroupKFold on story_id) — 588 trials, but words within
+# one screen share overlapping context, so plain shuffled KFold would leak
+# correlated neighbours across train/test.
+group_cv_by_story: true
+# Fit independently per subject (mirrors NeuralBenchmark's per-electrode
+# fitting) -- skip a subject with fewer than this many trials left after
+# filtering. Ridge fit is CPU sklearn (ProcessPoolExecutor subject fan-out +
+# threaded per-layer parallelism — see neuroai/benchmarks/geco_embed.py
+# module docstring for why GPU-ridge was tried and reverted). n_jobs =
+# thread-pool workers for per-LAYER regression within one subject.
+# subject_n_jobs = concurrent subject PROCESSES (real multi-core, subjects
+# are fully independent) — GECO has only 14 subjects, so this is capped by
+# subject count in practice, not core count; total cores used ~= n_jobs *
+# subject_n_jobs, sized against cpus-per-task (48 on the family sbatch
+# scripts): 8 * 6 = 48.
+min_trials_per_subject: 20
+n_jobs: 8
+subject_n_jobs: 6
+filter_sentence_edges: true    # drops any row where is_edge=true (sentence OR doc edge)
+
+# ---- grand-average-subject methodology (de Varda et al. 2026) ----
+# Average RT across subjects per (story_id, zone) word -> one "grand-average
+# subject" -> a single ridge CV per layer. No per-subject fitting.
+average_across_subjects: true
+average_only: true
+min_subjects_per_item: 1        # available-case mean; GECO subjects read
+                               # near-disjoint word sets, so a floor would
+                               # empty the target — keep at 1.
+average_ridge_device: cpu      # switched back from cuda: opt-66b/opt-30b's
+                               # GPU streams contend with the huge resident
+                               # model for GPU memory/compute and give no
+                               # per-layer progress visibility -- CPU thread
+                               # pool across layers (n_jobs, sized to the
+                               # family sbatch script's cpus-per-task) is the
+                               # default path everywhere else and is fast
+                               # enough given real core-per-layer parallelism.
+
+regression:
+  n_splits: 5
+  # Embeddings are high-dimensional/collinear and RT is on a raw-ms scale, so
+  # this grid sits well above the iEEG ridge range (logspace(-3, 3, 7)). Watch
+  # the printed chosen alpha (print_chosen_ridge_alpha below) — if it piles up
+  # at either edge, widen the grid.
+  alpha: "np.logspace(1, 10, 10)"   # padded FP grid, shared across measures
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: true
+
+cache:
+  # Shared across FP/GP — do NOT nest per measure (see note above).
+  features_dir: ${GECO_EMBED_CACHE_DIR}
+
+output:
+  save_dir: outputs/geco/embedding_sweep/fp
+
+models: []

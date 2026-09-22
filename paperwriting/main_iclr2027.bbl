@@ -1,0 +1,772 @@
+\begin{thebibliography}{96}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Andreas(2022)]{andreas-2022-language}
+Jacob Andreas.
+\newblock Language models as agent models.
+\newblock In \emph{Findings of the Association for Computational Linguistics:
+  EMNLP 2022}, pp.\  5769--5779, Abu Dhabi, United Arab Emirates, December
+  2022. Association for Computational Linguistics.
+\newblock \doi{10.18653/v1/2022.findings-emnlp.423}.
+\newblock URL \url{https://aclanthology.org/2022.findings-emnlp.423/}.
+
+\bibitem[Aw et~al.(2024)Aw, Montariol, AlKhamissi, Schrimpf, and
+  Bosselut]{aw2024instructiontuning}
+Khai~Loong Aw, Syrielle Montariol, Badr AlKhamissi, Martin Schrimpf, and
+  Antoine Bosselut.
+\newblock Instruction-tuning aligns {LLM}s to the human brain.
+\newblock In \emph{Conference on Language Modeling (COLM)}, 2024.
+
+\bibitem[Barr et~al.(2013)Barr, Levy, Scheepers, and Tily]{barr2013random}
+Dale~J. Barr, Roger Levy, Christoph Scheepers, and Harry~J. Tily.
+\newblock Random effects structure for confirmatory hypothesis testing: Keep it
+  maximal.
+\newblock \emph{Journal of Memory and Language}, 68\penalty0 (3):\penalty0
+  255--278, 2013.
+
+\bibitem[Belrose et~al.(2023)Belrose, Furman, Smith, Halawi, McKinney,
+  Ostrovsky, Biderman, and Steinhardt]{belrose2023tuned}
+Nora Belrose, Zach Furman, Logan Smith, Danny Halawi, Lev McKinney, Igor
+  Ostrovsky, Stella Biderman, and Jacob Steinhardt.
+\newblock Eliciting latent predictions from transformers with the tuned lens.
+\newblock \emph{arXiv preprint arXiv:2303.08112}, 2023.
+
+\bibitem[Bender \& Koller(2020)Bender and Koller]{bender-koller-2020-climbing}
+Emily~M. Bender and Alexander Koller.
+\newblock Climbing towards {NLU}: {On} meaning, form, and understanding in the
+  age of data.
+\newblock In \emph{Proceedings of the 58th Annual Meeting of the Association
+  for Computational Linguistics}, pp.\  5185--5198, Online, July 2020.
+  Association for Computational Linguistics.
+\newblock \doi{10.18653/v1/2020.acl-main.463}.
+\newblock URL \url{https://aclanthology.org/2020.acl-main.463}.
+
+\bibitem[Berzak et~al.(2025)Berzak, Malmaud, Shubi, Meiri, Lion, and
+  Levy]{berzak2025onestop}
+Yevgeni Berzak, Jonathan Malmaud, Omer Shubi, Yoav Meiri, Ella Lion, and Roger
+  Levy.
+\newblock {OneStop}: A 360-participant english eye tracking dataset with
+  different reading regimes.
+\newblock PsyArXiv preprint, 2025.
+
+\bibitem[Biderman et~al.(2023)Biderman, Schoelkopf, Anthony, Bradley, O'Brien,
+  Hallahan, Khan, Purohit, Prashanth, Raff, et~al.]{biderman2023pythia}
+Stella Biderman, Hailey Schoelkopf, Quentin~Gregory Anthony, Herbie Bradley,
+  Kyle O'Brien, Eric Hallahan, Mohammad~Aflah Khan, Shivanshu Purohit,
+  USVSN~Sai Prashanth, Edward Raff, et~al.
+\newblock Pythia: A suite for analyzing large language models across training
+  and scaling.
+\newblock In \emph{Proceedings of ICML}, pp.\  2397--2430, 2023.
+
+\bibitem[Black et~al.(2021)Black, Gao, Wang, Leahy, and
+  Biderman]{black2021gptneo}
+Sid Black, Leo Gao, Phil Wang, Connor Leahy, and Stella Biderman.
+\newblock {GPT-Neo}: Large scale autoregressive language modeling with
+  mesh-tensorflow.
+\newblock \url{https://doi.org/10.5281/zenodo.5297715}, 2021.
+
+\bibitem[Black et~al.(2022)Black, Biderman, Hallahan, Anthony, Gao, Golding,
+  He, Leahy, McDonell, Phang, Pieler, Prashanth, Purohit, Reynolds, Tow, Wang,
+  and Weinbach]{black2022gptneox}
+Sid Black, Stella Biderman, Eric Hallahan, Quentin Anthony, Leo Gao, Laurence
+  Golding, Horace He, Connor Leahy, Kyle McDonell, Jason Phang, Michael Pieler,
+  USVSN~Sai Prashanth, Shivanshu Purohit, Laria Reynolds, Jonathan Tow, Ben
+  Wang, and Samuel Weinbach.
+\newblock {GPT-NeoX-20B}: An open-source autoregressive language model.
+\newblock \emph{Proceedings of BigScience Episode \#5 -- Workshop on Challenges
+  \& Perspectives in Creating Large Language Models}, 2022.
+
+\bibitem[Bonnasse-Gahot \& Pallier(2024)Bonnasse-Gahot and
+  Pallier]{bonnasse2024fmri}
+Laurent Bonnasse-Gahot and Christophe Pallier.
+\newblock {fMRI} predictors based on language models of increasing complexity
+  recover brain left lateralization.
+\newblock \emph{Advances in Neural Information Processing Systems},
+  37:\penalty0 125231--125263, 2024.
+
+\bibitem[Broderick et~al.(2018)Broderick, Anderson, Di~Liberto, Crosse, and
+  Lalor]{broderick2018electrophysiological}
+Michael~P. Broderick, Andrew~J. Anderson, Giovanni~M. Di~Liberto, Michael~J.
+  Crosse, and Edmund~C. Lalor.
+\newblock Electrophysiological correlates of semantic dissimilarity reflect the
+  comprehension of natural, narrative speech.
+\newblock \emph{Current Biology}, 28\penalty0 (5):\penalty0 803--809, 2018.
+
+\bibitem[Bu et~al.(2026)Bu, Yang, Clark, Warstadt, and
+  Wilcox]{bu2026staticlinearattentionconstraints}
+Lanni Bu, Xiulin Yang, Christian Clark, Alex Warstadt, and Ethan~Gotlieb
+  Wilcox.
+\newblock Beyond static and linear: What attention constraints best fit human
+  reading times?, 2026.
+\newblock URL \url{https://arxiv.org/abs/2608.23818}.
+
+\bibitem[Capone et~al.(2025)Capone, Bondielli, and Lenci]{capone2025classit}
+Luca Capone, Alessandro Bondielli, and Alessandro Lenci.
+\newblock {CLASS-IT}: Conversational and lecture-aligned small-scale
+  instruction tuning for {B}aby{LM}s.
+\newblock In \emph{Proceedings of the First BabyLM Workshop}, pp.\  436--444,
+  Suzhou, China, 2025. Association for Computational Linguistics.
+
+\bibitem[Caucheteux \& King(2022)Caucheteux and King]{caucheteux2022brains}
+Charlotte Caucheteux and Jean-R{\'e}mi King.
+\newblock Brains and algorithms partially converge in natural language
+  processing.
+\newblock \emph{Communications Biology}, 5\penalty0 (1), 2022.
+
+\bibitem[Caucheteux et~al.(2023)Caucheteux, Gramfort, and
+  King]{caucheteux2023evidence}
+Charlotte Caucheteux, Alexandre Gramfort, and Jean-R{\'e}mi King.
+\newblock Evidence of a predictive coding hierarchy in the human brain
+  listening to speech.
+\newblock \emph{Nature Human Behaviour}, 7\penalty0 (3):\penalty0 430--441,
+  2023.
+
+\bibitem[Charpentier et~al.(2025)Charpentier, Choshen, Cotterell, Gul, Hu, Liu,
+  Jumelet, Linzen, Mueller, Ross, Shah, Warstadt, Wilcox, and
+  Williams]{charpentier2025findings}
+Lucas Charpentier, Leshem Choshen, Ryan Cotterell, Mustafa~Omer Gul, Michael~Y.
+  Hu, Jing Liu, Jaap Jumelet, Tal Linzen, Aaron Mueller, Candace Ross,
+  Raj~Sanjay Shah, Alex Warstadt, Ethan~Gotlieb Wilcox, and Adina Williams.
+\newblock Findings of the third {BabyLM} challenge: Accelerating language
+  modeling research with cognitively plausible data.
+\newblock In \emph{Proceedings of the First BabyLM Workshop}, pp.\  399--420,
+  Suzhou, China, 2025. Association for Computational Linguistics.
+
+\bibitem[Clark et~al.(2025)Clark, Oh, and Schuler]{clark2025linear}
+Christian Clark, Byung-Doh Oh, and William Schuler.
+\newblock Linear recency bias during training improves transformers' fit to
+  reading times.
+\newblock In \emph{Proceedings of the 31st International Conference on
+  Computational Linguistics (COLING)}, pp.\  7735--7747, Abu Dhabi, UAE, 2025.
+\newblock arXiv:2409.11250.
+
+\bibitem[Cop et~al.(2017)Cop, Dirix, Drieghe, and Duyck]{cop2017geco}
+Uschi Cop, Nicolas Dirix, Denis Drieghe, and Wouter Duyck.
+\newblock Presenting {GECO}: An eyetracking corpus of monolingual and bilingual
+  sentence reading.
+\newblock \emph{Behavior Research Methods}, 49\penalty0 (2):\penalty0 602--615,
+  2017.
+
+\bibitem[Dao \& Gu(2024)Dao and Gu]{daogu2024transformers}
+Tri Dao and Albert Gu.
+\newblock Transformers are {SSM}s: Generalized models and efficient algorithms
+  through structured state space duality.
+\newblock \emph{arXiv preprint arXiv:2405.21060}, 2024.
+
+\bibitem[de~Varda \& Marelli(2024)de~Varda and Marelli]{devarda2024locally}
+Andrea~Gregor de~Varda and Marco Marelli.
+\newblock Locally biased transformers better align with human reading times.
+\newblock In \emph{Proceedings of the Workshop on Cognitive Modeling and
+  Computational Linguistics (CMCL)}, 2024.
+
+\bibitem[de~Varda et~al.(2026)de~Varda, Berzak, Fedorenko, and
+  Levy]{devarda2026behavioral}
+Andrea~Gregor de~Varda, Yevgeni Berzak, Evelina Fedorenko, and Roger Levy.
+\newblock Behavioral and brain responses to language reflect different levels
+  of linguistic representation.
+\newblock bioRxiv preprint, posted August 25, 2026,
+  \url{https://doi.org/10.64898/2026.08.21.746238}, 2026.
+
+\bibitem[Edman \& Fraser(2025)Edman and Fraser]{edman2025mask}
+Lukas Edman and Alexander Fraser.
+\newblock Mask and you shall receive: Optimizing masked language modeling for
+  pretraining {B}aby{LM}s.
+\newblock In \emph{Proceedings of the First BabyLM Workshop}, pp.\  445--453,
+  Suzhou, China, 2025. Association for Computational Linguistics.
+
+\bibitem[Federmeier et~al.(2007)Federmeier, Wlotko, De~Ochoa-Dewald, and
+  Kutas]{federmeier2007multiple}
+Kara~D. Federmeier, Edward~W. Wlotko, Esmeralda De~Ochoa-Dewald, and Marta
+  Kutas.
+\newblock Multiple effects of sentential constraint on word processing.
+\newblock \emph{Brain Research}, 1146:\penalty0 75--84, 2007.
+
+\bibitem[Fedorenko et~al.(2016)Fedorenko, Scott, Brunner, Coon, Pritchett,
+  Schalk, and Kanwisher]{fedorenko2016neural}
+Evelina Fedorenko, Terri~L. Scott, Peter Brunner, William~G. Coon, Brianna
+  Pritchett, Gerwin Schalk, and Nancy Kanwisher.
+\newblock Neural correlate of the construction of sentence meaning.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 113\penalty0
+  (41):\penalty0 E6256--E6262, 2016.
+
+\bibitem[Frank et~al.(2013)Frank, Fernandez~Monsalve, Thompson, and
+  Vigliocco]{frank2013reading}
+Stefan~L. Frank, Irene Fernandez~Monsalve, Robin~L. Thompson, and Gabriella
+  Vigliocco.
+\newblock Reading time data for evaluating broad-coverage models of english
+  sentence processing.
+\newblock \emph{Behavior Research Methods}, 45:\penalty0 1182--1190, 2013.
+
+\bibitem[Futrell et~al.(2020)Futrell, Gibson, and Levy]{futrell2020lossy}
+Richard Futrell, Edward Gibson, and Roger~P. Levy.
+\newblock Lossy-context surprisal: An information-theoretic model of memory
+  effects in sentence processing.
+\newblock \emph{Journal of Cognitive Science}, 2020.
+
+\bibitem[Futrell et~al.(2021)Futrell, Gibson, Tily, Blank, Vishnevetsky,
+  Piantadosi, and Fedorenko]{futrell2021natural}
+Richard Futrell, Edward Gibson, Harry~J. Tily, Idan Blank, Anastasia
+  Vishnevetsky, Steven~T. Piantadosi, and Evelina Fedorenko.
+\newblock The natural stories corpus: A reading-time corpus of english texts
+  containing rare syntactic constructions.
+\newblock \emph{Language Resources and Evaluation}, 55\penalty0 (1):\penalty0
+  63--77, 2021.
+
+\bibitem[Gibson(1998)]{gibson1998linguistic}
+Edward Gibson.
+\newblock Linguistic complexity: Locality of syntactic dependencies.
+\newblock \emph{Cognition}, 68\penalty0 (1):\penalty0 1--76, 1998.
+
+\bibitem[Gibson(2000)]{gibson2000dlt}
+Edward Gibson.
+\newblock The dependency locality theory: A distance-based theory of linguistic
+  complexity.
+\newblock In Alec Marantz, Yasushi Miyashita, and Wayne O'Neil (eds.),
+  \emph{Image, Language, Brain: Papers from the First Mind Articulation Project
+  Symposium}, pp.\  95--126. MIT Press, Cambridge, MA, 2000.
+
+\bibitem[Gilkerson et~al.(2017)Gilkerson, Richards, Warren, Montgomery,
+  Greenwood, Oller, Hansen, and Paul]{gilkerson2017mapping}
+Jill Gilkerson, Jeffrey~A. Richards, Steven~F. Warren, Judith~K. Montgomery,
+  Charles~R. Greenwood, D.~Kimbrough Oller, John H.~L. Hansen, and Terrance~D.
+  Paul.
+\newblock Mapping the early language environment using all-day recordings and
+  automated analysis.
+\newblock \emph{American Journal of Speech-Language Pathology}, 26\penalty0
+  (2):\penalty0 248--265, 2017.
+\newblock \doi{10.1044/2016_AJSLP-15-0169}.
+
+\bibitem[Giulianelli et~al.(2024)Giulianelli, Opedal, and
+  Cotterell]{giulianelli2024generalized}
+Mario Giulianelli, Andreas Opedal, and Ryan Cotterell.
+\newblock Generalized measures of anticipation and responsivity in online
+  language processing.
+\newblock In \emph{Findings of EMNLP}, 2024.
+
+\bibitem[Glover(1999)]{glover1999deconvolution}
+Gary~H. Glover.
+\newblock Deconvolution of impulse response in event-related {BOLD} {fMRI}.
+\newblock \emph{NeuroImage}, 9\penalty0 (4):\penalty0 416--429, 1999.
+
+\bibitem[Goodkind \& Bicknell(2018)Goodkind and
+  Bicknell]{goodkind2018predictive}
+Adam Goodkind and Klinton Bicknell.
+\newblock Predictive power of word surprisal for reading times is a linear
+  function of language model quality.
+\newblock In \emph{Proceedings of the Workshop on Cognitive Modeling and
+  Computational Linguistics (CMCL)}, pp.\  10--18, 2018.
+
+\bibitem[Gu \& Dao(2024)Gu and Dao]{gu2024mamba}
+Albert Gu and Tri Dao.
+\newblock Mamba: Linear-time sequence modeling with selective state spaces.
+\newblock In \emph{Conference on Language Modeling (COLM)}, 2024.
+
+\bibitem[Gwilliams et~al.(2022)Gwilliams, King, Marantz, and
+  Poeppel]{gwilliams2022neural}
+Laura Gwilliams, Jean-Remi King, Alec Marantz, and David Poeppel.
+\newblock Neural dynamics of phoneme sequences reveal position-invariant code
+  for content and order.
+\newblock \emph{Nature Communications}, 13\penalty0 (1), 2022.
+\newblock MEG-MASC dataset, OpenNeuro ds \url{https://osf.io/rguwj/}.
+
+\bibitem[Hahn et~al.(2022)Hahn, Futrell, Levy, and
+  Gibson]{hahn2022resourcerational}
+Michael Hahn, Richard Futrell, Roger Levy, and Edward Gibson.
+\newblock A resource-rational model of human processing of recursive linguistic
+  structure.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 119\penalty0
+  (43):\penalty0 e2122602119, 2022.
+
+\bibitem[Hale(2001)]{hale2001probabilistic}
+John Hale.
+\newblock A probabilistic {E}arley parser as a psycholinguistic model.
+\newblock pp.\  159--166, 2001.
+
+\bibitem[Hollenstein et~al.(2018)Hollenstein, Rotsztejn, Troendle, Pedroni,
+  Zhang, and Langer]{hollenstein2018zuco}
+Nora Hollenstein, Jonathan Rotsztejn, Marius Troendle, Andreas Pedroni,
+  Ce~Zhang, and Nicolas Langer.
+\newblock {ZuCo}, a simultaneous {EEG} and eye-tracking resource for natural
+  sentence reading.
+\newblock \emph{Scientific Data}, 5:\penalty0 180291, 2018.
+
+\bibitem[Hosseini et~al.(2024)Hosseini, Schrimpf, Zhang, Bowman, Zaslavsky, and
+  Fedorenko]{hosseini2024artificial}
+Eghbal~A. Hosseini, Martin Schrimpf, Yian Zhang, Samuel Bowman, Noga Zaslavsky,
+  and Evelina Fedorenko.
+\newblock Artificial neural network language models predict human brain
+  responses to language even after a developmentally realistic amount of
+  training.
+\newblock \emph{Neurobiology of Language}, 5\penalty0 (1):\penalty0 43--63,
+  2024.
+
+\bibitem[Hu et~al.(2024)Hu, Mueller, Ross, Williams, Linzen, Zhuang, Cotterell,
+  Choshen, Warstadt, and Wilcox]{hu2024secondbabylm}
+Michael~Y. Hu, Aaron Mueller, Candace Ross, Adina Williams, Tal Linzen, Chengxu
+  Zhuang, Ryan Cotterell, Leshem Choshen, Alex Warstadt, and Ethan~Gotlieb
+  Wilcox.
+\newblock Findings of the second {BabyLM} challenge: Sample-efficient
+  pretraining on developmentally plausible corpora.
+\newblock In \emph{Proceedings of the 2nd BabyLM Challenge at CoNLL}, pp.\
+  1--21, 2024.
+\newblock arXiv:2412.05149.
+
+\bibitem[Huebner et~al.(2021)Huebner, Sulem, Fischer, and
+  Roth]{huebner2021babyberta}
+Philip~A. Huebner, Elior Sulem, Cynthia Fischer, and Dan Roth.
+\newblock {BabyBERTa}: Learning more grammar with small-scale child-directed
+  language.
+\newblock In \emph{Proceedings of the 25th Conference on Computational Natural
+  Language Learning (CoNLL)}, pp.\  624--646, 2021.
+
+\bibitem[Huh et~al.(2024)Huh, Cheung, Wang, and Isola]{huh2024platonic}
+Minyoung Huh, Brian Cheung, Tongzhou Wang, and Phillip Isola.
+\newblock Position: The platonic representation hypothesis.
+\newblock In \emph{Proceedings of the 41st International Conference on Machine
+  Learning (ICML)}, volume 235 of \emph{Proceedings of Machine Learning
+  Research}, pp.\  20617--20642, 2024.
+\newblock arXiv:2405.07987.
+
+\bibitem[Keshev et~al.(2025)Keshev, Cartner, Meltzer-Asscher, and
+  Dillon]{keshev2025working}
+Maayan Keshev, Mandy Cartner, Aya Meltzer-Asscher, and Brian Dillon.
+\newblock A working memory model of sentence processing as binding morphemes to
+  syntactic positions.
+\newblock \emph{Topics in Cognitive Science}, 17\penalty0 (1):\penalty0
+  88--105, 2025.
+\newblock Part of the topic ``Best of Papers from the 2024 Cognitive Science
+  Society Conference''.
+
+\bibitem[Kuribayashi et~al.(2021)Kuribayashi, Oseki, Ito, Yoshida, Asahara, and
+  Inui]{kuribayashi2021lower}
+Tatsuki Kuribayashi, Yohei Oseki, Takumi Ito, Ryo Yoshida, Masayuki Asahara,
+  and Kentaro Inui.
+\newblock Lower perplexity is not always human-like.
+\newblock In \emph{Proceedings of ACL-IJCNLP}, pp.\  5203--5217, 2021.
+
+\bibitem[Kuribayashi et~al.(2022)Kuribayashi, Oseki, Brassard, and
+  Inui]{kuribayashi2022context}
+Tatsuki Kuribayashi, Yohei Oseki, Ana Brassard, and Kentaro Inui.
+\newblock Context limitations make neural language models more human-like.
+\newblock In \emph{Proceedings of EMNLP}, pp.\  10421--10436, 2022.
+
+\bibitem[Kuribayashi et~al.(2024)Kuribayashi, Oseki, and
+  Baldwin]{kuribayashi2024psychometric}
+Tatsuki Kuribayashi, Yohei Oseki, and Timothy Baldwin.
+\newblock Psychometric predictive power of large language models.
+\newblock In \emph{Findings of NAACL}, pp.\  1983--2005, 2024.
+
+\bibitem[Kuribayashi et~al.(2025)Kuribayashi, Oseki, Ben~Taieb, Inui, and
+  Baldwin]{kuribayashi2025humanlike}
+Tatsuki Kuribayashi, Yohei Oseki, Souhaib Ben~Taieb, Kentaro Inui, and Timothy
+  Baldwin.
+\newblock Large language models are human-like internally.
+\newblock \emph{Transactions of the Association for Computational Linguistics},
+  13, 2025.
+\newblock arXiv:2502.01615.
+
+\bibitem[Levy(2008)]{levy2008expectation}
+Roger Levy.
+\newblock Expectation-based syntactic comprehension.
+\newblock \emph{Cognition}, 106\penalty0 (3):\penalty0 1126--1177, 2008.
+
+\bibitem[Lewis \& Vasishth(2005)Lewis and
+  Vasishth]{lewisvasishth2005activation}
+Richard~L. Lewis and Shravan Vasishth.
+\newblock An activation-based model of sentence processing as skilled memory
+  retrieval.
+\newblock \emph{Cognitive Science}, 29\penalty0 (3):\penalty0 375--419, 2005.
+
+\bibitem[Li et~al.(2022)Li, Bhattasali, Zhang, Franzluebbers, Luh, Spreng,
+  Brennan, Yang, Pallier, and Hale]{li2022lepetitprince}
+Jixing Li, Shohini Bhattasali, Shulin Zhang, Berta Franzluebbers, Wen-Ming Luh,
+  R.~Nathan Spreng, Jonathan~R. Brennan, Yiming Yang, Christophe Pallier, and
+  John Hale.
+\newblock Le petit prince multilingual naturalistic {fMRI} corpus.
+\newblock \emph{Scientific Data}, 9:\penalty0 530, 2022.
+
+\bibitem[Lieder \& Griffiths(2019)Lieder and
+  Griffiths]{lieder2019resourcerational}
+Falk Lieder and Thomas~L. Griffiths.
+\newblock Resource-rational analysis: Understanding human cognition as the
+  optimal use of limited computational resources.
+\newblock \emph{Behavioral and Brain Sciences}, 43:\penalty0 e1, 2019.
+
+\bibitem[Lin \& Schuler(2026)Lin and Schuler]{linschuler2026surprisal}
+Yi-Chien Lin and William Schuler.
+\newblock Surprisal from larger transformer-based language models predicts
+  {fMRI} data more poorly.
+\newblock In \emph{Proceedings of the 19th Conference of the European Chapter
+  of the Association for Computational Linguistics (Volume 2: Short Papers)},
+  2026.
+\newblock arXiv:2506.11338.
+
+\bibitem[Lin et~al.(2025)Lin, Nikishin, He, and Courville]{lin2025forgetting}
+Zhixuan Lin, Evgenii Nikishin, Xu~Owen He, and Aaron Courville.
+\newblock Forgetting transformer: Softmax attention with a forget gate.
+\newblock In \emph{The Thirteenth International Conference on Learning
+  Representations (ICLR)}, 2025.
+\newblock arXiv:2503.02130.
+
+\bibitem[Luke \& Christianson(2018)Luke and Christianson]{luke2018provo}
+Steven~G. Luke and Kiel Christianson.
+\newblock The {P}rovo corpus: A large eye-tracking corpus with predictability
+  norms.
+\newblock \emph{Behavior Research Methods}, 50, 2018.
+
+\bibitem[Marr(1982)]{marr1982vision}
+David Marr.
+\newblock \emph{Vision: A Computational Investigation into the Human
+  Representation and Processing of Visual Information}.
+\newblock Henry Holt and Co., Inc., USA, 1982.
+
+\bibitem[{Mayer Martins} et~al.(2025){Mayer Martins}, Bashir, Khalid, and
+  Beinborn]{martins2025upon}
+Jonas {Mayer Martins}, Ali~Hamza Bashir, Muhammad~Rehan Khalid, and Lisa
+  Beinborn.
+\newblock Once upon a time: Interactive learning for storytelling with small
+  language models.
+\newblock In \emph{Proceedings of the First BabyLM Workshop}, pp.\  454--468,
+  Suzhou, China, 2025. Association for Computational Linguistics.
+
+\bibitem[Michaelov et~al.(2024{\natexlab{a}})Michaelov, Arnett, and
+  Bergen]{michaelov2024revenge}
+James Michaelov, Catherine Arnett, and Ben Bergen.
+\newblock Revenge of the fallen? recurrent models match transformers at
+  predicting human language comprehension metrics.
+\newblock In \emph{Conference on Language Modeling (COLM)}, 2024{\natexlab{a}}.
+
+\bibitem[Michaelov et~al.(2024{\natexlab{b}})Michaelov, Bardolph, Van~Petten,
+  Bergen, and Coulson]{michaelov2024strong}
+James~A. Michaelov, Megan~D. Bardolph, Cyma~K. Van~Petten, Benjamin~K. Bergen,
+  and Seana Coulson.
+\newblock Strong prediction: Language model surprisal explains multiple {N400}
+  effects.
+\newblock \emph{Neurobiology of Language}, 5\penalty0 (1):\penalty0 107--135,
+  2024{\natexlab{b}}.
+
+\bibitem[Nieuwland et~al.(2018)Nieuwland, Politzer-Ahles, Heyselaar, Segaert,
+  Darley, Kazanina, Von Grebmer Zu~Wolfsthurn, Bartolozzi,
+  et~al.]{nieuwland2018largescale}
+Mante~S. Nieuwland, Stephen Politzer-Ahles, Evelien Heyselaar, Katrien Segaert,
+  Emily Darley, Nina Kazanina, Sarah Von Grebmer Zu~Wolfsthurn, Federica
+  Bartolozzi, et~al.
+\newblock Large-scale replication study reveals a limit on probabilistic
+  prediction in language comprehension.
+\newblock \emph{eLife}, 7:\penalty0 e33468, 2018.
+
+\bibitem[nostalgebraist(2020)]{logitlens2020}
+nostalgebraist.
+\newblock Interpreting {GPT}: The logit lens.
+\newblock LessWrong blog post, 2020.
+
+\bibitem[Oh \& Schuler(2023{\natexlab{a}})Oh and
+  Schuler]{ohschuler2023twobillion}
+Byung-Doh Oh and William Schuler.
+\newblock Transformer-based language model surprisal predicts human reading
+  times best with about two billion training tokens.
+\newblock In \emph{Findings of EMNLP}, pp.\  1915--1921, 2023{\natexlab{a}}.
+
+\bibitem[Oh \& Schuler(2023{\natexlab{b}})Oh and Schuler]{ohschuler2023why}
+Byung-Doh Oh and William Schuler.
+\newblock Why does surprisal from larger transformer-based language models
+  provide a poorer fit to human reading times?
+\newblock \emph{Transactions of the Association for Computational Linguistics},
+  11:\penalty0 336--350, 2023{\natexlab{b}}.
+
+\bibitem[Opedal et~al.(2024)Opedal, Chodroff, Cotterell, and
+  Wilcox]{opedal2024role}
+Andreas Opedal, Eleanor Chodroff, Ryan Cotterell, and Ethan Wilcox.
+\newblock On the role of context in reading time prediction.
+\newblock In \emph{Proceedings of EMNLP}, pp.\  3042--3058, 2024.
+
+\bibitem[Pereira et~al.(2018)Pereira, Lou, Pritchett, Ritter, Gershman,
+  Kanwisher, Botvinick, and Fedorenko]{pereira2018toward}
+Francisco Pereira, Bin Lou, Brianna Pritchett, Samuel Ritter, Samuel~J.
+  Gershman, Nancy Kanwisher, Matthew Botvinick, and Evelina Fedorenko.
+\newblock Toward a universal decoder of linguistic meaning from brain
+  activation.
+\newblock \emph{Nature Communications}, 9:\penalty0 963, 2018.
+
+\bibitem[Press et~al.(2021)Press, Smith, and Lewis]{press2021train}
+Ofir Press, Noah~A. Smith, and Mike Lewis.
+\newblock Train short, test long: Attention with linear biases enables input
+  length extrapolation.
+\newblock \emph{arXiv preprint arXiv:2108.12409}, 2021.
+
+\bibitem[Radford et~al.(2019)Radford, Wu, Child, Luan, Amodei, and
+  Sutskever]{radford2019gpt2}
+Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, and Ilya
+  Sutskever.
+\newblock Language models are unsupervised multitask learners.
+\newblock OpenAI blog, 2019.
+
+\bibitem[Rasmussen \& Schuler(2018)Rasmussen and
+  Schuler]{rasmussen2017leftcorner}
+Nathan~E. Rasmussen and William Schuler.
+\newblock Left-corner parsing with distributed associative memory produces
+  surprisal and locality effects.
+\newblock \emph{Cognitive Science}, 42\penalty0 (S4):\penalty0 1009--1042,
+  2018.
+\newblock Listed as "Rasmussen and Schuler (Cognitive Science 2017)" in the
+  CogPlausAI review; the published version is dated 2018 (vol. 42, issue S4).
+
+\bibitem[Schrimpf et~al.(2021)Schrimpf, Blank, Tuckute, Kauf, Hosseini,
+  Kanwisher, Tenenbaum, and Fedorenko]{schrimpf2021neural}
+Martin Schrimpf, Idan~Asher Blank, Greta Tuckute, Carina Kauf, Eghbal~A.
+  Hosseini, Nancy Kanwisher, Joshua~B. Tenenbaum, and Evelina Fedorenko.
+\newblock The neural architecture of language: Integrative modeling converges
+  on predictive processing.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 118\penalty0
+  (45):\penalty0 e2105646118, 2021.
+
+\bibitem[Shain et~al.(2022)Shain, Blank, Fedorenko, Gibson, and
+  Schuler]{shain2022robust}
+Cory Shain, Idan~A. Blank, Evelina Fedorenko, Edward Gibson, and William
+  Schuler.
+\newblock Robust effects of working memory demand during naturalistic language
+  comprehension in language-selective cortex.
+\newblock \emph{Journal of Neuroscience}, 42\penalty0 (39):\penalty0
+  7412--7430, 2022.
+
+\bibitem[Shain et~al.(2024)Shain, Meister, Pimentel, Cotterell, and
+  Levy]{shain2024large}
+Cory Shain, Clara Meister, Tiago Pimentel, Ryan Cotterell, and Roger Levy.
+\newblock Large-scale evidence for logarithmic effects of word predictability
+  on reading time.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 121\penalty0
+  (10):\penalty0 e2307876121, 2024.
+
+\bibitem[Siegelman et~al.(2022)Siegelman, Schroeder, Acart{\"u}rk, Ahn,
+  Alexeeva, Amenta, Bertram, Bonandrini, Brysbaert, Chernova,
+  et~al.]{siegelman2022meco}
+Noam Siegelman, Sascha Schroeder, Cengiz Acart{\"u}rk, Hee-Don Ahn, Svetlana
+  Alexeeva, Simona Amenta, Raymond Bertram, Rolando Bonandrini, Marc Brysbaert,
+  Daria Chernova, et~al.
+\newblock Expanding horizons of cross-linguistic research on reading: The
+  multilingual eye-movement corpus ({MECO}).
+\newblock \emph{Behavior Research Methods}, 54\penalty0 (6):\penalty0
+  2843--2863, 2022.
+
+\bibitem[Smith \& Levy(2013)Smith and Levy]{smithlevy2013effect}
+Nathaniel~J. Smith and Roger Levy.
+\newblock The effect of word predictability on reading time is logarithmic.
+\newblock \emph{Cognition}, 128\penalty0 (3):\penalty0 302--319, 2013.
+
+\bibitem[Szewczyk \& Federmeier(2022)Szewczyk and
+  Federmeier]{szewczyk2022context}
+James~M. Szewczyk and Kara~D. Federmeier.
+\newblock Context-based facilitation of semantic access follows both
+  logarithmic and linear functions of stimulus probability.
+\newblock \emph{Journal of Memory and Language}, 123:\penalty0 104311, 2022.
+
+\bibitem[Tan et~al.(2025)Tan, Yang, Courville, Panda, and Shen]{tan2025scaling}
+Shawn Tan, Songlin Yang, Aaron Courville, Rameswar Panda, and Yikang Shen.
+\newblock Scaling stick-breaking attention: An efficient implementation and
+  in-depth study.
+\newblock In \emph{The Thirteenth International Conference on Learning
+  Representations (ICLR)}, 2025.
+\newblock arXiv:2410.17980.
+
+\bibitem[Tapaninaho(2025)]{tapaninaho2025moep}
+Joonas Tapaninaho.
+\newblock {MoEP}: Modular expert paths for sample-efficient language modeling.
+\newblock In \emph{Proceedings of the First BabyLM Workshop}, pp.\  540--547,
+  Suzhou, China, 2025. Association for Computational Linguistics.
+
+\bibitem[{Team OLMo} et~al.(2025){Team OLMo}, Walsh, Soldaini, Groeneveld, Lo,
+  Arora, Bhagia, Gu, Huang, Jordan, Lambert, Schwenk, Tafjord, Anderson,
+  Atkinson, Brahman, Clark, Dasigi, Dziri, Guerquin, Ivison, Koh, Liu, Malik,
+  Merrill, Miranda, Morrison, Murray, Nam, Pyatkin, Rangapur, Schmitz,
+  Skjonsberg, Wadden, Wilhelm, Wilson, Zettlemoyer, Farhadi, Smith, and
+  Hajishirzi]{olmo20252olmo2furious}
+{Team OLMo}, Pete Walsh, Luca Soldaini, Dirk Groeneveld, Kyle Lo, Shane Arora,
+  Akshita Bhagia, Yuling Gu, Shengyi Huang, Matt Jordan, Nathan Lambert, Dustin
+  Schwenk, Oyvind Tafjord, Taira Anderson, David Atkinson, Faeze Brahman,
+  Christopher Clark, Pradeep Dasigi, Nouha Dziri, Michal Guerquin, Hamish
+  Ivison, Pang~Wei Koh, Jiacheng Liu, Saumya Malik, William Merrill, Lester
+  James~V. Miranda, Jacob Morrison, Tyler Murray, Crystal Nam, Valentina
+  Pyatkin, Aman Rangapur, Michael Schmitz, Sam Skjonsberg, David Wadden,
+  Christopher Wilhelm, Michael Wilson, Luke Zettlemoyer, Ali Farhadi, Noah~A.
+  Smith, and Hannaneh Hajishirzi.
+\newblock 2 {OLMo} 2 furious.
+\newblock \emph{arXiv preprint arXiv:2501.00656}, 2025.
+
+\bibitem[Tenney et~al.(2019)Tenney, Das, and Pavlick]{tenney2019bert}
+Ian Tenney, Dipanjan Das, and Ellie Pavlick.
+\newblock {BERT} rediscovers the classical {NLP} pipeline.
+\newblock In \emph{Proceedings of ACL}, pp.\  4593--4601, 2019.
+
+\bibitem[Thamma \& Heilbron(2025)Thamma and Heilbron]{thamma2025humanlike}
+Abishek Thamma and Micha Heilbron.
+\newblock Human-like fleeting memory improves language learning but impairs
+  reading time prediction in transformer language models.
+\newblock \emph{arXiv preprint arXiv:2508.05803}, 2025.
+\newblock Listed as "2026" in the CogPlausAI review, likely referring to a
+  forthcoming conference/journal version; cite the arXiv preprint until a venue
+  is confirmed.
+
+\bibitem[Timkey \& Linzen(2023)Timkey and Linzen]{timkey2023limited}
+William Timkey and Tal Linzen.
+\newblock A language model with limited memory capacity captures interference
+  in human sentence processing.
+\newblock In \emph{Findings of EMNLP}, 2023.
+
+\bibitem[Timkey et~al.(2026)Timkey, Huang, Oh, Prasad, Arehalli, Linzen, and
+  Dillon]{timkey2026dissociation}
+William Timkey, Kuan-Jung Huang, Byung-Doh Oh, Grusha Prasad, Suhas Arehalli,
+  Tal Linzen, and Brian Dillon.
+\newblock Eye movements reveal a dissociation between prediction and structural
+  processing difficulty in language comprehension.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 123\penalty0
+  (32):\penalty0 e2532230123, 2026.
+
+\bibitem[Toneva \& Wehbe(2019)Toneva and Wehbe]{toneva2019interpreting}
+Mariya Toneva and Leila Wehbe.
+\newblock Interpreting and improving natural-language processing (in machines)
+  with natural language-processing (in the brain).
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, pp.\  14928--14938, 2019.
+
+\bibitem[Tsipidi et~al.(2026)Tsipidi, Kiegeland, Re, Xu, Giulianelli,
+  Sta{\'n}czak, and Cotterell]{tsipidi2026probing}
+Eleftheria Tsipidi, Samuel Kiegeland, Francesco~Ignazio Re, Tianyang Xu, Mario
+  Giulianelli, Karolina Sta{\'n}czak, and Ryan Cotterell.
+\newblock Probing for reading times.
+\newblock In \emph{Proceedings of the Annual Meeting of the Association for
+  Computational Linguistics (ACL)}, 2026.
+\newblock arXiv:2604.18712.
+
+\bibitem[Tuckute et~al.(2024)Tuckute, Sathe, Srikant, Taliaferro, Wang,
+  Schrimpf, Kay, and Fedorenko]{tuckute2024driving}
+Greta Tuckute, Aalok Sathe, Shashank Srikant, Maya Taliaferro, Mingye Wang,
+  Martin Schrimpf, Kendrick Kay, and Evelina Fedorenko.
+\newblock Driving and suppressing the human language network using large
+  language models.
+\newblock \emph{Nature Human Behaviour}, 8\penalty0 (3):\penalty0 544--561,
+  2024.
+
+\bibitem[van Bree et~al.(2025)van Bree, Styrnal, and
+  Hebart]{vanbree2025noiseceiling}
+Sander van Bree, Malin Styrnal, and Martin~N. Hebart.
+\newblock How much variance does your model explain? a clarifying note on the
+  use of split-half reliability for computing noise ceilings, 2025.
+\newblock Preprint, circulated December 2025; no archival identifier available
+  at time of citation.
+
+\bibitem[Vaswani et~al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez,
+  Kaiser, and Polosukhin]{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+  Aidan~N. Gomez, Lukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, volume~30, 2017.
+
+\bibitem[Wang \& Komatsuzaki(2021)Wang and Komatsuzaki]{wang2021gptj}
+Ben Wang and Aran Komatsuzaki.
+\newblock {GPT-J-6B}: A 6 billion parameter autoregressive language model,
+  2021.
+
+\bibitem[Warstadt et~al.(2023{\natexlab{a}})Warstadt, Choshen, Mueller,
+  Williams, Wilcox, and Zhuang]{warstadt2023cfp}
+Alex Warstadt, Leshem Choshen, Aaron Mueller, Adina Williams, Ethan Wilcox, and
+  Chengxu Zhuang.
+\newblock Call for papers -- the {BabyLM} challenge: Sample-efficient
+  pretraining on a developmentally plausible corpus.
+\newblock \emph{arXiv preprint arXiv:2301.11796}, 2023{\natexlab{a}}.
+
+\bibitem[Warstadt et~al.(2023{\natexlab{b}})Warstadt, Mueller, Choshen, Wilcox,
+  Zhuang, Ciro, Mosquera, Paranjabe, Williams, Linzen, and
+  Cotterell]{warstadt2023findings}
+Alex Warstadt, Aaron Mueller, Leshem Choshen, Ethan Wilcox, Chengxu Zhuang,
+  Juan Ciro, Rafael Mosquera, Bhargavi Paranjabe, Adina Williams, Tal Linzen,
+  and Ryan Cotterell.
+\newblock Findings of the {BabyLM} challenge: Sample-efficient pretraining on
+  developmentally plausible corpora.
+\newblock In \emph{Proceedings of the BabyLM Challenge at CoNLL}, pp.\  1--34,
+  2023{\natexlab{b}}.
+
+\bibitem[Wilcox et~al.(2023)Wilcox, Pimentel, Meister, Cotterell, and
+  Levy]{wilcox2023testing}
+Ethan~G. Wilcox, Tiago Pimentel, Clara Meister, Ryan Cotterell, and Roger~P.
+  Levy.
+\newblock Testing the predictions of surprisal theory in 11 languages.
+\newblock In \emph{Transactions of the Association for Computational
+  Linguistics}, volume~11, 2023.
+
+\bibitem[Wilcox et~al.(2020)Wilcox, Gauthier, Hu, Qian, and
+  Levy]{wilcox2020predictive}
+Ethan~Gotlieb Wilcox, Jon Gauthier, Jennifer Hu, Peng Qian, and Roger Levy.
+\newblock On the predictive power of neural language models for human real-time
+  comprehension behavior.
+\newblock In \emph{Proceedings of the Cognitive Science Society (CogSci)}, pp.\
+   1707--1713, 2020.
+
+\bibitem[Wilcox et~al.(2024)Wilcox, Hu, Mueller, Linzen, Warstadt, Choshen,
+  Zhuang, Cotterell, and Williams]{wilcox2024bigger}
+Ethan~Gotlieb Wilcox, Michael Hu, Aaron Mueller, Tal Linzen, Alex Warstadt,
+  Leshem Choshen, Chengxu Zhuang, Ryan Cotterell, and Adina Williams.
+\newblock Bigger is not always better: The importance of human-scale language
+  modeling for psycholinguistics.
+\newblock \emph{PsyArXiv}, 2024.
+
+\bibitem[Xu \& Futrell(2026)Xu and Futrell]{xufutrell2026strategic}
+Weijie Xu and Richard Futrell.
+\newblock Strategic resource allocation in memory encoding: An efficiency
+  principle shaping language processing.
+\newblock \emph{Journal of Memory and Language}, 146:\penalty0 104706, 2026.
+\newblock Listed as "Xu and Futrell (JML 2025)" / "Informativity enhances
+  memory robustness against interference in sentence comprehension" in the
+  CogPlausAI review; the matching published paper is titled as above (JML
+  146:104706, 2026), also circulated as arXiv:2503.14728. Confirm this is the
+  intended reference, as the review's title differs slightly from the published
+  title.
+
+\bibitem[Xu et~al.(2026)Xu, Dillon, and Futrell]{xu2026memory}
+Weijie Xu, Brian Dillon, and Richard Futrell.
+\newblock Memory efficiency and resource-rational encoding in sentence
+  processing.
+\newblock In \emph{Proceedings of the 64th Annual Meeting of the Association
+  for Computational Linguistics (Volume 1: Long Papers)}, pp.\  33603--33618,
+  San Diego, California, USA, 2026.
+\newblock Best Paper Award, ACL 2026.
+
+\bibitem[Yang et~al.(2025)Yang, Li, Yang, Zhang, Hui, Zheng, Yu, Gao, Huang,
+  Lv, Zheng, Liu, Zhou, Huang, Hu, Ge, Wei, Lin, Tang, Yang, Tu, Zhang, Yang,
+  Yang, Zhou, Zhou, Lin, Dang, Bao, Yang, Yu, Deng, Li, Xue, Li, Zhang, Wang,
+  Zhu, Men, Gao, Liu, Luo, Li, Tang, Yin, Ren, Wang, Zhang, Ren, Fan, Su,
+  Zhang, Zhang, Wan, Liu, Wang, Cui, Zhang, Zhou, and Qiu]{qwen3}
+An~Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo~Zheng, Bowen
+  Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan
+  Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian
+  Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jing Zhou,
+  Jingren Zhou, Junyang Lin, Kai Dang, Keqin Bao, Kexin Yang, Le~Yu, Lianghao
+  Deng, Mei Li, Mingfeng Xue, Mingze Li, Pei Zhang, Peng Wang, Qin Zhu, Rui
+  Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao Li, Tianyi Tang, Wenbiao
+  Yin, Xingzhang Ren, Xinyu Wang, Xinyu Zhang, Xuancheng Ren, Yang Fan, Yang
+  Su, Yichang Zhang, Yinger Zhang, Yu~Wan, Yuqiong Liu, Zekun Wang, Zeyu Cui,
+  Zhenru Zhang, Zhipeng Zhou, and Zihan Qiu.
+\newblock Qwen3 technical report.
+\newblock \emph{arXiv preprint arXiv:2505.09388}, 2025.
+
+\bibitem[Zada et~al.(2025)Zada, Nastase, Aubrey, Jalon, Michelmann, Wang,
+  Hasenfratz, Doyle, Friedman, Dugan, et~al.]{zada2025podcast}
+Zaid Zada, Samuel~A. Nastase, Bobbi Aubrey, Itamar Jalon, Sebastian Michelmann,
+  Haocheng Wang, Liat Hasenfratz, Werner Doyle, Daniel Friedman, Patricia
+  Dugan, et~al.
+\newblock The ``{P}odcast'' {ECoG} dataset for modeling neural activity during
+  natural language comprehension.
+\newblock \emph{Scientific Data}, 2025.
+
+\bibitem[Zhang et~al.(2022)Zhang, Roller, Goyal, Artetxe, Chen, Chen, Dewan,
+  Diab, Li, Lin, et~al.]{zhang2022opt}
+Susan Zhang, Stephen Roller, Naman Goyal, Mikel Artetxe, Moya Chen, Shuohui
+  Chen, Christopher Dewan, Mona Diab, Xian Li, Xi~Victoria Lin, et~al.
+\newblock {OPT}: Open pre-trained transformer language models.
+\newblock \emph{arXiv preprint arXiv:2205.01068}, 2022.
+
+\end{thebibliography}

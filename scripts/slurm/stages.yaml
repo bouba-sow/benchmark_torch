@@ -1,0 +1,513 @@
+# Stage table for scripts/submit.py -- one entry per (dataset, track, stage).
+#
+#   track  : embedding (ridge on hidden states) | surprisal (LME on scalar surprisal)
+#   stage  : fit      -- embedding: extract+ridge; surprisal: CPU pooled-LME fit
+#            extract  -- surprisal: GPU logit-lens surprisal + perplexity cache
+#
+# A stage = a shared runner (sourced) + the function it calls once per array task.
+# The array itself is NOT listed here: submit.py derives it from the model registry
+# (neuroai/models/registry.py), so every model in a family is always covered.
+#
+# Resources come from `profiles` (+ `large_model` for big models) and can be overridden
+# per stage here or per call on the command line (--time, --gres, --cpus, ...).
+# `env` holds per-stage defaults (worker counts etc.); override with --env KEY=VAL.
+# `selectors` are the dataset variants exposed as --measure / --task.
+defaults:
+  time: 02:00:00
+  hint: nomultithread
+  output_dir: outputs_torch/logs
+  # not submitted by --all-families (checkpoint sweeps are separate, deliberate runs; MoLM is run apart)
+  excluded_families: [pythia_checkpoints, babylm_gpt2_checkpoints, molm]
+profiles:
+  cpu:
+    account: torch_pr_287_general
+    partition: cs
+    cpus: 40
+  gpu:
+    account: torch_pr_287_general
+    gres: gpu:1
+    constraint: h100|h200|a100   # excludes L40S: no sm_89 kernels in this repo's CUDA 12.4 wheel
+    cpus: 24
+large_model:
+  min_params: 20000000000.0
+  gres: gpu:2
+  cpus: 48
+family_runtime:
+  alibi:
+    pythonpath:
+    - forgetting-transformer/src
+  forgetting:
+    pythonpath:
+    - forgetting-transformer/src
+  hard_2gram:
+    pythonpath:
+    - forgetting-transformer/src
+  hard_3gram:
+    pythonpath:
+    - forgetting-transformer/src
+  hard_5gram:
+    pythonpath:
+    - forgetting-transformer/src
+  stickbreaking:
+    pythonpath:
+    - forgetting-transformer/src
+stages:
+  broderick.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/broderick.sh
+    family_var: BRODERICK_FAMILY
+    fn: broderick_torch_run_array_task
+    summary_fn: broderick_torch_run_summary
+    profile: gpu
+  fedorenko2016.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/fedorenko2016.sh
+    family_var: FEDORENKO_FAMILY
+    profile: gpu
+    cpus: 16
+  geco.embedding.fit:
+    runner: scripts/slurm/torch/embedding/behavioral/geco.sh
+    family_var: GECO_FAMILY
+    fn: geco_torch_run_array_task_gpu
+    summary_fn: geco_torch_run_summary
+    profile: gpu
+    cpus: 10
+    selectors:
+      measure:
+        env: GECO_MEASURE
+        values:
+        - FP
+        - GP
+  lpp.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/lpp.sh
+    family_var: LPP_FAMILY
+    fn: lpp_torch_run_array_task
+    summary_fn: lpp_torch_run_summary
+    profile: gpu
+  meco.embedding.fit:
+    runner: scripts/slurm/torch/embedding/behavioral/meco.sh
+    family_var: MECO_FAMILY
+    fn: meco_torch_run_array_task_gpu
+    summary_fn: meco_torch_run_summary
+    profile: gpu
+    cpus: 10
+    selectors:
+      measure:
+        env: MECO_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  megmasc.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/megmasc.sh
+    family_var: MEGMASC_FAMILY
+    fn: megmasc_torch_run_array_task
+    summary_fn: megmasc_torch_run_summary
+    profile: gpu
+  naturalstories.embedding.fit:
+    runner: scripts/slurm/torch/embedding/behavioral/naturalstories.sh
+    family_var: NS_FAMILY
+    fn: ns_embed_gpu_torch_run_array_task
+    summary_fn: ns_embed_gpu_torch_run_summary
+    profile: gpu
+    cpus: 10
+  nieuwland.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/nieuwland.sh
+    family_var: NIEUWLAND_FAMILY
+    fn: nieuwland_torch_run_array_task
+    summary_fn: nieuwland_torch_run_summary
+    profile: gpu
+    cpus: 16
+    env:
+      N_LAYER_WORKERS: '16'
+  pereira.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/pereira.sh
+    family_var: PEREIRA_FAMILY
+    fn: pereira_embed_torch_run_array_task
+    profile: gpu
+  tuckute.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/tuckute.sh
+    family_var: TUCKUTE_FAMILY
+    fn: tuckute_torch_run_array_task
+    summary_fn: tuckute_torch_run_summary
+    profile: gpu
+    cpus: 16
+    pythonpath_extra: [stickbreaking-attention]   # only added for families that already need a runtime path
+  ns_fmri.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/ns_fmri.sh
+    family_var: NS_FMRI_FAMILY
+    fn: ns_fmri_torch_run_gpu
+    summary_fn: ns_fmri_torch_run_summary
+    profile: gpu
+    env:
+      N_LAYER_WORKERS: '8'
+  onestop.embedding.fit:
+    runner: scripts/slurm/torch/embedding/behavioral/onestop.sh
+    family_var: ONESTOP_FAMILY
+    fn: onestop_torch_run_array_task_gpu
+    summary_fn: onestop_torch_run_summary
+    profile: gpu
+    cpus: 10
+    selectors:
+      measure:
+        env: ONESTOP_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  podcast.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/podcast.sh
+    family_var: PODCAST_FAMILY
+    fn: podcast_torch_run_array_task
+    summary_fn: podcast_torch_run_summary
+    profile: gpu
+    env:
+      N_JOBS: '80'
+  provo.embedding.fit:
+    runner: scripts/slurm/torch/embedding/behavioral/provo.sh
+    family_var: PROVO_FAMILY
+    fn: provo_torch_run_array_task_gpu
+    summary_fn: provo_torch_run_summary
+    profile: gpu
+    cpus: 10
+    selectors:
+      measure:
+        env: PROVO_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  szewczyk.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/szewczyk.sh
+    family_var: SZEWCZYK_FAMILY
+    fn: szewczyk_torch_run_gpu
+    summary_fn: szewczyk_torch_run_summary
+    profile: gpu
+  ucl_reading.embedding.fit:
+    runner: scripts/slurm/torch/embedding/behavioral/ucl_reading.sh
+    family_var: UCL_READING_FAMILY
+    fn: ucl_reading_torch_run_array_task_gpu
+    summary_fn: ucl_reading_torch_run_summary
+    profile: gpu
+    cpus: 10
+    env:
+      UCL_READING_AVERAGE_ONLY: '1'
+  zuco_reading.embedding.fit:
+    runner: scripts/slurm/torch/embedding/behavioral/zuco_reading.sh
+    family_var: ZUCO_READING_FAMILY
+    fn: zuco_reading_torch_run_array_task_gpu
+    summary_fn: zuco_reading_torch_run_summary
+    profile: gpu
+    cpus: 10
+    selectors:
+      task:
+        env: ZUCO_TASK
+        values:
+        - NR
+        - SR
+        - TSR
+  broderick.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/broderick_extract.sh
+    family_var: BRODERICK_FAMILY
+    fn: broderick_surprisal_torch_run_array_task
+    profile: gpu
+  fedorenko2016.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/fedorenko2016_extract.sh
+    family_var: FEDORENKO2016_FAMILY
+    fn: fedorenko2016_surprisal_torch_run_array_task
+    profile: gpu
+  geco.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/behavioral/geco.sh
+    family_var: GECO_FAMILY
+    fn: geco_lme_torch_prefetch_gpu
+    profile: gpu
+    cpus: 10
+    selectors:
+      measure:
+        env: GECO_MEASURE
+        values:
+        - FP
+        - GP
+  lpp.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/lpp_extract.sh
+    family_var: LPP_FAMILY
+    fn: lpp_surprisal_torch_run_array_task
+    profile: gpu
+  meco.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/behavioral/meco.sh
+    family_var: MECO_FAMILY
+    fn: meco_lme_torch_prefetch_gpu
+    profile: gpu
+    cpus: 10
+    selectors:
+      measure:
+        env: MECO_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  megmasc.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/megmasc_extract.sh
+    family_var: MEGMASC_FAMILY
+    fn: megmasc_surprisal_torch_run_array_task
+    profile: gpu
+  naturalstories.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/behavioral/naturalstories.sh
+    family_var: NS_FAMILY
+    fn: ns_lme_torch_prefetch_surprisal
+    profile: gpu
+    cpus: 10
+  nieuwland.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/nieuwland_extract.sh
+    family_var: NIEUWLAND_FAMILY
+    fn: nieuwland_surprisal_torch_run_array_task
+    profile: gpu
+  ns_fmri.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/ns_fmri_extract.sh
+    family_var: NS_FAMILY
+    fn: ns_fmri_surprisal_torch_run_array_task
+    profile: gpu
+    cpus: 40
+  onestop.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/behavioral/onestop.sh
+    family_var: ONESTOP_FAMILY
+    fn: onestop_lme_torch_prefetch_gpu
+    profile: gpu
+    cpus: 10
+    selectors:
+      measure:
+        env: ONESTOP_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  podcast.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/podcast_extract.sh
+    family_var: PODCAST_FAMILY
+    fn: podcast_surprisal_torch_run_array_task
+    summary_fn: podcast_surprisal_torch_run_summary
+    profile: gpu
+    env:
+      N_JOBS: '80'
+  provo.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/behavioral/provo.sh
+    family_var: PROVO_FAMILY
+    fn: provo_lme_torch_prefetch_gpu
+    profile: gpu
+    cpus: 10
+    selectors:
+      measure:
+        env: PROVO_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  szewczyk.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/szewczyk_extract.sh
+    family_var: SZEWCZYK_FAMILY
+    fn: szewczyk_surprisal_torch_run_array_task
+    profile: gpu
+  tuckute.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/tuckute_extract.sh
+    family_var: TUCKUTE_FAMILY
+    fn: tuckute_surprisal_torch_run_array_task
+    profile: gpu
+  ucl_reading.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/behavioral/ucl_reading.sh
+    family_var: UCL_FAMILY
+    fn: ucl_lme_torch_prefetch_surprisal
+    profile: gpu
+    cpus: 10
+  zuco_reading.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/behavioral/zuco_reading.sh
+    family_var: ZUCO_FAMILY
+    fn: zuco_lme_torch_prefetch_gpu
+    profile: gpu
+    cpus: 10
+    selectors:
+      task:
+        env: ZUCO_TASK
+        values:
+        - NR
+        - SR
+        - TSR
+  broderick.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/broderick_fit.sh
+    family_var: BRODERICK_FAMILY
+    fn: broderick_lme_torch_run_array_task
+    profile: cpu
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '20'
+  fedorenko2016.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/fedorenko2016_fit.sh
+    family_var: FEDORENKO2016_FAMILY
+    fn: fedorenko2016_lme_torch_run_array_task
+    profile: cpu
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '20'
+  geco.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/behavioral/geco.sh
+    family_var: GECO_FAMILY
+    fn: geco_lme_torch_run_array_task_cpu
+    summary_fn: geco_lme_torch_run_summary
+    profile: cpu
+    env:
+      N_WORKERS: '15'
+    selectors:
+      measure:
+        env: GECO_MEASURE
+        values:
+        - FP
+        - GP
+  lpp.surprisal.refit:
+    runner: scripts/slurm/torch/surprisal/neural/lpp_refit.sh
+    family_var: LPP_FAMILY
+    fn: lpp_refit_run_array_task
+    profile: cpu
+    cpus: 4   # REFIT_LAYERS=last needs only 2; see the runner header for the prep scripts to run first
+  lpp.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/lpp_fit.sh
+    family_var: LPP_FAMILY
+    fn: lpp_lme_torch_run_array_task
+    profile: cpu
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '20'
+  meco.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/behavioral/meco.sh
+    family_var: MECO_FAMILY
+    fn: meco_lme_torch_run_array_task_cpu
+    summary_fn: meco_lme_torch_run_summary
+    profile: cpu
+    env:
+      N_WORKERS: '15'
+    selectors:
+      measure:
+        env: MECO_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  megmasc.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/megmasc_fit.sh
+    family_var: MEGMASC_FAMILY
+    fn: megmasc_lme_torch_run_array_task
+    profile: cpu
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '12'
+  naturalstories.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/behavioral/naturalstories.sh
+    family_var: NS_FAMILY
+    fn: ns_lme_torch_run_array_task_cpu
+    summary_fn: ns_lme_torch_run_summary
+    profile: cpu
+    env:
+      N_WORKERS: '15'
+  nieuwland.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/nieuwland_fit.sh
+    family_var: NIEUWLAND_FAMILY
+    fn: nieuwland_lme_torch_run_array_task
+    profile: cpu
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '10'
+  ns_fmri.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/ns_fmri_fit.sh
+    family_var: NS_FAMILY
+    fn: ns_fmri_lme_torch_run_array_task_cpu
+    summary_fn: ns_fmri_lme_torch_run_summary
+    profile: cpu
+    cpus: 20
+    env:
+      N_WORKERS: '15'
+  onestop.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/behavioral/onestop.sh
+    family_var: ONESTOP_FAMILY
+    fn: onestop_lme_torch_run_array_task_cpu
+    summary_fn: onestop_lme_torch_run_summary
+    profile: cpu
+    env:
+      N_WORKERS: '15'
+    selectors:
+      measure:
+        env: ONESTOP_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  pereira.surprisal.extract:
+    runner: scripts/slurm/torch/surprisal/neural/pereira_extract.sh
+    family_var: PEREIRA_FAMILY
+    fn: pereira_surprisal_torch_run_array_task
+    profile: gpu
+    cpus: 10
+  pereira.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/pereira_fit.sh
+    family_var: PEREIRA_FAMILY
+    fn: pereira_lme_torch_run_array_task
+    profile: cpu
+    env:
+      N_WORKERS: '15'
+  podcast.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/podcast_fit.sh
+    family_var: PODCAST_FAMILY
+    fn: podcast_lme_torch_run_array_task
+    profile: cpu
+    env:
+      LAG_STRIDE: '1'
+      N_WORKERS: '10'
+  provo.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/behavioral/provo.sh
+    family_var: PROVO_FAMILY
+    fn: provo_lme_torch_run_array_task_cpu
+    summary_fn: provo_lme_torch_run_summary
+    profile: cpu
+    env:
+      N_WORKERS: '15'
+    selectors:
+      measure:
+        env: PROVO_MEASURE
+        values:
+        - FP
+        - GP
+        - SP
+  szewczyk.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/szewczyk_fit.sh
+    family_var: SZEWCZYK_FAMILY
+    fn: szewczyk_lme_torch_run_array_task
+    profile: cpu
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '20'
+  tuckute.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/tuckute_fit.sh
+    family_var: TUCKUTE_FAMILY
+    fn: tuckute_lme_torch_run_array_task
+    profile: cpu
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '20'
+  ucl_reading.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/behavioral/ucl_reading.sh
+    family_var: UCL_FAMILY
+    fn: ucl_lme_torch_run_array_task_cpu
+    summary_fn: ucl_lme_torch_run_summary
+    profile: cpu
+    env:
+      N_WORKERS: '15'
+  zuco_reading.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/behavioral/zuco_reading.sh
+    family_var: ZUCO_FAMILY
+    fn: zuco_lme_torch_run_array_task_cpu
+    summary_fn: zuco_lme_torch_run_summary
+    profile: cpu
+    env:
+      N_WORKERS: '15'
+    selectors:
+      task:
+        env: ZUCO_TASK
+        values:
+        - NR
+        - SR
+        - TSR

@@ -1,0 +1,73 @@
+# ============================================================================
+# Natural Stories fMRI Encoding — Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Predicts ROI-averaged BOLD (Shain et al. 2020) from LLM contextual
+# activations using HRF-convolved ridge regression with leave-one-story-out
+# cross-validation (8 folds = 8 stories).
+#
+# Dataset: 78 subjects × 8 stories (~1000 words each) × 26 fROIs
+#   Language network (LANG): 6 left-hemisphere Fedorenko-lab parcels
+#   Multiple-demand network (MD): 20 bilateral parcels
+#   TR = 2 s, BOLD pre-averaged per fROI (no voxel data)
+#
+# Primary metric: Spearman r (best-layer, mean over subjects × fROIs).
+# Key contrast: LANG_best_spearmanr − MD_best_spearmanr measures language
+# specificity as a function of training.
+#
+# Two-stage pipeline (same as Podcast):
+#   Stage 1 GPU: sbatch scripts/slurm/jz/ns_fmri_prefetch_<family>.sh
+#     → caches LLM embeddings per story to $NS_FMRI_FEATURE_CACHE_DIR
+#   Stage 2 CPU: sbatch scripts/slurm/jz/ns_fmri_<family>_cpu.sh
+#     → HRF convolution + himalaya GPU/CPU ridge per subject
+#
+# Run single model:
+#   .venv/bin/python scripts/run/embedding/neural/ns_fmri.py \
+#     --config configs/embedding/neural/ns_fmri.yaml \
+#     --models gpt2 --device cuda
+# ============================================================================
+
+dataset:
+  data_root: ${BENCHMARK_ROOT}/data/naturalstories_fmri/osfstorage
+
+  # Which ROI table to load: "LANG", "MD", or "LANG_MD" (recommended — all 26 fROIs)
+  froi_table: LANG_MD
+
+  docs: null          # null = all 8 stories (Aqua, Boar, Elvis, HighSchool,
+                      #   KingOfBirds, MatchstickSeller, MrSticky, Tulips)
+
+  subjects: null      # null = all 78 subjects
+
+  t_r: 2.0            # repetition time in seconds
+
+  # Fixed event duration for HRF convolution (no ISI information in the data).
+  # 0.1 s is the standard for auditory word-level events.
+  word_duration: 0.1
+
+  # Canonical double-gamma HRF (Glover 1999) via nilearn compute_regressor.
+  hrf_model: glover
+
+  # Leave-one-story-out CV: groups = story_idx per TR.
+  # n_splits must equal the number of stories used (max 8).
+  n_splits: 8
+
+  # LLM context: stories fit within typical model context lengths (~1000 words).
+  # Set max_length to truncate for very small context models (e.g. RNNs).
+  max_length: null
+  context_words: null   # null = full-text pass (recommended)
+
+regression:
+  n_splits: 8           # must match dataset.n_splits
+  alpha: null           # null → np.logspace(-2, 4, 6) = [1e-2, ~0.16, ~2.5, ~40, ~630, 1e4]
+  scale: true           # RobustScaler on X within each fold
+  random_state: 0
+
+benchmark:
+  layerwise: true
+  tokenizer_no_revision: true   # tokenizer is revision-invariant for Pythia/OLMo-2
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/ns_fmri/embedding_sweep
+
+cache:
+  features_dir: ${NS_FMRI_FEATURE_CACHE_DIR}

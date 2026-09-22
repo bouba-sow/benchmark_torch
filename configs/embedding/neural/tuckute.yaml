@@ -1,0 +1,13 @@
+data:
+  data_root: ${BENCHMARK_ROOT}/data/tuckute_fmri/osfstorage
+  k_folds: 4
+  # embed_cache_dir: optional override (default: <save_dir>/.embed_cache)
+
+model:
+  batch_size: 128   # large batch is safe — sentences are ≤12 tokens on H100
+
+regression:
+  alpha: null       # null → np.logspace(2, 7, 5) = [100, 1778, 31623, 562341, 1e7]
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/tuckute/embedding_sweep

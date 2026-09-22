@@ -1,0 +1,92 @@
+# ============================================================================
+# Podcast ECoG — Pooled LME per lag (Design B)
+# ============================================================================
+#
+# y ~ wlen_z + freq_z + surprisal_z +
+#     (1 | subject) + (1 + surprisal_z | subject:electrode)
+# vs. the same formula without surprisal, fit ONCE PER LAG, pooling every
+# subject and electrode together — electrode nested within subject, so no
+# correspondence between electrode identities across subjects is assumed
+# (unlike the per-electrode ridge encoder, this can genuinely pool subjects).
+#
+# CPU-only: surprisal is read from the existing logit-lens cache already
+# computed by the ridge/surprisal sweep (configs/surprisal/neural/
+# podcast_extract.yaml) — this pipeline never loads an LLM itself. A cache miss is
+# a hard error, not a silent slow path.
+#
+# Cost note: pooling all subjects × electrodes gives ~1.4M rows per lag with
+# ~285 nested (subject, electrode) random-effect groups and a 2×2 random-slope
+# covariance matrix — this is new, unvalidated territory for this codebase
+# (bigger and structurally richer than anything already run). Expect highly
+# uncertain per-lag fit times; start with --lag_stride > 1 and/or a single
+# model to get a real timing number before committing to the full grid.
+#
+# Run (single job, CPU only, N lags fit concurrently via a spawned process
+# pool — NOT one SLURM job per lag):
+#   .venv/bin/python scripts/run/surprisal/neural/podcast_fit.py \
+#     --config configs/surprisal/neural/podcast.yaml \
+#     --model_name openai-community/gpt2 --n_workers 10
+# ============================================================================
+
+dataset:
+  bids_root: ${BENCHMARK_ROOT}/data/podcast
+  subjects: null
+  # Restricted to the standardized report window (see
+  # scripts/summarize/report.py: "Window: -0.2 -> 0.8 s for the
+  # three lag-based datasets") — fitting/extracting lags outside this range
+  # was pure waste, they're never used downstream. 32 lags at 32Hz instead
+  # of 64 (±1s): halves the worker-pool rounds needed at N_WORKERS=25 (2
+  # rounds instead of 3).
+  tmin: -0.2
+  tmax: 0.8
+  # No margin needed before tmin: tmin_extract only ever existed to give the
+  # (now-disabled, see baseline: null below) baseline-correction step extra
+  # native-rate samples before cropping to [tmin, tmax). With no baseline
+  # window to protect, tmin_extract == tmin is exactly correct — confirmed
+  # by tracing podcast.py::load_subject_epochs: extraction uses
+  # tmin_extract, but the `if baseline is not None` block that's the only
+  # consumer of that extra margin is skipped entirely when baseline=None.
+  tmin_extract: -0.2
+  downsample_to: 32.0
+  clip_iqr: 5.0
+  # No pre-onset baseline correction — matches the reference Hasson-lab
+  # tutorial (mne.Epochs(..., baseline=None)). The outcome is instead
+  # z-scored per (subject, electrode) group on train-fold statistics inside
+  # fit_podcast_lme_one_lag (see regressors/podcast_lme.py docstring).
+  baseline: null
+  baseline_mode: logratio
+  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/podcast/electrode_selection
+  max_length: null
+  tokenizer_no_revision: true
+  # wordfreq Zipf frequency — same source as the ridge unique-contribution check.
+  wordfreq_language: en
+
+lme:
+  # Contiguous word-index chunk size — the train/held-out split unit (words
+  # are inherently sequential in one continuous podcast; this is the direct
+  # word-index analogue of the NS-fMRI LME's TR-chunk split).
+  chunk_words: 30
+  train_frac: 0.75
+  split_random_state: 0
+  verbose: false
+  # Barr et al. (2013)-style simplification ladder if the full model (with
+  # the correlated random slope on subject:electrode) fails to converge:
+  # drop the correlation first, then the slope entirely. Applied identically
+  # to every lag/model so comparisons stay valid.
+  allow_slope_fallback: true
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/podcast/surprisal_sweep
+
+cache:
+  # Must already contain the logit-lens surprisal cache for the model(s)
+  # you're fitting (see configs/surprisal/neural/podcast_extract.yaml).
+  features_dir: ${PODCAST_FEATURE_CACHE_DIR}
+  # Per-subject preprocessed-epoch cache — model-independent (only the
+  # surprisal predictor differs between models), shared across the whole
+  # family sweep so only the first model's job pays the raw .fif read +
+  # IQR-clip + resample cost; every other model hits this cache. Keyed on
+  # tmin/tmax/tmin_extract/downsample_to/clip_iqr/baseline/baseline_mode/
+  # electrode_selection_dir — changing any of those invalidates automatically
+  # (new hash, old entries just go unused, no manual cleanup required).
+  epochs_dir: ${PODCAST_EPOCH_CACHE_DIR}

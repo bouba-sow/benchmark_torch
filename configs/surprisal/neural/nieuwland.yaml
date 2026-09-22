@@ -1,0 +1,94 @@
+# ============================================================================
+# Nieuwland N400 — Pooled LME per LM layer (logit-lens surprisal)
+# ============================================================================
+#
+# n400 ~ wlen_z + freq_z + prev_surprisal_z + surprisal_z +
+#         (1 + wlen_z + freq_z + prev_surprisal_z + surprisal_z | subject) +
+#         (1 | electrode) + (1 | lab)
+# vs. the same formula without surprisal_z, fit ONCE PER LM LAYER, pooling
+# every subject and electrode together. Nieuwland's electrodes are standard
+# 10-20 scalp locations comparable across subjects, so electrode is a CROSSED
+# random effect — same base formula as the single-lab N400 datasets, PLUS a crossed
+# (1 | lab) term since Nieuwland is multi-site (9 UK labs; subject IDs are
+# already lab-prefixed and globally unique).
+#
+# Scope: N400 mean-amplitude only (200-500ms window, mean per trial×channel)
+# — same convention as the single-lab N400 datasets, NOT the time-resolved/per-lag design
+# Podcast's pooled LME or Nieuwland's own ridge encoder (eeg_erp.py) use.
+#
+# TWO-STAGE PIPELINE (same split as Podcast's pooled
+# LME): on Jean Zay, R (pymer4/lme4, needed for the LME fit) is only
+# available on CPU partitions, not GPU. So:
+#   1. GPU stage — extract + cache per-layer logit-lens surprisal for the
+#      ~160 items (noun + spillover control word). EEG-FREE (uses
+#      load_all_items, not load_all_epochs) — never touches raw EEG:
+#        .venv/bin/python scripts/run/surprisal/neural/nieuwland_extract.py \
+#          --config configs/surprisal/neural/nieuwland.yaml \
+#          --model_name openai-community/gpt2 --device cuda
+#   2. CPU stage — fit one LME per layer, reading surprisal from that cache.
+#      This stage DOES epoch raw EEG (expensive, MNE-based) the first time —
+#      subsequent runs hit the per-subject epoch_cache_dir cache. N layers
+#      fit concurrently via a spawned process pool — NOT one SLURM job per
+#      layer:
+#        .venv/bin/python scripts/run/surprisal/neural/nieuwland_fit.py \
+#          --config configs/surprisal/neural/nieuwland.yaml \
+#          --model_name openai-community/gpt2 --n_workers 10
+#
+# Cost note: pooled table could reach ~300K+ rows (subjects × 6 channels ×
+# ~160 items), closer to Podcast's regime (1.4M rows) than to the
+# smaller single-lab N400 datasets — start with a single array index / small subject list
+# to get a real timing/memory number before trusting the full sweep.
+# ============================================================================
+
+dataset:
+  bids_root: ${BENCHMARK_ROOT}/data/nieuwland
+  subjects: null
+  included_in_paper_only: true
+  # GLAS uses BioSemi-128 A1-H16 naming — incompatible with standard 10-20.
+  exclude_labs: [glas]
+  target_channels: [Cz, C3, C4, Pz, P3, P4]
+  target_sfreq: 32.0
+  epoch_tmin: -0.2
+  epoch_tmax: 0.8
+  baseline: [-0.2, 0.0]
+  artifact_threshold_uv: 100.0
+  min_trials: 20
+  n400_tmin: 0.2
+  n400_tmax: 0.5
+  max_length: null
+  tokenizer_no_revision: true
+  trust_remote_code: false
+  # wordfreq Zipf frequency — same source as the single-lab N400 datasets' pooled LME.
+  wordfreq_language: en
+  # Device for the (cheap, ~160-item) surprisal extraction forward passes.
+  # The CPU-only LME stage overrides this to "cpu" regardless (see
+  # run/surprisal/neural/nieuwland_fit.py) — it only matters for the GPU extraction
+  # stage / direct single-job runs.
+  device: cpu
+
+lme:
+  include_lab: true    # Nieuwland is multi-site — the one default difference from the single-lab N400 datasets
+  train_frac: 0.75
+  split_random_state: 0
+  verbose: false
+  # Barr et al. (2013)-style simplification ladder if the full model (with
+  # the correlated random slope on subject) fails to converge: drop the
+  # correlation first, then the slope entirely. Applied identically to every
+  # layer so comparisons stay valid.
+  allow_slope_fallback: true
+  layer_stride: 1
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/nieuwland/surprisal_sweep
+
+cache:
+  # Must already contain this model's logit-lens trial surprisal cache
+  # (populated by run/surprisal/neural/nieuwland_extract.py) before running the
+  # CPU-only LME sweep.
+  features_dir: ${NIEUWLAND_LME_FEATURE_CACHE_DIR}
+  # Per-subject epoch cache — SAME env var / directory as the existing ridge
+  # sweep (configs/embedding/neural/nieuwland.yaml), since the EEG
+  # preprocessing params above match it exactly. If that sweep has already
+  # run on Jean Zay, epoching here is free; if not, the first LME run pays
+  # the full MNE epoching cost once and caches it for every later run.
+  epochs_dir: ${NIEUWLAND_EPOCH_CACHE_DIR}

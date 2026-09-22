@@ -1,0 +1,13 @@
+[project]
+name = "forgetting-transformer"
+version = "0.0.1"
+description = "Constrained-attention transformer variants (forgetting gate, alibi, stickbreaking) — local source checkout"
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

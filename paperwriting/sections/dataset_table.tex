@@ -1,0 +1,56 @@
+{\setlength{\tabcolsep}{3pt}
+\begin{longtable}{@{}p{2.45cm}p{1.3cm}cp{2.75cm}p{1.55cm}c@{}}
+\caption{All datasets evaluated in this benchmark, grouped by modality. $N$ items reports the unit each dataset's items are counted in (sentences, passages, screens, stories, electrodes, \ldots), since this varies by design. Eye-tracking measures: FP = first-pass/gaze duration, GP = go-past time, SP = (single-fixation or total) dwell time. $N$ subj.\ reflects each study's usable sample after its own quality-control exclusions.}
+\label{tab:datasets} \\
+\toprule
+\textbf{Dataset} & \textbf{Modality} & \textbf{Subj.} & \textbf{Items} & \textbf{Measure(s)} & \textbf{Ref.} \\
+\midrule
+\endfirsthead
+\multicolumn{6}{c}{\tablename\ \thetable{} -- continued} \\
+\toprule
+\textbf{Dataset} & \textbf{Modality} & \textbf{Subj.} & \textbf{Items} & \textbf{Measure(s)} & \textbf{Ref.} \\
+\midrule
+\endhead
+\midrule \multicolumn{6}{r}{\textit{continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\multicolumn{6}{l}{\textbf{Self-Paced Reading}} \\
+\midrule
+\small Natural Stories SPR & \small SPR & \small 180 & \small 10 stories (10{,}256 word pos.) & \small raw RT & \scriptsize \citep{futrell2021natural} \\
+\small UCL Reading & \small SPR & \small 117 & \small 361 sentences & \small raw RT & \scriptsize \citep{frank2013reading} \\
+\midrule
+\multicolumn{6}{l}{\textbf{Eye-Tracking}} \\
+\midrule
+\small GECO & \small Eye-tracking & \small 14 & \small 588 screens & \small FP, GP & \scriptsize \citep{cop2017geco} \\
+\small MECO (English) & \small Eye-tracking & \small 46 & \small 12 passages & \small SP, FP, GP & \scriptsize \citep{siegelman2022meco} \\
+\small Provo & \small Eye-tracking & \small 84 & \small 55 texts & \small SP, FP, GP & \scriptsize \citep{luke2018provo} \\
+\small OneStop & \small Eye-tracking & \small 360 & \small 330 passages & \small SP, FP, GP & \scriptsize \citep{berzak2025onestop} \\
+\small ZuCo Reading & \small Eye-tracking & \small 12 & \small SR/NR/TSR: 400/300/407 sent. & \small TRT & \scriptsize \citep{hollenstein2018zuco} \\
+\midrule
+\multicolumn{6}{l}{\textbf{N400 / ERP}} \\
+\midrule
+\small Nieuwland & \small EEG (ERP) & \small 334 & \small 9-lab RSVP replication & \small N400 & \scriptsize \citep{nieuwland2018largescale} \\
+\small Szewczyk & \small EEG (ERP) & \small $\sim$138 & \small $\sim$1{,}900--2{,}000 items & \small N400 & \scriptsize \citep{szewczyk2022context} \\
+\midrule
+\multicolumn{6}{l}{\textbf{Continuous EEG}} \\
+\midrule
+\small Broderick & \small EEG & \small 19 & \small 20 segs. ($\sim$196s each) & \small EEG (1--8Hz) & \scriptsize \citep{broderick2018electrophysiological} \\
+\midrule
+\multicolumn{6}{l}{\textbf{MEG}} \\
+\midrule
+\small Gwilliams (MEG-MASC) & \small MEG & \small 27 & \small 4 stories $\times$ 2 sess. & \small continuous MEG & \scriptsize \citep{gwilliams2022neural} \\
+\midrule
+\multicolumn{6}{l}{\textbf{fMRI}} \\
+\midrule
+\small Le Petit Prince & \small fMRI & \small 49 & \small 9 sections (audio) & \small BOLD & \scriptsize \citep{li2022lepetitprince} \\
+\small Natural Stories fMRI & \small fMRI & \small 78 & \small 8 narratives (26 fROIs) & \small BOLD & \scriptsize \citep{shain2022robust} \\
+\small Tuckute & \small fMRI & \small 10 & \small 2{,}000 sentences (6 ROIs) & \small BOLD & \scriptsize \citep{tuckute2024driving} \\
+\small Pereira & \small fMRI & \small $\leq$10 & \small 627 sentences (12 ROIs) & \small BOLD & \scriptsize \citep{pereira2018toward} \\
+\midrule
+\multicolumn{6}{l}{\textbf{iEEG / ECoG}} \\
+\midrule
+\small Podcast & \small ECoG & \small 9 & \small 1 story, $>$5{,}000 w. (1{,}330 electr.) & \small high-gamma & \scriptsize \citep{zada2025podcast} \\
+\small Fedorenko2016 & \small iEEG & \small 5 & \small 52 sentences (416 words) & \small iEEG (scalar) & \scriptsize \citep{fedorenko2016neural} \\
+\end{longtable}
+}

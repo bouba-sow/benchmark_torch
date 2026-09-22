@@ -1,0 +1,1056 @@
+% =====================================================================
+% Reference list for "Are Human-Constrained Language Models More
+% Human-Like? Evaluating Algorithmic Convergence Across Neural and
+% Behavioral Measures"
+%
+% Organized into the sections implied by the Related Literature sketch:
+%   [A] Marr's levels / foundational framing
+%   [B] Brain-LLM / behavior-LLM convergence & Platonic Representation Hyp.
+%   [C] Human-like models: memory-constrained architectures & BabyLM
+%   [D] Predicting behavioral & neural data from LLMs (surprisal-based
+%       cognitive modeling, psychometric predictive power)
+%   [E] Datasets (behavioral: SPR/eye-tracking; neural: fMRI/EEG/ECoG)
+%   [F] Standard LLM / architecture references (for §3.2 Models)
+%
+% =====================================================================
+
+% ---------------------------------------------------------------------
+% [A] Foundational framing
+% ---------------------------------------------------------------------
+
+@book{marr1982vision,
+  author    = {Marr, David},
+  title     = {Vision: A Computational Investigation into the Human Representation and Processing of Visual Information},
+  publisher = {Henry Holt and Co., Inc.},
+  address   = {USA},
+  year      = {1982}
+}
+
+@inproceedings{bender-koller-2020-climbing,
+    title     = "Climbing towards {NLU}: {On} Meaning, Form, and Understanding in the Age of Data",
+    author    = "Bender, Emily M. and Koller, Alexander",
+    booktitle = "Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics",
+    month     = jul,
+    year      = "2020",
+    address   = "Online",
+    publisher = "Association for Computational Linguistics",
+    url       = "https://aclanthology.org/2020.acl-main.463",
+    doi       = "10.18653/v1/2020.acl-main.463",
+    pages     = "5185--5198",
+}
+
+@inproceedings{andreas-2022-language,
+    title     = "Language Models as Agent Models",
+    author    = "Andreas, Jacob",
+    booktitle = "Findings of the Association for Computational Linguistics: EMNLP 2022",
+    month     = dec,
+    year      = "2022",
+    address   = "Abu Dhabi, United Arab Emirates",
+    publisher = "Association for Computational Linguistics",
+    url       = "https://aclanthology.org/2022.findings-emnlp.423/",
+    doi       = "10.18653/v1/2022.findings-emnlp.423",
+    pages     = "5769--5779",
+}
+
+@article{gilkerson2017mapping,
+    title     = "Mapping the Early Language Environment Using All-Day Recordings and Automated Analysis",
+    author    = "Gilkerson, Jill and Richards, Jeffrey A. and Warren, Steven F. and Montgomery, Judith K. and Greenwood, Charles R. and Oller, D. Kimbrough and Hansen, John H. L. and Paul, Terrance D.",
+    journal   = "American Journal of Speech-Language Pathology",
+    volume    = "26",
+    number    = "2",
+    pages     = "248--265",
+    year      = "2017",
+    doi       = "10.1044/2016_AJSLP-15-0169",
+}
+
+@article{hale2001probabilistic,
+  author    = {Hale, John},
+  title     = {A Probabilistic {E}arley Parser as a Psycholinguistic Model},
+  booktitle = {Proceedings of NAACL},
+  year      = {2001},
+  pages     = {159--166}
+}
+
+@article{levy2008expectation,
+  author  = {Levy, Roger},
+  title   = {Expectation-Based Syntactic Comprehension},
+  journal = {Cognition},
+  volume  = {106},
+  number  = {3},
+  pages   = {1126--1177},
+  year    = {2008}
+}
+
+@article{smithlevy2013effect,
+  author  = {Smith, Nathaniel J. and Levy, Roger},
+  title   = {The Effect of Word Predictability on Reading Time is Logarithmic},
+  journal = {Cognition},
+  volume  = {128},
+  number  = {3},
+  pages   = {302--319},
+  year    = {2013}
+}
+
+@article{shain2024large,
+  author  = {Shain, Cory and Meister, Clara and Pimentel, Tiago and Cotterell, Ryan and Levy, Roger},
+  title   = {Large-Scale Evidence for Logarithmic Effects of Word Predictability on Reading Time},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {121},
+  number  = {10},
+  pages   = {e2307876121},
+  year    = {2024}
+}
+
+@article{lewisvasishth2005activation,
+  author  = {Lewis, Richard L. and Vasishth, Shravan},
+  title   = {An Activation-Based Model of Sentence Processing as Skilled Memory Retrieval},
+  journal = {Cognitive Science},
+  volume  = {29},
+  number  = {3},
+  pages   = {375--419},
+  year    = {2005}
+}
+
+% ---------------------------------------------------------------------
+% [B] Convergence between brains/behavior and LLMs; Platonic Rep. Hyp.
+% ---------------------------------------------------------------------
+
+@inproceedings{huh2024platonic,
+  author    = {Huh, Minyoung and Cheung, Brian and Wang, Tongzhou and Isola, Phillip},
+  title     = {Position: The Platonic Representation Hypothesis},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {235},
+  pages     = {20617--20642},
+  year      = {2024},
+  note      = {arXiv:2405.07987}
+}
+
+@article{schrimpf2021neural,
+  author  = {Schrimpf, Martin and Blank, Idan Asher and Tuckute, Greta and Kauf, Carina and Hosseini, Eghbal A. and Kanwisher, Nancy and Tenenbaum, Joshua B. and Fedorenko, Evelina},
+  title   = {The Neural Architecture of Language: Integrative Modeling Converges on Predictive Processing},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {118},
+  number  = {45},
+  pages   = {e2105646118},
+  year    = {2021}
+}
+
+@article{caucheteux2022brains,
+  author  = {Caucheteux, Charlotte and King, Jean-R{\'e}mi},
+  title   = {Brains and Algorithms Partially Converge in Natural Language Processing},
+  journal = {Communications Biology},
+  volume  = {5},
+  number  = {1},
+  year    = {2022}
+}
+
+@article{caucheteux2023evidence,
+  author  = {Caucheteux, Charlotte and Gramfort, Alexandre and King, Jean-R{\'e}mi},
+  title   = {Evidence of a Predictive Coding Hierarchy in the Human Brain Listening to Speech},
+  journal = {Nature Human Behaviour},
+  volume  = {7},
+  number  = {3},
+  pages   = {430--441},
+  year    = {2023}
+}
+
+@inproceedings{toneva2019interpreting,
+  author    = {Toneva, Mariya and Wehbe, Leila},
+  title     = {Interpreting and Improving Natural-Language Processing (in Machines) with Natural Language-Processing (in the Brain)},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  pages     = {14928--14938},
+  year      = {2019}
+}
+
+@article{hosseini2024artificial,
+  author  = {Hosseini, Eghbal A. and Schrimpf, Martin and Zhang, Yian and Bowman, Samuel and Zaslavsky, Noga and Fedorenko, Evelina},
+  title   = {Artificial Neural Network Language Models Predict Human Brain Responses to Language Even after a Developmentally Realistic Amount of Training},
+  journal = {Neurobiology of Language},
+  volume  = {5},
+  number  = {1},
+  pages   = {43--63},
+  year    = {2024}
+}
+
+@inproceedings{aw2024instructiontuning,
+  author    = {Aw, Khai Loong and Montariol, Syrielle and AlKhamissi, Badr and Schrimpf, Martin and Bosselut, Antoine},
+  title     = {Instruction-Tuning Aligns {LLM}s to the Human Brain},
+  booktitle = {Conference on Language Modeling (COLM)},
+  year      = {2024}
+}
+
+@inproceedings{michaelov2024revenge,
+  author    = {Michaelov, James and Arnett, Catherine and Bergen, Ben},
+  title     = {Revenge of the Fallen? Recurrent Models Match Transformers at Predicting Human Language Comprehension Metrics},
+  booktitle = {Conference on Language Modeling (COLM)},
+  year      = {2024}
+}
+
+@article{kuribayashi2025humanlike,
+  author  = {Kuribayashi, Tatsuki and Oseki, Yohei and Ben Taieb, Souhaib and Inui, Kentaro and Baldwin, Timothy},
+  title   = {Large Language Models Are Human-Like Internally},
+  journal = {Transactions of the Association for Computational Linguistics},
+  volume  = {13},
+  year    = {2025},
+  note    = {arXiv:2502.01615}
+}
+
+@inproceedings{tsipidi2026probing,
+  author    = {Tsipidi, Eleftheria and Kiegeland, Samuel and Re, Francesco Ignazio and Xu, Tianyang and Giulianelli, Mario and Sta{\'n}czak, Karolina and Cotterell, Ryan},
+  title     = {Probing for Reading Times},
+  booktitle = {Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year      = {2026},
+  note      = {arXiv:2604.18712}
+}
+
+% ---------------------------------------------------------------------
+% [C] Human-like models: memory-constrained architectures & BabyLM
+% ---------------------------------------------------------------------
+
+@article{futrell2020lossy,
+  author  = {Futrell, Richard and Gibson, Edward and Levy, Roger P.},
+  title   = {Lossy-Context Surprisal: An Information-Theoretic Model of Memory Effects in Sentence Processing},
+  journal = {Journal of Cognitive Science},
+  year    = {2020}
+}
+
+@article{hahn2022resourcerational,
+  author  = {Hahn, Michael and Futrell, Richard and Levy, Roger and Gibson, Edward},
+  title   = {A Resource-Rational Model of Human Processing of Recursive Linguistic Structure},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {119},
+  number  = {43},
+  pages   = {e2122602119},
+  year    = {2022}
+}
+
+@inproceedings{kuribayashi2022context,
+  author    = {Kuribayashi, Tatsuki and Oseki, Yohei and Brassard, Ana and Inui, Kentaro},
+  title     = {Context Limitations Make Neural Language Models More Human-Like},
+  booktitle = {Proceedings of EMNLP},
+  pages     = {10421--10436},
+  year      = {2022}
+}
+
+@article{lieder2019resourcerational,
+  author  = {Lieder, Falk and Griffiths, Thomas L.},
+  title   = {Resource-Rational Analysis: Understanding Human Cognition as the Optimal Use of Limited Computational Resources},
+  journal = {Behavioral and Brain Sciences},
+  volume  = {43},
+  pages   = {e1},
+  year    = {2019}
+}
+
+@article{warstadt2023cfp,
+  author = {Warstadt, Alex and Choshen, Leshem and Mueller, Aaron and Williams, Adina and Wilcox, Ethan and Zhuang, Chengxu},
+  title  = {Call for Papers -- The {BabyLM} Challenge: Sample-Efficient Pretraining on a Developmentally Plausible Corpus},
+  journal = {arXiv preprint arXiv:2301.11796},
+  year   = {2023}
+}
+
+@inproceedings{warstadt2023findings,
+  author    = {Warstadt, Alex and Mueller, Aaron and Choshen, Leshem and Wilcox, Ethan and Zhuang, Chengxu and Ciro, Juan and Mosquera, Rafael and Paranjabe, Bhargavi and Williams, Adina and Linzen, Tal and Cotterell, Ryan},
+  title     = {Findings of the {BabyLM} Challenge: Sample-Efficient Pretraining on Developmentally Plausible Corpora},
+  booktitle = {Proceedings of the BabyLM Challenge at CoNLL},
+  pages     = {1--34},
+  year      = {2023}
+}
+
+@inproceedings{hu2024secondbabylm,
+  author    = {Hu, Michael Y. and Mueller, Aaron and Ross, Candace and Williams, Adina and Linzen, Tal and Zhuang, Chengxu and Cotterell, Ryan and Choshen, Leshem and Warstadt, Alex and Wilcox, Ethan Gotlieb},
+  title     = {Findings of the Second {BabyLM} Challenge: Sample-Efficient Pretraining on Developmentally Plausible Corpora},
+  booktitle = {Proceedings of the 2nd BabyLM Challenge at CoNLL},
+  pages     = {1--21},
+  year      = {2024},
+  note      = {arXiv:2412.05149}
+}
+
+@inproceedings{huebner2021babyberta,
+  author    = {Huebner, Philip A. and Sulem, Elior and Fischer, Cynthia and Roth, Dan},
+  title     = {{BabyBERTa}: Learning More Grammar With Small-Scale Child-Directed Language},
+  booktitle = {Proceedings of the 25th Conference on Computational Natural Language Learning (CoNLL)},
+  pages     = {624--646},
+  year      = {2021}
+}
+
+@article{wilcox2024bigger,
+  author  = {Wilcox, Ethan Gotlieb and Hu, Michael and Mueller, Aaron and Linzen, Tal and Warstadt, Alex and Choshen, Leshem and Zhuang, Chengxu and Cotterell, Ryan and Williams, Adina},
+  title   = {Bigger is Not Always Better: The Importance of Human-Scale Language Modeling for Psycholinguistics},
+  journal = {PsyArXiv},
+  year    = {2024}
+}
+
+@inproceedings{charpentier2025findings,
+  title     = {Findings of the Third {BabyLM} Challenge: Accelerating Language Modeling Research with Cognitively Plausible Data},
+  author    = {Charpentier, Lucas and Choshen, Leshem and Cotterell, Ryan and Gul, Mustafa Omer and Hu, Michael Y. and Liu, Jing and Jumelet, Jaap and Linzen, Tal and Mueller, Aaron and Ross, Candace and Shah, Raj Sanjay and Warstadt, Alex and Wilcox, Ethan Gotlieb and Williams, Adina},
+  booktitle = {Proceedings of the First BabyLM Workshop},
+  pages     = {399--420},
+  year      = {2025},
+  address   = {Suzhou, China},
+  publisher = {Association for Computational Linguistics}
+}
+
+@inproceedings{edman2025mask,
+  title     = {Mask and You Shall Receive: Optimizing Masked Language Modeling For Pretraining {B}aby{LM}s},
+  author    = {Edman, Lukas and Fraser, Alexander},
+  booktitle = {Proceedings of the First BabyLM Workshop},
+  pages     = {445--453},
+  year      = {2025},
+  address   = {Suzhou, China},
+  publisher = {Association for Computational Linguistics}
+}
+
+@inproceedings{capone2025classit,
+  title     = {{CLASS-IT}: Conversational and Lecture-Aligned Small-Scale Instruction Tuning for {B}aby{LM}s},
+  author    = {Capone, Luca and Bondielli, Alessandro and Lenci, Alessandro},
+  booktitle = {Proceedings of the First BabyLM Workshop},
+  pages     = {436--444},
+  year      = {2025},
+  address   = {Suzhou, China},
+  publisher = {Association for Computational Linguistics}
+}
+
+@inproceedings{tapaninaho2025moep,
+  title     = {{MoEP}: Modular Expert Paths for Sample-Efficient Language Modeling},
+  author    = {Tapaninaho, Joonas},
+  booktitle = {Proceedings of the First BabyLM Workshop},
+  pages     = {540--547},
+  year      = {2025},
+  address   = {Suzhou, China},
+  publisher = {Association for Computational Linguistics}
+}
+
+@inproceedings{martins2025upon,
+  title     = {Once Upon a Time: Interactive Learning for Storytelling with Small Language Models},
+  author    = {{Mayer Martins}, Jonas and Bashir, Ali Hamza and Khalid, Muhammad Rehan and Beinborn, Lisa},
+  booktitle = {Proceedings of the First BabyLM Workshop},
+  pages     = {454--468},
+  year      = {2025},
+  address   = {Suzhou, China},
+  publisher = {Association for Computational Linguistics}
+}
+
+% ---------------------------------------------------------------------
+% [D] Predicting behavioral & neural data from LLMs
+% ---------------------------------------------------------------------
+
+@article{ohschuler2023why,
+  author  = {Oh, Byung-Doh and Schuler, William},
+  title   = {Why Does Surprisal from Larger Transformer-Based Language Models Provide a Poorer Fit to Human Reading Times?},
+  journal = {Transactions of the Association for Computational Linguistics},
+  volume  = {11},
+  pages   = {336--350},
+  year    = {2023}
+}
+
+@inproceedings{ohschuler2023twobillion,
+  author    = {Oh, Byung-Doh and Schuler, William},
+  title     = {Transformer-Based Language Model Surprisal Predicts Human Reading Times Best with About Two Billion Training Tokens},
+  booktitle = {Findings of EMNLP},
+  pages     = {1915--1921},
+  year      = {2023}
+}
+
+@inproceedings{kuribayashi2024psychometric,
+  author    = {Kuribayashi, Tatsuki and Oseki, Yohei and Baldwin, Timothy},
+  title     = {Psychometric Predictive Power of Large Language Models},
+  booktitle = {Findings of NAACL},
+  pages     = {1983--2005},
+  year      = {2024}
+}
+
+@inproceedings{kuribayashi2021lower,
+  author    = {Kuribayashi, Tatsuki and Oseki, Yohei and Ito, Takumi and Yoshida, Ryo and Asahara, Masayuki and Inui, Kentaro},
+  title     = {Lower Perplexity is Not Always Human-Like},
+  booktitle = {Proceedings of ACL-IJCNLP},
+  pages     = {5203--5217},
+  year      = {2021}
+}
+
+@inproceedings{wilcox2023testing,
+  author    = {Wilcox, Ethan G. and Pimentel, Tiago and Meister, Clara and Cotterell, Ryan and Levy, Roger P.},
+  title     = {Testing the Predictions of Surprisal Theory in 11 Languages},
+  booktitle = {Transactions of the Association for Computational Linguistics},
+  volume    = {11},
+  year      = {2023}
+}
+
+@inproceedings{wilcox2020predictive,
+  author    = {Wilcox, Ethan Gotlieb and Gauthier, Jon and Hu, Jennifer and Qian, Peng and Levy, Roger},
+  title     = {On the Predictive Power of Neural Language Models for Human Real-Time Comprehension Behavior},
+  booktitle = {Proceedings of the Cognitive Science Society (CogSci)},
+  pages     = {1707--1713},
+  year      = {2020}
+}
+
+@inproceedings{goodkind2018predictive,
+  author    = {Goodkind, Adam and Bicknell, Klinton},
+  title     = {Predictive Power of Word Surprisal for Reading Times is a Linear Function of Language Model Quality},
+  booktitle = {Proceedings of the Workshop on Cognitive Modeling and Computational Linguistics (CMCL)},
+  pages     = {10--18},
+  year      = {2018}
+}
+
+@misc{logitlens2020,
+  author = {nostalgebraist},
+  title  = {Interpreting {GPT}: The Logit Lens},
+  year   = {2020},
+  howpublished = {LessWrong blog post}
+}
+
+@article{belrose2023tuned,
+  author  = {Belrose, Nora and Furman, Zach and Smith, Logan and Halawi, Danny and McKinney, Lev and Ostrovsky, Igor and Biderman, Stella and Steinhardt, Jacob},
+  title   = {Eliciting Latent Predictions from Transformers with the Tuned Lens},
+  journal = {arXiv preprint arXiv:2303.08112},
+  year    = {2023}
+}
+
+@inproceedings{tenney2019bert,
+  author    = {Tenney, Ian and Das, Dipanjan and Pavlick, Ellie},
+  title     = {{BERT} Rediscovers the Classical {NLP} Pipeline},
+  booktitle = {Proceedings of ACL},
+  pages     = {4593--4601},
+  year      = {2019}
+}
+
+@inproceedings{giulianelli2024generalized,
+  author    = {Giulianelli, Mario and Opedal, Andreas and Cotterell, Ryan},
+  title     = {Generalized Measures of Anticipation and Responsivity in Online Language Processing},
+  booktitle = {Findings of EMNLP},
+  year      = {2024}
+}
+
+@inproceedings{opedal2024role,
+  author    = {Opedal, Andreas and Chodroff, Eleanor and Cotterell, Ryan and Wilcox, Ethan},
+  title     = {On the Role of Context in Reading Time Prediction},
+  booktitle = {Proceedings of EMNLP},
+  pages     = {3042--3058},
+  year      = {2024}
+}
+
+% ---------------------------------------------------------------------
+% [E] Datasets: behavioral (SPR / eye-tracking) and neural (fMRI/EEG)
+% ---------------------------------------------------------------------
+
+@article{futrell2021natural,
+  author  = {Futrell, Richard and Gibson, Edward and Tily, Harry J. and Blank, Idan and Vishnevetsky, Anastasia and Piantadosi, Steven T. and Fedorenko, Evelina},
+  title   = {The Natural Stories Corpus: A Reading-Time Corpus of English Texts Containing Rare Syntactic Constructions},
+  journal = {Language Resources and Evaluation},
+  volume  = {55},
+  number  = {1},
+  pages   = {63--77},
+  year    = {2021}
+}
+
+@article{boycelevy2023maze,
+  author  = {Boyce, Veronica and Levy, Roger Philip},
+  title   = {A-Maze of Natural Stories: Comprehension and Surprisal in the Maze Task},
+  journal = {Glossa Psycholinguistics},
+  year    = {2023}
+}
+
+@inproceedings{kennedy2003dundee,
+  author    = {Kennedy, Alan and Hill, Robin and Pynte, Jo{\"e}l},
+  title     = {The Dundee Corpus},
+  booktitle = {Proceedings of the 12th European Conference on Eye Movement},
+  year      = {2003}
+}
+
+@article{hollenstein2018zuco,
+  author  = {Hollenstein, Nora and Rotsztejn, Jonathan and Troendle, Marius and Pedroni, Andreas and Zhang, Ce and Langer, Nicolas},
+  title   = {{ZuCo}, a Simultaneous {EEG} and Eye-Tracking Resource for Natural Sentence Reading},
+  journal = {Scientific Data},
+  volume  = {5},
+  pages   = {180291},
+  year    = {2018}
+}
+
+@article{frank2013reading,
+  author  = {Frank, Stefan L. and Fernandez Monsalve, Irene and Thompson, Robin L. and Vigliocco, Gabriella},
+  title   = {Reading Time Data for Evaluating Broad-Coverage Models of English Sentence Processing},
+  journal = {Behavior Research Methods},
+  volume  = {45},
+  pages   = {1182--1190},
+  year    = {2013}
+}
+
+@article{frank2015erp,
+  author  = {Frank, Stefan L. and Otten, Leun J. and Galli, Giulia and Vigliocco, Gabriella},
+  title   = {The {ERP} Response to the Amount of Information Conveyed by Words in Sentences},
+  journal = {Brain and Language},
+  volume  = {140},
+  pages   = {1--11},
+  year    = {2015}
+}
+
+@article{vasishth2010shortterm,
+  author  = {Vasishth, Shravan and Suckow, Katja and Lewis, Richard L. and Kern, Sabine},
+  title   = {Short-Term Forgetting in Sentence Comprehension: Cross-Linguistic Evidence from Verb-Final Structures},
+  journal = {Language and Cognitive Processes},
+  volume  = {25},
+  number  = {4},
+  pages   = {533--567},
+  year    = {2010}
+}
+
+@article{michaelov2024strong,
+  author  = {Michaelov, James A. and Bardolph, Megan D. and Van Petten, Cyma K. and Bergen, Benjamin K. and Coulson, Seana},
+  title   = {Strong Prediction: Language Model Surprisal Explains Multiple {N400} Effects},
+  journal = {Neurobiology of Language},
+  volume  = {5},
+  number  = {1},
+  pages   = {107--135},
+  year    = {2024}
+}
+
+@article{federmeier2007multiple,
+  author  = {Federmeier, Kara D. and Wlotko, Edward W. and De Ochoa-Dewald, Esmeralda and Kutas, Marta},
+  title   = {Multiple Effects of Sentential Constraint on Word Processing},
+  journal = {Brain Research},
+  volume  = {1146},
+  pages   = {75--84},
+  year    = {2007}
+}
+
+@article{luke2018provo,
+  author  = {Luke, Steven G. and Christianson, Kiel},
+  title   = {The {P}rovo Corpus: A Large Eye-Tracking Corpus with Predictability Norms},
+  journal = {Behavior Research Methods},
+  volume  = {50},
+  year    = {2018}
+}
+
+@article{siegelman2022meco,
+  author  = {Siegelman, Noam and Schroeder, Sascha and Acart{\"u}rk, Cengiz and Ahn, Hee-Don and Alexeeva, Svetlana and Amenta, Simona and Bertram, Raymond and Bonandrini, Rolando and Brysbaert, Marc and Chernova, Daria and others},
+  title   = {Expanding Horizons of Cross-Linguistic Research on Reading: The Multilingual Eye-Movement Corpus ({MECO})},
+  journal = {Behavior Research Methods},
+  volume  = {54},
+  number  = {6},
+  pages   = {2843--2863},
+  year    = {2022}
+}
+
+@article{shain2022robust,
+  author  = {Shain, Cory and Blank, Idan A. and Fedorenko, Evelina and Gibson, Edward and Schuler, William},
+  title   = {Robust Effects of Working Memory Demand During Naturalistic Language Comprehension in Language-Selective Cortex},
+  journal = {Journal of Neuroscience},
+  volume  = {42},
+  number  = {39},
+  pages   = {7412--7430},
+  year    = {2022}
+}
+
+% ---------------------------------------------------------------------
+% [F] Standard LLM / architecture references (for Models section)
+% ---------------------------------------------------------------------
+
+@inproceedings{vaswani2017attention,
+  author    = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, Lukasz and Polosukhin, Illia},
+  title     = {Attention Is All You Need},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {30},
+  year      = {2017}
+}
+
+@misc{radford2019gpt2,
+  author = {Radford, Alec and Wu, Jeffrey and Child, Rewon and Luan, David and Amodei, Dario and Sutskever, Ilya},
+  title  = {Language Models Are Unsupervised Multitask Learners},
+  year   = {2019},
+  howpublished = {OpenAI blog}
+}
+
+@article{zhang2022opt,
+  author  = {Zhang, Susan and Roller, Stephen and Goyal, Naman and Artetxe, Mikel and Chen, Moya and Chen, Shuohui and Dewan, Christopher and Diab, Mona and Li, Xian and Lin, Xi Victoria and others},
+  title   = {{OPT}: Open Pre-Trained Transformer Language Models},
+  journal = {arXiv preprint arXiv:2205.01068},
+  year    = {2022}
+}
+
+@inproceedings{biderman2023pythia,
+  author    = {Biderman, Stella and Schoelkopf, Hailey and Anthony, Quentin Gregory and Bradley, Herbie and O'Brien, Kyle and Hallahan, Eric and Khan, Mohammad Aflah and Purohit, Shivanshu and Prashanth, USVSN Sai and Raff, Edward and others},
+  title     = {Pythia: A Suite for Analyzing Large Language Models Across Training and Scaling},
+  booktitle = {Proceedings of ICML},
+  pages     = {2397--2430},
+  year      = {2023}
+}
+
+@article{shliazhko2024mgpt,
+  author  = {Shliazhko, Oleh and Fenogenova, Alena and Tikhonova, Maria and Kozlova, Anastasia and Mikhailov, Vladislav and Shavrina, Tatiana},
+  title   = {{mGPT}: Few-Shot Learners Go Multilingual},
+  journal = {Transactions of the Association for Computational Linguistics},
+  volume  = {12},
+  year    = {2024}
+}
+
+@misc{black2021gptneo,
+  author       = {Black, Sid and Gao, Leo and Wang, Phil and Leahy, Connor and Biderman, Stella},
+  title        = {{GPT-Neo}: Large Scale Autoregressive Language Modeling with Mesh-Tensorflow},
+  year         = {2021},
+  howpublished = {\url{https://doi.org/10.5281/zenodo.5297715}}
+}
+
+@misc{wang2021gptj,
+  author       = {Wang, Ben and Komatsuzaki, Aran},
+  title        = {{GPT-J-6B}: A 6 Billion Parameter Autoregressive Language Model},
+  year         = {2021}
+}
+
+@article{black2022gptneox,
+  title   = {{GPT-NeoX-20B}: An Open-Source Autoregressive Language Model},
+  author  = {Black, Sid and Biderman, Stella and Hallahan, Eric and Anthony, Quentin and Gao, Leo and Golding, Laurence and He, Horace and Leahy, Connor and McDonell, Kyle and Phang, Jason and Pieler, Michael and Prashanth, USVSN Sai and Purohit, Shivanshu and Reynolds, Laria and Tow, Jonathan and Wang, Ben and Weinbach, Samuel},
+  journal = {Proceedings of BigScience Episode \#5 -- Workshop on Challenges \& Perspectives in Creating Large Language Models},
+  year    = {2022}
+}
+
+@inproceedings{gu2024mamba,
+  title     = {Mamba: Linear-Time Sequence Modeling with Selective State Spaces},
+  author    = {Gu, Albert and Dao, Tri},
+  booktitle = {Conference on Language Modeling (COLM)},
+  year      = {2024}
+}
+
+@article{olmo20252olmo2furious,
+  title   = {2 {OLMo} 2 Furious},
+  author  = {{Team OLMo} and Walsh, Pete and Soldaini, Luca and Groeneveld, Dirk
+             and Lo, Kyle and Arora, Shane and Bhagia, Akshita and Gu, Yuling
+             and Huang, Shengyi and Jordan, Matt and Lambert, Nathan
+             and Schwenk, Dustin and Tafjord, Oyvind and Anderson, Taira
+             and Atkinson, David and Brahman, Faeze and Clark, Christopher
+             and Dasigi, Pradeep and Dziri, Nouha and Guerquin, Michal
+             and Ivison, Hamish and Koh, Pang Wei and Liu, Jiacheng
+             and Malik, Saumya and Merrill, William and Miranda, Lester James V.
+             and Morrison, Jacob and Murray, Tyler and Nam, Crystal
+             and Pyatkin, Valentina and Rangapur, Aman and Schmitz, Michael
+             and Skjonsberg, Sam and Wadden, David and Wilhelm, Christopher
+             and Wilson, Michael and Zettlemoyer, Luke and Farhadi, Ali
+             and Smith, Noah A. and Hajishirzi, Hannaneh},
+  journal = {arXiv preprint arXiv:2501.00656},
+  year    = {2025}
+}
+
+@article{qwen3,
+  title   = {Qwen3 Technical Report},
+  author  = {Yang, An and Li, Anfeng and Yang, Baosong and Zhang, Beichen
+             and Hui, Binyuan and Zheng, Bo and Yu, Bowen and Gao, Chang
+             and Huang, Chengen and Lv, Chenxu and Zheng, Chujie
+             and Liu, Dayiheng and Zhou, Fan and Huang, Fei and Hu, Feng
+             and Ge, Hao and Wei, Haoran and Lin, Huan and Tang, Jialong
+             and Yang, Jian and Tu, Jianhong and Zhang, Jianwei
+             and Yang, Jianxin and Yang, Jiaxi and Zhou, Jing
+             and Zhou, Jingren and Lin, Junyang and Dang, Kai
+             and Bao, Keqin and Yang, Kexin and Yu, Le and Deng, Lianghao
+             and Li, Mei and Xue, Mingfeng and Li, Mingze and Zhang, Pei
+             and Wang, Peng and Zhu, Qin and Men, Rui and Gao, Ruize
+             and Liu, Shixuan and Luo, Shuang and Li, Tianhao
+             and Tang, Tianyi and Yin, Wenbiao and Ren, Xingzhang
+             and Wang, Xinyu and Zhang, Xinyu and Ren, Xuancheng
+             and Fan, Yang and Su, Yang and Zhang, Yichang
+             and Zhang, Yinger and Wan, Yu and Liu, Yuqiong
+             and Wang, Zekun and Cui, Zeyu and Zhang, Zhenru
+             and Zhou, Zhipeng and Qiu, Zihan},
+  journal = {arXiv preprint arXiv:2505.09388},
+  year    = {2025}
+}
+
+@article{press2021train,
+  title   = {Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation},
+  author  = {Press, Ofir and Smith, Noah A. and Lewis, Mike},
+  year    = {2021},
+  journal = {arXiv preprint arXiv:2108.12409}
+}
+
+% ---------------------------------------------------------------------
+% [G] Memory-constrained architectures (for Models §3.2 / Memory-
+% Constrained LLM family)
+% ---------------------------------------------------------------------
+
+% -- Single attention head --
+
+@inproceedings{timkey2023limited,
+  author    = {Timkey, William and Linzen, Tal},
+  title     = {A Language Model with Limited Memory Capacity Captures Interference in Human Sentence Processing},
+  booktitle = {Findings of EMNLP},
+  year      = {2023}
+}
+
+% -- Distance-based decay --
+
+@inproceedings{devarda2024locally,
+  author    = {de Varda, Andrea Gregor and Marelli, Marco},
+  title     = {Locally Biased Transformers Better Align with Human Reading Times},
+  booktitle = {Proceedings of the Workshop on Cognitive Modeling and Computational Linguistics (CMCL)},
+  year      = {2024}
+}
+
+@inproceedings{clark2025linear,
+  author    = {Clark, Christian and Oh, Byung-Doh and Schuler, William},
+  title     = {Linear Recency Bias During Training Improves Transformers' Fit to Reading Times},
+  booktitle = {Proceedings of the 31st International Conference on Computational Linguistics (COLING)},
+  pages     = {7735--7747},
+  address   = {Abu Dhabi, UAE},
+  year      = {2025},
+  note      = {arXiv:2409.11250}
+}
+
+@article{thamma2025humanlike,
+  author  = {Thamma, Abishek and Heilbron, Micha},
+  title   = {Human-Like Fleeting Memory Improves Language Learning but Impairs Reading Time Prediction in Transformer Language Models},
+  journal = {arXiv preprint arXiv:2508.05803},
+  year    = {2025},
+  note    = {Listed as "2026" in the CogPlausAI review, likely referring to a forthcoming conference/journal version; cite the arXiv preprint until a venue is confirmed}
+}
+
+% -- Content-sensitive decay --
+
+@inproceedings{lin2025forgetting,
+  author    = {Lin, Zhixuan and Nikishin, Evgenii and He, Xu Owen and Courville, Aaron},
+  title     = {Forgetting Transformer: Softmax Attention with a Forget Gate},
+  booktitle = {The Thirteenth International Conference on Learning Representations (ICLR)},
+  year      = {2025},
+  note      = {arXiv:2503.02130}
+}
+
+@inproceedings{tan2025scaling,
+  author    = {Tan, Shawn and Yang, Songlin and Courville, Aaron and Panda, Rameswar and Shen, Yikang},
+  title     = {Scaling Stick-Breaking Attention: An Efficient Implementation and In-Depth Study},
+  booktitle = {The Thirteenth International Conference on Learning Representations (ICLR)},
+  year      = {2025},
+  note      = {arXiv:2410.17980}
+}
+
+% -- Noise-based decay --
+
+@inproceedings{xu2026memory,
+  author    = {Xu, Weijie and Dillon, Brian and Futrell, Richard},
+  title     = {Memory Efficiency and Resource-Rational Encoding in Sentence Processing},
+  booktitle = {Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  pages     = {33603--33618},
+  address   = {San Diego, California, USA},
+  year      = {2026},
+  note      = {Best Paper Award, ACL 2026}
+}
+
+@misc{hsp2026abstract88,
+  title        = {Submission \#88},
+  howpublished = {Human Sentence Processing (HSP) 2026 Conference Abstracts, \url{https://hsp2026.org/abstracts/submission_88.pdf}},
+  year         = {2026},
+  note         = {Author names and abstract title not extractable from the source URL alone -- fetch the abstract PDF directly and fill in before citing}
+}
+
+% -- Resource-rational forgetting --
+% (hahn2022resourcerational already listed in section [C] above)
+
+@article{xufutrell2026strategic,
+  author  = {Xu, Weijie and Futrell, Richard},
+  title   = {Strategic Resource Allocation in Memory Encoding: An Efficiency Principle Shaping Language Processing},
+  journal = {Journal of Memory and Language},
+  volume  = {146},
+  pages   = {104706},
+  year    = {2026},
+  note    = {Listed as "Xu and Futrell (JML 2025)" / "Informativity enhances memory robustness against interference in sentence comprehension" in the CogPlausAI review; the matching published paper is titled as above (JML 146:104706, 2026), also circulated as arXiv:2503.14728. Confirm this is the intended reference, as the review's title differs slightly from the published title.}
+}
+
+% -- Hard local n-gram windows and CBR-RNN --
+
+@misc{bu2026staticlinearattentionconstraints,
+  title         = {Beyond Static and Linear: What Attention Constraints Best Fit Human Reading Times?},
+  author        = {Bu, Lanni and Yang, Xiulin and Clark, Christian and Warstadt, Alex and Wilcox, Ethan Gotlieb},
+  year          = {2026},
+  eprint        = {2608.23818},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL},
+  url           = {https://arxiv.org/abs/2608.23818}
+}
+
+% -- Bounded memory cell --
+
+@article{rasmussen2017leftcorner,
+  author  = {Rasmussen, Nathan E. and Schuler, William},
+  title   = {Left-Corner Parsing with Distributed Associative Memory Produces Surprisal and Locality Effects},
+  journal = {Cognitive Science},
+  volume  = {42},
+  number  = {S4},
+  pages   = {1009--1042},
+  year    = {2018},
+  note    = {Listed as "Rasmussen and Schuler (Cognitive Science 2017)" in the CogPlausAI review; the published version is dated 2018 (vol. 42, issue S4).}
+}
+
+@article{keshev2025working,
+  author  = {Keshev, Maayan and Cartner, Mandy and Meltzer-Asscher, Aya and Dillon, Brian},
+  title   = {A Working Memory Model of Sentence Processing as Binding Morphemes to Syntactic Positions},
+  journal = {Topics in Cognitive Science},
+  volume  = {17},
+  number  = {1},
+  pages   = {88--105},
+  year    = {2025},
+  note    = {Part of the topic ``Best of Papers from the 2024 Cognitive Science Society Conference''}
+}
+
+@misc{rambaud2025mapformer,
+  author = {Rambaud, Victor and Mascarenhas, Salvador and Lakretz, Yair},
+  title  = {{MapFormer}: Self-Supervised Learning of Cognitive Maps with Input-Dependent Positional Embeddings},
+  year   = {2025},
+  note   = {arXiv:2511.19279 (submitted Nov 2025; a v3 revision followed in Feb 2026). Listed as ``Rambaud et al. (2026)'' in the CogPlausAI review -- cite the arXiv version until a peer-reviewed venue is confirmed.}
+}
+
+@inproceedings{katharopoulos2020transformers,
+  author    = {Katharopoulos, Angelos and Vyas, Apoorv and Pappas, Nikolaos and Fleuret, Fran{\c{c}}ois},
+  title     = {Transformers Are {RNN}s: Fast Autoregressive Transformers with Linear Attention},
+  booktitle = {Proceedings of ICML},
+  year      = {2020}
+}
+
+@article{daogu2024transformers,
+  author  = {Dao, Tri and Gu, Albert},
+  title   = {Transformers Are {SSM}s: Generalized Models and Efficient Algorithms Through Structured State Space Duality},
+  journal = {arXiv preprint arXiv:2405.21060},
+  year    = {2024}
+}
+
+@inproceedings{yang2024parallelizing,
+  author    = {Yang, Songlin and Wang, Bailin and Zhang, Yu and Shen, Yikang and Kim, Yoon},
+  title     = {Parallelizing Linear Transformers with the Delta Rule over Sequence Length},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024}
+}
+
+% -- Bounded context length --
+% (kuribayashi2022context already listed in section [C] above)
+
+% -- Other ideas: ACT-R-style access-based decay --
+% Already covered by \cite{lewisvasishth2005activation} in section [A]
+% above -- reuse that key when citing the ACT-R-style access-based
+% memory decay analogy; no separate entry needed.
+
+% ---------------------------------------------------------------------
+% [I] MEG datasets (for Appendix dataset table)
+% ---------------------------------------------------------------------
+
+@article{gwilliams2022neural,
+  author  = {Gwilliams, Laura and King, Jean-Remi and Marantz, Alec and Poeppel, David},
+  title   = {Neural Dynamics of Phoneme Sequences Reveal Position-Invariant Code for Content and Order},
+  journal = {Nature Communications},
+  volume  = {13},
+  number  = {1},
+  year    = {2022},
+  note    = {MEG-MASC dataset, OpenNeuro ds \url{https://osf.io/rguwj/}}
+}
+
+@article{dascoli2025towards,
+  author  = {d'Ascoli, St{\'e}phane and Bel, Corentin and Rapin, J{\'e}r{\'e}my and Banville, Hubert and Benchetrit, Yohann and Pallier, Christophe and King, Jean-R{\'e}mi},
+  title   = {Towards Decoding Individual Words from Non-Invasive Brain Recordings},
+  journal = {Nature Communications},
+  volume  = {16},
+  number  = {1},
+  pages   = {10521},
+  year    = {2025},
+  note    = {Le Petit Prince MEG (RSVP reading) dataset, OpenNeuro ds007524}
+}
+
+@article{glover1999deconvolution,
+  author  = {Glover, Gary H.},
+  title   = {Deconvolution of Impulse Response in Event-Related {BOLD} {fMRI}},
+  journal = {NeuroImage},
+  volume  = {9},
+  number  = {4},
+  pages   = {416--429},
+  year    = {1999}
+}
+
+@article{barr2013random,
+  author  = {Barr, Dale J. and Levy, Roger and Scheepers, Christoph and Tily, Harry J.},
+  title   = {Random Effects Structure for Confirmatory Hypothesis Testing: Keep It Maximal},
+  journal = {Journal of Memory and Language},
+  volume  = {68},
+  number  = {3},
+  pages   = {255--278},
+  year    = {2013}
+}
+
+% ---------------------------------------------------------------------
+% [J] Remaining dataset source papers (for Appendix dataset table)
+% ---------------------------------------------------------------------
+
+@article{cop2017geco,
+  author  = {Cop, Uschi and Dirix, Nicolas and Drieghe, Denis and Duyck, Wouter},
+  title   = {Presenting {GECO}: An Eyetracking Corpus of Monolingual and Bilingual Sentence Reading},
+  journal = {Behavior Research Methods},
+  volume  = {49},
+  number  = {2},
+  pages   = {602--615},
+  year    = {2017}
+}
+
+@misc{berzak2025onestop,
+  author       = {Berzak, Yevgeni and Malmaud, Jonathan and Shubi, Omer and Meiri, Yoav and Lion, Ella and Levy, Roger},
+  title        = {{OneStop}: A 360-Participant English Eye Tracking Dataset with Different Reading Regimes},
+  year         = {2025},
+  howpublished = {PsyArXiv preprint}
+}
+
+@article{nieuwland2018largescale,
+  author  = {Nieuwland, Mante S. and Politzer-Ahles, Stephen and Heyselaar, Evelien and Segaert, Katrien and Darley, Emily and Kazanina, Nina and Von Grebmer Zu Wolfsthurn, Sarah and Bartolozzi, Federica and others},
+  title   = {Large-Scale Replication Study Reveals a Limit on Probabilistic Prediction in Language Comprehension},
+  journal = {eLife},
+  volume  = {7},
+  pages   = {e33468},
+  year    = {2018}
+}
+
+@article{ryskin2021erp,
+  author  = {Ryskin, Rachel and Stearns, Laura and Bergen, Leon and Eddy, Marianna and Fedorenko, Evelina and Gibson, Edward},
+  title   = {An {ERP} Index of Real-Time Error Correction Within a Noisy-Channel Framework of Human Communication},
+  journal = {Neuropsychologia},
+  volume  = {158},
+  pages   = {107855},
+  year    = {2021}
+}
+
+@article{szewczyk2022context,
+  author  = {Szewczyk, James M. and Federmeier, Kara D.},
+  title   = {Context-Based Facilitation of Semantic Access Follows Both Logarithmic and Linear Functions of Stimulus Probability},
+  journal = {Journal of Memory and Language},
+  volume  = {123},
+  pages   = {104311},
+  year    = {2022}
+}
+
+@article{broderick2018electrophysiological,
+  author  = {Broderick, Michael P. and Anderson, Andrew J. and Di Liberto, Giovanni M. and Crosse, Michael J. and Lalor, Edmund C.},
+  title   = {Electrophysiological Correlates of Semantic Dissimilarity Reflect the Comprehension of Natural, Narrative Speech},
+  journal = {Current Biology},
+  volume  = {28},
+  number  = {5},
+  pages   = {803--809},
+  year    = {2018}
+}
+
+@article{accou2024sparrkulee,
+  author  = {Accou, Bernd and Bollens, Lies and Gillis, Marlies and Verheijen, Emma and Van hamme, Hugo and Francart, Tom},
+  title   = {{SparrKULee}: A Speech-Evoked Auditory Response Repository from {KU} {L}euven, Containing the {EEG} of 85 Participants},
+  journal = {Data},
+  volume  = {9},
+  number  = {8},
+  pages   = {94},
+  year    = {2024}
+}
+
+@article{li2022lepetitprince,
+  author  = {Li, Jixing and Bhattasali, Shohini and Zhang, Shulin and Franzluebbers, Berta and Luh, Wen-Ming and Spreng, R. Nathan and Brennan, Jonathan R. and Yang, Yiming and Pallier, Christophe and Hale, John},
+  title   = {Le Petit Prince Multilingual Naturalistic {fMRI} Corpus},
+  journal = {Scientific Data},
+  volume  = {9},
+  pages   = {530},
+  year    = {2022}
+}
+
+@article{bonnasse2024fmri,
+  title   = {{fMRI} Predictors Based on Language Models of Increasing Complexity Recover Brain Left Lateralization},
+  author  = {Bonnasse-Gahot, Laurent and Pallier, Christophe},
+  journal = {Advances in Neural Information Processing Systems},
+  volume  = {37},
+  pages   = {125231--125263},
+  year    = {2024}
+}
+
+@article{tuckute2024driving,
+  author  = {Tuckute, Greta and Sathe, Aalok and Srikant, Shashank and Taliaferro, Maya and Wang, Mingye and Schrimpf, Martin and Kay, Kendrick and Fedorenko, Evelina},
+  title   = {Driving and Suppressing the Human Language Network Using Large Language Models},
+  journal = {Nature Human Behaviour},
+  volume  = {8},
+  number  = {3},
+  pages   = {544--561},
+  year    = {2024}
+}
+
+@article{zada2025podcast,
+  author  = {Zada, Zaid and Nastase, Samuel A. and Aubrey, Bobbi and Jalon, Itamar and Michelmann, Sebastian and Wang, Haocheng and Hasenfratz, Liat and Doyle, Werner and Friedman, Daniel and Dugan, Patricia and others},
+  title   = {The ``{P}odcast'' {ECoG} Dataset for Modeling Neural Activity During Natural Language Comprehension},
+  journal = {Scientific Data},
+  year    = {2025}
+}
+
+@article{fedorenko2016neural,
+  author  = {Fedorenko, Evelina and Scott, Terri L. and Brunner, Peter and Coon, William G. and Pritchett, Brianna and Schalk, Gerwin and Kanwisher, Nancy},
+  title   = {Neural Correlate of the Construction of Sentence Meaning},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {113},
+  number  = {41},
+  pages   = {E6256--E6262},
+  year    = {2016}
+}
+
+% ---------------------------------------------------------------------
+% [H] Noise-ceiling / normalization methodology (for Appendix)
+% ---------------------------------------------------------------------
+
+@misc{vanbree2025noiseceiling,
+  author       = {van Bree, Sander and Styrnal, Malin and Hebart, Martin N.},
+  title        = {How Much Variance Does Your Model Explain? A Clarifying Note on the Use of Split-Half Reliability for Computing Noise Ceilings},
+  year         = {2025},
+  note         = {Preprint, circulated December 2025; no archival identifier available at time of citation}
+}
+
+@article{timkey2026dissociation,
+  author  = {Timkey, William and Huang, Kuan-Jung and Oh, Byung-Doh and Prasad, Grusha and Arehalli, Suhas and Linzen, Tal and Dillon, Brian},
+  title   = {Eye Movements Reveal a Dissociation between Prediction and Structural Processing Difficulty in Language Comprehension},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {123},
+  number  = {32},
+  pages   = {e2532230123},
+  year    = {2026}
+}
+
+% ---------------------------------------------------------------------
+% [K] Concurrent work
+% ---------------------------------------------------------------------
+
+@misc{devarda2026behavioral,
+  author       = {de Varda, Andrea Gregor and Berzak, Yevgeni and Fedorenko, Evelina and Levy, Roger},
+  title        = {Behavioral and Brain Responses to Language Reflect Different Levels of Linguistic Representation},
+  year         = {2026},
+  howpublished = {bioRxiv preprint, posted August 25, 2026, \url{https://doi.org/10.64898/2026.08.21.746238}}
+}
+
+% ---------------------------------------------------------------------
+% [L] Additional datasets / LME design sources
+% ---------------------------------------------------------------------
+
+@article{pereira2018toward,
+  author  = {Pereira, Francisco and Lou, Bin and Pritchett, Brianna and Ritter, Samuel and Gershman, Samuel J. and Kanwisher, Nancy and Botvinick, Matthew and Fedorenko, Evelina},
+  title   = {Toward a Universal Decoder of Linguistic Meaning from Brain Activation},
+  journal = {Nature Communications},
+  volume  = {9},
+  pages   = {963},
+  year    = {2018}
+}
+
+@inproceedings{linschuler2026surprisal,
+  author    = {Lin, Yi-Chien and Schuler, William},
+  title     = {Surprisal from Larger Transformer-Based Language Models Predicts {fMRI} Data More Poorly},
+  booktitle = {Proceedings of the 19th Conference of the European Chapter of the Association for Computational Linguistics (Volume 2: Short Papers)},
+  year      = {2026},
+  note      = {arXiv:2506.11338}
+}
+
+@incollection{gibson2000dlt,
+  author    = {Gibson, Edward},
+  title     = {The Dependency Locality Theory: A Distance-Based Theory of Linguistic Complexity},
+  booktitle = {Image, Language, Brain: Papers from the First Mind Articulation Project Symposium},
+  editor    = {Marantz, Alec and Miyashita, Yasushi and O'Neil, Wayne},
+  publisher = {MIT Press},
+  address   = {Cambridge, MA},
+  pages     = {95--126},
+  year      = {2000}
+}
+
+@article{gibson1998linguistic,
+  author  = {Gibson, Edward},
+  title   = {Linguistic Complexity: Locality of Syntactic Dependencies},
+  journal = {Cognition},
+  volume  = {68},
+  number  = {1},
+  pages   = {1--76},
+  year    = {1998}
+}

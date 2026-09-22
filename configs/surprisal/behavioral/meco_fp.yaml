@@ -1,0 +1,58 @@
+# ============================================================================
+# MECO Corpus (English subset) — First-Pass / Gaze Duration (FP) — LME Sweep
+# ============================================================================
+#
+# Trial-level by-subject LME on raw first-pass duration (``firstrun.dur`` in
+# the released .rda, ms — Clark-2025-style fit, mirroring Provo / GECO / UCL
+# Reading / ZuCo Reading): Zipf frequency (wordfreq) + current-word + spillover
+# surprisal as fixed effects, random slopes by subject.
+#
+# Only the English (lang == "en") subset of MECO is wired up here — see
+# neuroai/datasets/meco.py module docstring for why the other 12 languages
+# are out of scope for now (per-language surprisal/tokenization).
+#
+# NOTE on caching: like Provo's SP/FP/GP, MECO's three measures share the
+# exact same 12-passage word set (for one language) — only the outcome
+# duration column differs. The surprisal + KenLM caches below are therefore
+# NOT nested per measure; a cache built while running this config is reused
+# as-is by meco_lme_sweep_{sp,gp}.yaml.
+#
+# Requires R + lme4 on the runtime host (Jean Zay: module load r/4.5.2).
+# Requires the ``pyreadr`` package to read the released .rda file.
+#
+# Run locally:
+#   .venv/bin/python scripts/run/surprisal/behavioral/meco_fit.py \
+#     --config configs/surprisal/behavioral/meco_fp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: "${BENCHMARK_ROOT}/data/meco/osfstorage/release 2.0/version 2.1/wave 1/primary data/eye tracking data"
+  measure: FP                  # SP | FP | GP
+  language: en
+  passages: null                 # null = all 12 passages
+  rda_filename: joint_l1_data_trimmed_version2.1.rda
+  min_dur: 50.0                  # ms, drop implausibly short durations
+  max_dur: 5000.0                # ms, drop implausibly long durations (regressions/blinks)
+  exclude_doc_edges: true        # also drop passage-initial/-final words
+
+lme:
+  include_surprisal: true
+  include_prev_surprisal: true
+  include_freq: true  # Zipf lexical frequency nuisance (wordfreq)
+  filter_sentence_edges: true
+  compare_baseline: true
+  out_of_sample: true
+  partition_mod: 4
+  partition_fit_indices: [0, 1, 2]   # 75% train (in-sample loglik reusable later)
+  partition_test_indices: [3]        # 25% held-out (OOS ΔLogLik, correlations)
+  verbose: false
+
+cache:
+  # Shared across SP/FP/GP — do NOT nest per measure (see note above).
+  features_dir: ${MECO_FEATURE_CACHE_DIR}
+
+output:
+  save_dir: outputs/meco/surprisal_sweep/fp
+
+models: []

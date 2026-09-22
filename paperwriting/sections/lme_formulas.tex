@@ -1,0 +1,82 @@
+\section{Linear Mixed-Effects Formulas}
+\label{app:lme-formulas}
+
+This appendix specifies the linear mixed-effects (LME) models underlying the BehavScore and BrainScore analyses of Section~3.3, in standard \texttt{lme4} formula notation. Each model is fit once per transformer layer: a \emph{baseline} model containing only nuisance covariates, and a \emph{full} model that additionally includes the layer's surprisal, with the two compared via the log-likelihood difference described in Appendix~\ref{app:dll-ceiling}. All continuous predictors are z-scored within dataset; \texttt{surprisal\_z} denotes the per-layer logit-lens surprisal of the evaluated model, and \texttt{prev\_surprisal\_z} the same quantity for the preceding word (a spillover control).
+
+\subsection{Self-paced reading and eye-tracking}
+
+Reading times and fixation durations across Natural Stories, UCL Reading, GECO, MECO, Provo, OneStop, and ZuCo Reading are modeled with a common specification, with word length, frequency, and sentence position as nuisance covariates and by-subject random slopes:
+\begin{quote}
+\texttt{baseline:\ fdur \textasciitilde\ sentpos\_z + wlen\_z + freq\_z +}\\
+\texttt{\phantom{baseline:\ fdur \textasciitilde\ }(1 + sentpos\_z + wlen\_z | subject)}\\
+\texttt{full:\ fdur \textasciitilde\ sentpos\_z + wlen\_z + freq\_z + surprisal\_z + prev\_surprisal\_z +}\\
+\texttt{\phantom{full:\ fdur \textasciitilde\ }(1 + sentpos\_z + wlen\_z + surprisal\_z + prev\_surprisal\_z | subject)}
+\end{quote}
+
+\subsection{N400 event-related potentials}
+
+Nieuwland is modeled following the specification of its originating study rather than our shared self-paced-reading/eye-tracking structure, since its multi-site design calls for a different random-effects treatment. Following \citet{nieuwland2018largescale}, laboratory is entered as a fixed rather than random effect, since a random-effect variance is not reliably estimable from only nine sites; there is no electrode term, as N400 amplitude is already averaged across centro-parietal channels in this dataset, nor a frequency covariate, matching the original analysis:
+\begin{quote}
+\texttt{baseline:\ n400 \textasciitilde\ lab + (1 | subject) + (1 | item)}\\
+\texttt{full:\ n400 \textasciitilde\ lab + surprisal\_z + (1 | subject) + (1 | item)}
+\end{quote}
+
+\subsection{Continuous EEG}
+
+For Broderick, random effects are estimated separately for each subject and the resulting log-likelihood differences are averaged across subjects, rather than pooling all subjects into a single model. \texttt{region} denotes four anatomical scalp quadrants (left, right, posterior, occipital).
+\begin{quote}
+\texttt{baseline:\ eeg \textasciitilde\ wlen\_z + freq\_z + (1 | region)}\\
+\texttt{full:\ eeg \textasciitilde\ wlen\_z + freq\_z + surprisal\_z + prev\_surprisal\_z + (1 + surprisal\_z | region)}
+\end{quote}
+
+\subsection{fMRI}
+
+For Natural Stories fMRI, \texttt{story} is a crossed random effect, and no spillover term is included, since HRF convolution already blends the contributions of adjacent words into a single BOLD sample. Omitting the frequency covariate reproduces the specification of \citet{shain2022robust}.
+\begin{quote}
+\texttt{baseline:\ bold \textasciitilde\ wlen\_z + freq\_z + sentpos\_z +}\\
+\texttt{\phantom{baseline:\ bold \textasciitilde\ }(1 + wlen\_z + freq\_z | subject) + (1 | story)}\\
+\texttt{full:\ bold \textasciitilde\ wlen\_z + freq\_z + sentpos\_z + surprisal\_z +}\\
+\texttt{\phantom{full:\ bold \textasciitilde\ }(1 + wlen\_z + freq\_z + surprisal\_z | subject) + (1 + surprisal\_z | story)}
+\end{quote}
+
+For Le Petit Prince, the model is fit on the average-subject BOLD signal; \texttt{region} denotes one of ten bilateral language-network parcels from the Fedorenko functional atlas, and \texttt{section} one of the nine narrative chapters.
+\begin{quote}
+\texttt{baseline:\ bold \textasciitilde\ wlen\_z + freq\_z + sentpos\_z + (1 | region) + (1 | section)}\\
+\texttt{full:\ bold \textasciitilde\ wlen\_z + freq\_z + sentpos\_z + surprisal\_z +}\\
+\texttt{\phantom{full:\ bold \textasciitilde\ }(1 + surprisal\_z | region) + (1 | section)}
+\end{quote}
+
+For Tuckute, the response is a single BOLD scalar per (subject, ROI, sentence), so word length and frequency are averaged over the sentence (\texttt{mean\_wlen\_z}, \texttt{mean\_freq\_z}) and surprisal is computed over the whole sentence rather than word-by-word. The model is fit on the naturalistic sentence condition only.
+\begin{quote}
+\texttt{baseline:\ y \textasciitilde\ mean\_wlen\_z + mean\_freq\_z +}\\
+\texttt{\phantom{baseline:\ y \textasciitilde\ }(1 + mean\_wlen\_z + mean\_freq\_z | subject) + (1 | roi) + (1 | sentence\_id)}\\
+\texttt{full:\ y \textasciitilde\ mean\_wlen\_z + mean\_freq\_z + surprisal\_z +}\\
+\texttt{\phantom{full:\ y \textasciitilde\ }(1 + mean\_wlen\_z + mean\_freq\_z + surprisal\_z | subject) + (1 | roi) +}\\
+\texttt{\phantom{full:\ y \textasciitilde\ }(1 + surprisal\_z | sentence\_id)}
+\end{quote}
+
+For Pereira, which uses the same per-sentence design as Tuckute but with sentences of variable length, we follow the specification of \citet{linschuler2026surprisal} directly: sentence length (\texttt{sentlen\_z}) is retained as an additional nuisance covariate alongside mean word length and frequency, \texttt{roi} is a 12-level crossed random effect (the language-atlas parcellation used across all subjects), and surprisal is again computed over the whole sentence rather than word-by-word.
+\begin{quote}
+\texttt{baseline:\ y \textasciitilde\ sentlen\_z + mean\_wlen\_z + mean\_freq\_z +}\\
+\texttt{\phantom{baseline:\ y \textasciitilde\ }(1 + sentlen\_z + mean\_wlen\_z + mean\_freq\_z | subject) + (1 | roi) + (1 | sentence\_id)}\\
+\texttt{full:\ y \textasciitilde\ sentlen\_z + mean\_wlen\_z + mean\_freq\_z + surprisal\_z +}\\
+\texttt{\phantom{full:\ y \textasciitilde\ }(1 + sentlen\_z + mean\_wlen\_z + mean\_freq\_z + surprisal\_z | subject) + (1 | roi) +}\\
+\texttt{\phantom{full:\ y \textasciitilde\ }(1 + surprisal\_z | sentence\_id)}
+\end{quote}
+
+\subsection{Intracranial recordings}
+
+For Podcast and Fedorenko2016, electrodes are patient-specific, so \texttt{electrode} is nested within \texttt{subject} rather than treated as a crossed effect. For Podcast, the model is fit separately at each lag of the response window; no spillover term is included.
+\begin{quote}
+\texttt{baseline:\ y \textasciitilde\ wlen\_z + freq\_z + (1 | subject) + (1 | subject:electrode)}\\
+\texttt{full:\ y \textasciitilde\ wlen\_z + freq\_z + surprisal\_z + (1 | subject) + (1 + surprisal\_z | subject:electrode)}
+\end{quote}
+
+For Fedorenko2016, spillover is included, along with a richer by-subject random-slope structure:
+\begin{quote}
+\texttt{baseline:\ y \textasciitilde\ wlen\_z + freq\_z + (1 + wlen\_z + freq\_z | subject) +}\\
+\texttt{\phantom{baseline:\ y \textasciitilde\ }(1 | subject:electrode)}\\
+\texttt{full:\ y \textasciitilde\ wlen\_z + freq\_z + surprisal\_z + prev\_surprisal\_z +}\\
+\texttt{\phantom{full:\ y \textasciitilde\ }(1 + wlen\_z + freq\_z + surprisal\_z + prev\_surprisal\_z | subject) +}\\
+\texttt{\phantom{full:\ y \textasciitilde\ }(1 + surprisal\_z + prev\_surprisal\_z | subject:electrode)}
+\end{quote}

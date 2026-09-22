@@ -1,0 +1,73 @@
+# ============================================================================
+# MEG-MASC MEG Encoding — Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Predicts word-locked MEG (208 KIT axial gradiometers) from LLM contextual
+# activations using per-channel lag-matrix ridge regression with
+# leave-one-story-out CV (4 MASC stories = 4 folds; both sessions pooled).
+#
+# Dataset: MEG-MASC (Gwilliams et al. 2023, Scientific Data).
+#   Local copy: sub-01 … sub-11 (11 of 27), KIT/Yokogawa 1000 Hz, English.
+#   Raw .con read via MNE; word onsets parsed from the stringified-dict
+#   trial_type column of each events.tsv.
+#
+# Preprocessing recipe: LittlePrince M/EEG paper (arXiv:2412.17829),
+#   with tmax stretched 0.6 -> 0.8 s. Bandpass [0.1, 40] Hz keeps broadband
+#   MEG; 50 Hz mains sits outside it so no notch is applied.
+#
+# Run one array task (Jean Zay):
+#   python scripts/submit.py megmasc embedding fit --family gpt2
+#
+# Run full family locally:
+#   .venv/bin/python scripts/run/embedding/neural/megmasc.py \
+#     --config configs/embedding/neural/megmasc.yaml \
+#     --from-registry --family gpt2 --device cuda
+# ============================================================================
+
+dataset:
+  bids_root: ${MEGMASC_BIDS_ROOT}
+  subjects: null          # null = all sub-* with a readable recording (frozen to configs/subjects/megmasc_subjects.json)
+  stories: null           # null = all four MASC stories
+
+  # Epoch window (seconds relative to word onset)
+  tmin: -0.2
+  tmax: 0.8
+  baseline: [-0.2, 0.0]
+
+  # Raw KIT is 1000 Hz; bandpass at 1000 Hz then resample to 50 Hz.
+  l_freq: 0.1
+  h_freq: 40.0
+  target_sfreq: 50.0
+
+  # Per-channel RobustScaler on the continuous signal, then clamp.
+  robust_scale: true
+  clamp: 5.0
+
+  # Drop words shorter than this (forced-alignment artifacts)
+  min_word_duration: 0.050
+
+  context_words: null
+  max_length: null
+
+  lang: en
+
+regression:
+  n_splits: 4             # 4 stories -> 4 GroupKFold folds
+  alpha: null             # null -> 5-value log-spaced grid [10^3.5 … 10^8]
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: false
+
+benchmark:
+  layerwise: true
+  use_lag_matrix: true
+  tokenizer_no_revision: true
+
+cache:
+  features_dir: ${MEGMASC_FEATURE_CACHE_DIR}
+  epochs_dir: ${MEGMASC_EPOCH_CACHE_DIR}
+
+output:
+  save_dir: outputs/megmasc/embedding_sweep
+
+models: []  # unused — registry scripts use --from-registry

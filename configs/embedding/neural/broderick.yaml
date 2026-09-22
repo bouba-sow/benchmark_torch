@@ -1,0 +1,89 @@
+# ============================================================================
+# Broderick 2018 EEG Encoding — Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Predicts bandpass-filtered (1–8 Hz) scalp EEG from LLM contextual activations
+# using per-channel lag-matrix ridge regression with leave-one-run-out CV
+# (20 audiobook segments = 20 folds).
+#
+# Dataset: Broderick 2018 (ds003702 / OpenNeuro).
+#   19 subjects × 20 runs (~196 s / run) × 128 BioSemi EEG channels @ 512 Hz.
+#   Stimuli: "The Old Man and the Sea" (audiobook), word onsets from TextGrids.
+#   EEG and audio starts are aligned (per README); no trigger-based alignment needed.
+#
+# References:
+#   Broderick et al. (2018) Current Biology — semantic TRF
+#   Di Liberto et al. (2015) Current Biology — phoneme TRF
+#
+# Run single array task (Jean Zay):
+#   python scripts/submit.py broderick embedding fit --family gpt2
+#
+# Run locally (full GPT-2 family):
+#   .venv/bin/python scripts/run/embedding/neural/broderick.py \
+#     --config configs/embedding/neural/broderick.yaml \
+#     --from-registry --family gpt2 --device cuda
+# ============================================================================
+
+dataset:
+  bids_root: ${BENCHMARK_ROOT}/data/broderick
+  # sub-001 excluded: its epochs contain massive uncleaned artifacts
+  # (+-2500-3300uV vs the normal +-60-100uV range across other subjects) --
+  # confirmed via the LME track's degenerate per-subject fits (see
+  # configs/surprisal/neural/broderick.yaml for the full diagnosis). Existing
+  # per-model summary CSVs were retroactively recomputed to exclude
+  # sub-001's already-collected row; this setting keeps any future/resumed
+  # run (e.g. gpt-neox-20b, which never finished) from re-adding it.
+  subjects: [sub-002, sub-003, sub-004, sub-005, sub-006, sub-007, sub-008,
+             sub-009, sub-010, sub-011, sub-012, sub-013, sub-014, sub-015,
+             sub-016, sub-017, sub-018, sub-019]   # 18 subjects (sub-001 excluded)
+  n_runs: 20              # number of audiobook segments
+
+  # Epoch window (seconds relative to word onset)
+  # −200 ms pre-stimulus baseline + 1 s post-onset = 38 bins at 32 Hz
+  tmin: -0.2              # epoch start (s); also baseline start
+  tmax: 1.0               # epoch end (s)
+  baseline: [-0.2, 0.0]   # MNE-style: subtract mean over this window per epoch
+
+  # EEG preprocessing
+  l_freq: 1.0             # bandpass low cutoff (Hz)
+  h_freq: 8.0             # bandpass high cutoff (Hz)
+  target_sfreq: 32.0      # downsample to 32 Hz — matches Nieuwland config
+  average_ref: true       # average reference before filtering
+  drop_bads: true
+
+  # LLM context: null = unbounded sliding window up to model context length
+  context_words: null
+  max_length: null
+
+regression:
+  n_splits: 3             # outer CV folds — matches ZuCo; 20 runs → 3 folds of ~7 runs
+  alpha: null             # null → 5-value log-spaced grid [10^3.5 … 10^8]
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: false
+
+benchmark:
+  layerwise: true
+  # Lag-matrix: one multi-output ridge predicts all 38 time bins simultaneously,
+  # giving a temporal response function at 32 Hz (31.25 ms / bin).
+  use_lag_matrix: true
+  # Fallback windowed-mean parameters (only used when use_lag_matrix: false)
+  window_size: 0.05
+  step_size: 0.025
+  tokenizer_no_revision: true
+  n_layer_workers: 56      # GPU thread pool for layer-parallel fitting (8 per H100)
+
+cache:
+  # LLM embeddings: cached per model/revision/section.
+  # On Jean Zay: jz_cache_env.sh sets BRODERICK_FEATURE_CACHE_DIR.
+  # If the env var is unset the sweep script treats it as None (no disk cache).
+  features_dir: ${BRODERICK_FEATURE_CACHE_DIR}
+  # EEG epochs: cached per subject × preprocessing params (independent of model).
+  # Shared across all model/checkpoint runs for the same preprocessing config.
+  epochs_dir: ${BRODERICK_EPOCH_CACHE_DIR}
+
+output:
+  # Per SLURM job: <save_dir>/<family>/<model_short>/broderick_checkpoint_scores.csv
+  save_dir: outputs/broderick_checkpoint_sweep
+
+models: []  # unused — registry scripts use --from-registry

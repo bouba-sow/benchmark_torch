@@ -1,0 +1,111 @@
+# ============================================================================
+# Le Petit Prince fMRI — Pooled LME per LM layer (average-subject,
+# Fedorenko-parcel level)
+# ============================================================================
+#
+# bold ~ wlen_z + freq_z + sentpos_z + surprisal_z +
+#        (1 + surprisal_z | region) +
+#        (1 | section)
+# vs. the same formula without surprisal_z, fit ONCE PER LM LAYER, pooling
+# all 10 regions (5 Fedorenko language-network parcels x L/R hemisphere) and
+# all 9 LPP sections together. See neuroai/regressors/lpp_pooled_lme.py for
+# the full formula rationale:
+#   - average-subject BOLD (l-bg precomputed average_subject_run-*.gz) —
+#     removes subject as a random-effect grouping factor entirely.
+#   - region is a RANDOM EFFECT inside each per-layer model (not a second
+#     fitting-grid axis like Natural Stories fMRI/Tuckute's ROI loop) — the
+#     one genuinely new statistical idea here: region gets a random SLOPE on
+#     surprisal_z (not just an intercept), since different language-network
+#     regions may not respond to surprisal the same way. Only 10 levels back
+#     this slope, so a Barr et al. (2013) fallback ladder (drop correlation,
+#     then drop the slope) is essential, not just a formality.
+#   - section (9 LPP chapters) is a second crossed random effect,
+#     intercept-only (too few levels for a slope).
+#   - no prev_surprisal_z — same rationale as Tuckute/Natural Stories fMRI:
+#     HRF-convolved, region-averaged BOLD has no discrete previous-word
+#     spillover mechanism to correct for.
+#
+# Sentence position (sentpos) is derived from the constituency trees
+# (lpp*_tree.csv, one sentence per line) — LPP word tokens carry almost no
+# punctuation, so a punctuation heuristic would barely detect sentence
+# boundaries; see neuroai/benchmarks/lpp_lme.py::compute_sentpos_covariate.
+#
+# TWO-STAGE PIPELINE (R/pymer4 is CPU-only on Jean Zay):
+#   1. GPU — extract + cache per-layer logit-lens surprisal for all 9
+#      sections:
+#        .venv/bin/python scripts/run/surprisal/neural/lpp_extract.py \
+#          --config configs/surprisal/neural/lpp.yaml \
+#          --model_name openai-community/gpt2 --device cuda
+#   2. CPU — fit one LME per LM layer (a flattened process-pool grid, NOT
+#      one SLURM job per layer):
+#        .venv/bin/python scripts/run/surprisal/neural/lpp_fit.py \
+#          --config configs/surprisal/neural/lpp.yaml \
+#          --model_name openai-community/gpt2 --n_workers 10
+# ============================================================================
+
+dataset:
+  bids_root: ${BENCHMARK_ROOT}/data/lpp_fmri
+  lang: en
+  sections: null   # null = all 9 LPP chapters
+
+  t_r: 2.0
+  # Duration floor for HRF event regressors when offset - onset is tiny/zero.
+  min_word_duration_sec: 0.05
+  hrf_model: glover
+  trim_trs_start: 10
+  trim_trs_end: 10
+
+  max_length: null
+  tokenizer_no_revision: true
+
+  # l-bg precomputed average-subject BOLD (average_subject_run-<0..8>.gz) —
+  # REQUIRED (see neuroai/benchmarks/lpp_lme.py module docstring for why the
+  # on-the-fly average_subject_subjects alternative isn't supported here).
+  average_subject_precomputed_dir: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/average_subject/bold
+
+  # NeurIPS 2024 / l-bg: keep only the top fraction of voxels by precomputed
+  # split-half BOLD reliability (ISC), aligned to brain_mask_path's voxel
+  # order. null -> use every voxel before parcel averaging.
+  reliable_voxel_fraction: 0.25
+  reliable_voxel_scores_path: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/average_subject/isc/isc_10trials_en.gz
+
+  # Canonical LPP brain mask (l-bg voxel order) — must match the voxel order
+  # of both average_subject_precomputed_dir and reliable_voxel_scores_path.
+  brain_mask_path: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/masks/mask_lpp_en.nii.gz
+  # EvLab SN220 language-network atlas (5 bilateral parcels: IFGorb, IFG,
+  # MFG, AntTemp, PostTemp), resampled to brain_mask_path.
+  fedorenko_atlas_nii_path: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/masks/allParcels-language-SN220-hgwm.nii
+  fedorenko_labels_txt_path: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/masks/allParcels-language-SN220.txt
+
+lme:
+  train_frac: 0.75
+  split_random_state: 0
+  # Contiguous TR-chunk length for the train/held-out split (seconds) —
+  # BOLD is autocorrelated within a section, so held-out partitions must
+  # respect chunk contiguity (same design as Natural Stories fMRI/Tuckute).
+  chunk_seconds: 30.0
+  verbose: false
+  # Barr et al. (2013)-style simplification ladder if the full model fails
+  # to converge — drop the region slope-intercept correlation, then drop the
+  # region random slope on surprisal_z entirely. See
+  # fit_lpp_lme_one_layer's docstring.
+  allow_slope_fallback: true
+  # Which layers to fit: 1 = all layers; N>1 = every Nth layer.
+  layer_stride: 1
+  # Concurrent worker processes fitting layers — each is a separate process
+  # with its own embedded R/pymer4 interpreter (pymer4/rpy2 is not
+  # thread-safe).
+  n_workers: 10
+  # CPU sweep runs are the LME-only half of a two-stage pipeline (surprisal
+  # already GPU-prefetched) — fail fast on cache miss instead of loading a
+  # model. Defaults to true when device=cpu (set in the sweep script).
+  require_cached_surprisal: null
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/lpp/surprisal_sweep
+
+cache:
+  # Standard logit-lens fulltext cache (neuroai/features/logit_lens.py),
+  # keyed by model/revision/section_id=section — same cache format
+  # Fedorenko2016/Tuckute/Natural Stories fMRI use.
+  features_dir: ${LPP_LME_FEATURE_CACHE_DIR}

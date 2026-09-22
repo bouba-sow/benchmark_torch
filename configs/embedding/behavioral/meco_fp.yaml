@@ -1,0 +1,87 @@
+# ============================================================================
+# MECo Corpus (English subset) — First-Pass / Gaze Duration (FP) — Embedding Ridge Sweep
+# ============================================================================
+#
+# Word-level ridge regression: rt_mean (``firstrun.dur``, ms, averaged across
+# subjects who fixated the word) ~ per-layer LLM contextual embedding.
+# Behavioral analogue of NeuralBenchmark's per-layer iEEG ridge regression;
+# complements configs/surprisal/behavioral/meco_fp.yaml (scalar surprisal -> RT via LME).
+#
+# Only the English (lang == "en") subset of MECo is wired up here — see
+# neuroai/datasets/meco.py module docstring for why the other 12 languages
+# are out of scope for now (per-language surprisal/tokenization).
+#
+# MECo is much smaller than Provo/GECO: only 12 passages, 136-227 words each,
+# ~2,100 scoreable words total (English). Two settings differ from the
+# Provo/GECO template as a result:
+#   - context_words=220 covers the longest passage (227 words) almost in full.
+#   - alpha grid is shifted lower (np.logspace(1.5, 7, 8)) — far fewer training
+#     words per fold than Provo/GECO, so watch the printed chosen alpha
+#     (min/median/max) closely and adjust if it pegs an edge of the grid.
+#
+# NOTE on caching: like Provo's SP/FP/GP, MECo's three measures share the
+# exact same 12-passage word set (for one language) — only the outcome
+# duration column differs. Embeddings are cached per (model, revision,
+# story_id), NOT nested per measure, so a cache built while running this
+# config is reused as-is by meco_embed_sweep_{sp,gp}.yaml.
+#
+# Requires the ``pyreadr`` package to read the released .rda file.
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/behavioral/meco.py \
+#     --config configs/embedding/behavioral/meco_fp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: "${BENCHMARK_ROOT}/data/meco/osfstorage/release 2.0/version 2.1/wave 1/primary data/eye tracking data"
+  measure: FP                  # SP | FP | GP
+  language: en
+  passages: null                 # null = all 12 passages
+  rda_filename: joint_l1_data_trimmed_version2.1.rda
+  min_dur: 50.0                  # ms, drop implausibly short durations
+  max_dur: 5000.0                # ms, drop implausibly long durations (regressions/blinks)
+  exclude_doc_edges: true        # also drop passage-initial/-final words
+  context_words: 220             # covers the longest passage (227 words) almost in full
+  max_length: 512
+
+# Leave-passages-out CV (GroupKFold on story_id) — only 12 passages, and words
+# within one passage share overlapping context, so plain shuffled KFold would
+# leak correlated neighbours across train/test.
+group_cv_by_story: true
+# Fit independently per subject (mirrors NeuralBenchmark's per-electrode
+# fitting) -- skip a subject with fewer than this many trials left after
+# filtering. n_jobs = threads per subject (layers); subject_n_jobs =
+# concurrent subject processes. Total cores used ~= n_jobs * subject_n_jobs
+# -- size against your node's cpus-per-task and RAM (each concurrent
+# subject process holds its own embedding-array copy).
+min_trials_per_subject: 20
+n_jobs: 24                     # averaged-only frees the cores per-subject processes used -> all to per-layer parallelism
+subject_n_jobs: 10
+filter_sentence_edges: true    # drops any row where is_edge=true (sentence OR doc edge)
+
+# ---- grand-average-subject methodology (de Varda et al. 2026) ----
+# Average RT across subjects per (story_id, zone) word -> one "grand-average
+# subject" -> a single ridge CV per layer. No per-subject fitting.
+average_across_subjects: true
+average_only: true
+min_subjects_per_item: 1
+
+regression:
+  n_splits: 5
+  # Lower than Provo/GECO's grid — MECo has far fewer training words per fold,
+  # so effective regularization needs can differ a lot by model width. Watch
+  # the printed [ridge] chosen alpha (min/median/max) and widen if it pegs an edge.
+  alpha: "np.logspace(0.5, 10, 12)"   # padded FP grid, shared across measures
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: true
+
+cache:
+  # Shared across SP/FP/GP — do NOT nest per measure (see note above).
+  features_dir: ${MECO_EMBED_CACHE_DIR}
+
+output:
+  save_dir: outputs/meco/embedding_sweep/fp
+
+models: []

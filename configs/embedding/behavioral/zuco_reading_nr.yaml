@@ -1,0 +1,76 @@
+# ============================================================================
+# ZuCo Reading — Normal Reading (NR) task — Embedding Ridge Checkpoint Sweep
+# ============================================================================
+#
+# Word-level ridge regression: rt (TRT, total reading time, ms, per subject)
+# ~ per-layer LLM contextual embedding. Behavioral analogue of
+# NeuralBenchmark's per-layer iEEG ridge regression (and of ZuCoEegEncoder's
+# per-subject EEG ridge); complements configs/surprisal/behavioral/zuco_reading_nr.yaml (scalar
+# surprisal -> RT via LME).
+#
+# NR = 300 Wikipedia sentences, normal (naturalistic) reading — the least
+# task-confounded of ZuCo's three reading tasks.
+#
+# NOTE on caching: ZuCo's SR/NR/TSR are DIFFERENT sentence sets (unlike
+# Provo/MECo's SP/FP/GP, which share one word set) — the embedding cache is
+# nested per task and NEVER shared across zuco_reading_embed_sweep_{sr,tsr}.yaml.
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/behavioral/zuco_reading.py \
+#     --config configs/embedding/behavioral/zuco_reading_nr.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  mat_root: ${BENCHMARK_ROOT}/data/zuco_reading/osfstorage
+  task: NR                    # SR | NR | TSR
+  subjects: null               # null = all 12 ZuCo subjects
+  min_fixations: 1             # drop never-fixated words (TRT=0 / omission)
+  min_trt: 50.0                # ms, drop implausibly short TRT
+  max_trt: 5000.0              # ms, drop implausibly long TRT (regressions/blinks)
+  max_length: null             # null = derive from model's own max_position_embeddings
+
+# Leave-sentences-out CV (GroupKFold on story_id) within each subject's own
+# trials — words within one sentence share overlapping context, so plain
+# shuffled KFold would leak correlated neighbours across train/test.
+group_cv_by_story: true
+# Fit independently per subject (mirrors NeuralBenchmark's per-electrode
+# fitting) -- skip a subject with fewer than this many trials left after
+# filtering. n_jobs = threads per subject (layers); subject_n_jobs =
+# concurrent subject processes. Total cores used ~= n_jobs * subject_n_jobs
+# -- size against your node's cpus-per-task and RAM (each concurrent
+# subject process holds its own embedding-array copy).
+min_trials_per_subject: 20
+n_jobs: 24         # bumped from 5 (was massively underusing the CPU fit stage's 40 allocated cores)
+subject_n_jobs: 5
+filter_sentence_edges: true    # drop sentence-initial / -final words
+
+# ---- grand-average-subject methodology (de Varda et al. 2026) ----
+# Average RT across subjects per (story_id, zone) word -> one "grand-average
+# subject" -> a single ridge CV per layer (CPU sklearn, thread-parallel across
+# layers — see neuroai/benchmarks/zuco_reading_embed.py::_fit_average).
+# average_only=true skips the (deprecated) per-subject fitting branch
+# entirely -- see GecoEmbedBenchmarkConfig.average_only for the rationale.
+average_across_subjects: true
+average_only: true
+min_subjects_per_item: 1        # available-case mean
+
+regression:
+  n_splits: 5
+  # Embeddings are high-dimensional/collinear and RT is on a raw-ms scale, so
+  # this grid sits well above the iEEG ridge range (logspace(-3, 3, 7)). Watch
+  # the printed [ridge] chosen alpha (min/median/max) and widen if it pegs an edge.
+  alpha: "np.logspace(2.5, 9, 8)"
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: true
+
+cache:
+  # Nested per task by scripts/run/embedding/behavioral/zuco_reading.py's load_config()
+  # (see note above) — do not hardcode a task-specific path here.
+  features_dir: ${ZUCO_READING_EMBED_CACHE_DIR}
+
+output:
+  save_dir: outputs/zuco_reading/embedding_sweep/nr
+
+models: []

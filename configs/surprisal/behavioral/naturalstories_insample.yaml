@@ -1,0 +1,50 @@
+# ============================================================================
+# Natural Stories SPR — LME Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Default: Clark et al. (2025, COLING) trial-level LME on raw RT.
+# Set lme.style: modelblocks for legacy ModelBlocks random-effects structure.
+#
+# Requires R + lme4 on the runtime host (Jean Zay: module load r/4.5.2).
+#
+# Run locally:
+#   .venv/bin/python scripts/run/surprisal/behavioral/naturalstories_fit.py \
+#     --config configs/surprisal/behavioral/naturalstories.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+#
+# Jean Zay:
+#   python scripts/submit.py --help  (see docs/history/launcher_migration.csv)
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/naturalstories
+  stories: null
+  min_correct: 5          # Clark / Natural Stories SPR filtering
+  context_words: 48
+  max_length: 512
+  log_rt: false           # Clark uses raw RT (ignored when lme.style=clark2025)
+
+lme:
+  style: clark2025
+  include_surprisal: true
+  include_prev_surprisal: true   # spillover surprisal (previous word)
+  include_freq: true          # Zipf lexical frequency nuisance (wordfreq)
+  filter_sentence_edges: true    # drop sentence-initial / -final words
+  main_random_slope: false       # only used for modelblocks style
+  compare_baseline: true
+  out_of_sample: false
+  partition_mod: 4
+  partition_fit_indices: [0, 1]   # ~50% train
+  partition_test_indices: [2, 3]  # ~50% test (OOS ΔLogLik, correlations)
+  verbose: false
+
+cache:
+  # On Jean Zay (SCRATCH set): resolves to $SCRATCH/.cache/naturalstories_features
+  # Locally: $BENCHMARK_ROOT/.cache/naturalstories_features
+  features_dir: ${NS_FEATURE_CACHE_DIR}
+  embeddings_dir: ${BENCHMARK_CACHE_ROOT}/embeddings
+
+output:
+  save_dir: outputs/naturalstories/surprisal_sweep
+
+models: []

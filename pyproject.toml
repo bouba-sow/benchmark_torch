@@ -1,0 +1,85 @@
+[project]
+name = "benchmark"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+# Capped at <3.13: mamba-ssm/causal-conv1d below are local cp312-only wheels
+# (built for this exact venv's Python) -- an open-ended lower bound makes uv
+# also resolve for hypothetical newer Python/platform combos those wheels
+# can't satisfy, which fails the whole lock (e.g. `uv add <anything>`).
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "accelerate>=1.13.0",
+    "causal-conv1d",
+    "einops>=0.8.2",
+    "flash-linear-attention",
+    "forgetting-transformer",
+    "formulae>=0.6.2",
+    "great-tables>=0.22.0",
+    "himalaya>=0.4.11",
+    "loguru>=0.7.3",
+    "mamba-ssm",
+    "markdown>=3.10.2",
+    "mlem",
+    "nbformat>=5.10.4",
+    "neuralset>=0.2.0",
+    "nilearn>=0.13.1",
+    "openpyxl>=3.1.5",
+    "osfclient>=0.0.5",
+    "plotly>=6.7.0",
+    "polars>=1.42.1",
+    "pybv>=0.7.6",
+    "pymer4>=0.9.2",
+    "pyreadr>=0.5.2",
+    "pyside6>=6.11.0",
+    "pytest>=9.1.1",
+    "pyvistaqt>=0.11.4",
+    "rpy2>=3.6.7",
+    "seaborn>=0.13.2",
+    "sentencepiece>=0.2.2",
+    "stickbreaking-attention",
+    "torch>=2.4.0",
+    "torchaudio>=2.4.0",
+    "torchvision>=0.19.0",
+    "transformers>=4.29.2",
+    "weasyprint>=69.0",
+    "wordfreq>=3.1.1",
+    "xarray>=2026.4.0",
+]
+
+# CUDA 12.4 wheels (Linux + GPU). ``uv sync`` uses PyPI for everything else.
+# Switch URL to cu121/cu118 if your driver needs it (see pytorch.org/get-started).
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+torchaudio = { index = "pytorch-cu124" }
+torchvision = { index = "pytorch-cu124" }
+mlem = { git = "https://github.com/LouisJalouzot/MLEM.git" }
+# Pinned to the commit this repo has been tested/run against — flash-linear-attention
+# has no stable release tags, so leaving this unpinned lets `uv sync`/`uv lock` silently
+# pick up a newer upstream HEAD (this happened: 24ed9b6 -> c70f11c).
+flash-linear-attention = { git = "https://github.com/sustcsonglin/flash-linear-attention.git", rev = "24ed9b6902990e3b18b39320f165d7395b9ebd7b" }
+forgetting-transformer = { workspace = true, editable = true }
+stickbreaking-attention = { git = "https://github.com/shawntan/stickbreaking-attention.git" }
+# mamba-ssm==2.2.6.post3 (downgraded from 2.3.2.post1 -- newer releases require
+# triton.set_allocator, unavailable under the Triton 3.2.0 that torch==2.6.0+cu124
+# hard-pins) and causal-conv1d==1.6.2.post1, built locally as sm_90-only H100 wheels
+# via `srun -p compil_h100` (see /lustre/fswork/projects/rech/ldh/una68ug/wheels/).
+# mamba-ssm's __init__.py is additionally patched (in the source dir the wheel was
+# built from) to not eagerly import MambaLMHeadModel, which pulls in transformers
+# generation symbols removed in newer transformers releases.
+mamba-ssm = { path = "wheels/mamba_ssm-2.2.6.post3-cp312-cp312-linux_x86_64.whl" }
+causal-conv1d = { path = "wheels/causal_conv1d-1.6.2.post1-cp312-cp312-linux_x86_64.whl" }
+
+[tool.uv.workspace]
+members = [
+    "forgetting-transformer",
+]
+
+
+# Jean Zay: the shared ``python-3.12.7`` miniforge env is read-only. Deactivate it,
+# ``cd`` to this repo, then ``uv sync`` so packages install into ``.venv``.

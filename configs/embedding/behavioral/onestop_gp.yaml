@@ -1,0 +1,79 @@
+# ============================================================================
+# OneStop Corpus — Go-Past / Regression-Path Duration (GP) — Embedding Ridge Sweep
+# ============================================================================
+#
+# GRAND-AVERAGE-SUBJECT methodology (de Varda, Berzak, Fedorenko & Levy 2026,
+# "Behavioral and Brain Responses to Language Reflect Different Levels of
+# Linguistic Representation"): RT is averaged across subjects per (story_id,
+# zone) word -> one "grand-average subject" -> a single ridge CV per layer.
+# No per-subject fitting. Behavioral analogue of NeuralBenchmark's per-layer
+# iEEG ridge; complements configs/surprisal/behavioral/onestop_gp.yaml (scalar surprisal -> RT
+# via LME).
+#
+# GP = time from first fixating a word until the eyes move past it to the
+# right (incl. any regressive re-reading) — integration/regression difficulty.
+#
+# NOTE on caching: embeddings are cached per (model, revision, story_id,
+# max_length, stride_delta, layer_tag) — NOT per measure — so a cache built by
+# this config is reused as-is by onestop_embed_sweep_{gp,sp}.yaml. Kept in
+# ONESTOP_EMBED_CACHE_DIR, separate from the surprisal cache
+# (ONESTOP_FEATURE_CACHE_DIR).
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/behavioral/onestop.py \
+#     --config configs/embedding/behavioral/onestop_gp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/onestop
+  measure: GP                  # SP | FP | GP
+  stories: null                # null = all 330 passages
+  min_dur: 50.0
+  max_dur: 5000.0
+  exclude_doc_edges: true
+  context_words: 512           # >= longest passage word count (slow-tokenizer fallback only)
+  max_length: 1024             # OneStop passages ~2 paragraphs; keeps each in one
+                               # fast-tokenizer forward chunk (fulltext still
+                               # sliding-windows anything longer).
+  # Fixed 120-of-360 subject subset (seeded, frozen) — identical for every model
+  # so cross-model scores are comparable (same file the LME sweep uses).
+  subjects_file: ${BENCHMARK_ROOT}/configs/subjects/onestop_subjects_120.txt
+
+# ---- grand-average-subject methodology ----
+average_across_subjects: true
+average_only: true
+average_ridge_device: cpu      # switched back from cuda: see configs/embedding/behavioral/geco_fp.yaml
+                               # Set 'cpu' for a local smoke test without himalaya.
+min_subjects_per_item: 5        # 120 subjects read shared passages, but skipping
+                               # is common (esp. GP); drop words with <5
+                               # contributing subjects (negligible item loss,
+                               # removes near-singleton "averages"). 1 = strict
+                               # available-case, also defensible.
+
+group_cv_by_story: true         # GroupKFold on story_id (330 passages); words in
+                               # a passage share overlapping context -> plain
+                               # KFold would leak correlated neighbours.
+filter_sentence_edges: true     # drop is_edge=true rows (sentence OR passage edge)
+min_trials_per_subject: 20      # only consulted if average_only is flipped off
+n_jobs: 8                       # per-layer thread pool / n_layer_workers (GPU path)
+subject_n_jobs: 1               # unused in averaged-only mode
+layer_chunk_size: 16            # host-RAM guard for large models (opt-66b etc.)
+
+regression:
+  n_splits: 5
+  # Padded Provo-style grid. Averaged RT is raw-ms; embeddings high-dim/collinear.
+  # Watch the printed chosen alpha (print_chosen_ridge_alpha) — widen if it piles
+  # at an edge.
+  alpha: "np.logspace(0, 10, 11)"
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: true
+
+cache:
+  features_dir: ${ONESTOP_EMBED_CACHE_DIR}   # shared across SP/FP/GP
+
+output:
+  save_dir: outputs/onestop/embedding_sweep/gp
+
+models: []

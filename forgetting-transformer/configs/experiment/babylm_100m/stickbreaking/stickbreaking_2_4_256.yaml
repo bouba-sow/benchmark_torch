@@ -1,0 +1,72 @@
+# @package _global_
+defaults:
+  - override /model: stickbreaking
+  - override /optimizer: adamw
+  - override /schedule: warmup_cosine
+  - override /datamodule: npy
+  - override /strategy: fsdp
+  - _self_
+
+exp: babylm_100m_stickbreaking_2layer
+tag: babylm_100m_l2_h256_h4_seq1024_stickbreaking
+seed: 42
+output_dir: stickbreaking_2_4_256_babylm_100m/
+data_dir: data/babylm_100m/tokenized
+resume: False
+log_interval: 10485760
+checkpoint_interval: 168820736
+skip_eval: false
+eval_interval: 168820736
+train_eval_interval: 168820736
+checkpoint_keep_interval: 168820736
+
+fabric:
+  devices: 1
+  precision: '16-mixed'
+
+train:
+  max_tokens: 1688207360
+  grad_acc_tokens: 16384
+  max_grad_norm: 1.0
+  gradient_checkpointing: false
+
+model:
+  config:
+    hidden_size: 256
+    num_hidden_layers: 2
+    num_heads: 4
+    use_rope: false
+    attend_current: false
+    normalize_attention: true
+    qk_norm: false
+    qk_norm_share_param_across_head: false
+    use_k_shift: false
+    use_v_shift: false
+    window_size: null
+    tie_word_embeddings: false
+
+optimizer:
+  lr: 0.001
+  betas: [0.9, 0.95]
+  weight_decay: 0.1
+
+schedule:
+  init_value: 0.0
+  peak_value: ${optimizer.lr}
+  warmup_steps: 16882074
+  decay_steps: ${train.max_tokens}
+  end_value: 0.0
+
+datamodule:
+  train_batch_len: 1024
+  train_batch_size: 1024
+  train_num_workers: 0
+  eval_batch_len: 1024
+  eval_local_batch_size: 1
+  eval_tokens: 8388608
+  eval_num_workers: 0
+
+wandb:
+  project: forgetting-transformer
+  mode: online
+  log_dir: ./output/wandb

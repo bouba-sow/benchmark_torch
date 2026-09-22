@@ -1,0 +1,68 @@
+# Le Petit Prince fMRI encoding (single-subject or group-mean BOLD like l-bg).
+#
+# Run:
+#   python scripts/run/embedding/neural/lpp_encoding.py --config configs/embedding/neural/lpp_encoding.yaml
+#
+# CLI flags override any value here.  Supply --subject and --out_dir if not
+# set in this file, or override them on the command line.
+
+bids_root: /store/scratch/bsow/Documents/benchmark/data/lpp_fmri
+subject: sub-EN114
+# fmri_unit: single_subject          # default
+# fmri_unit: average_subject         # group-mean BOLD (paper-style)
+# average_subject_subjects: null    # null → all derivatives/sub-<LANG>*
+# average_subject_precomputed_dir: /store/scratch/bsow/Documents/benchmark/data/lpp_fmri_extra/average_subject/bold
+lang: en                   # en | fr | cn
+bold_source: derivatives   # derivatives | raw
+echo: 2                    # echo index (raw only)
+out_dir: outputs/lpp_encoding
+
+# Feature extraction
+feature_mode: glove        # glove | huggingface
+hf_model_name: openai-community/gpt2
+hf_revision: null
+hf_device: cpu
+hf_batch_size: 4
+hf_context_words: 48
+hf_max_length: 512
+
+# l-bg parity (full transcript / token mean). See configs/embedding/neural/lpp.yaml.
+# hf_extraction_mode: context_window   # context_window | lbg_fulltext
+# hf_lbg_story_text_zip: null         # optional path to lpp_en_text.zip from l-bg
+# hf_lbg_stride_delta: 64
+# hf_lbg_max_length: null             # null = model max_position_embeddings
+# hf_tokenizer_no_revision: true       # match l-bg tokenizer loading at checkpoints
+
+# Layer selection (huggingface only)
+# "last"  → last hidden layer only (fast, default)
+# "all"   → per-layer encoding (slow; produces layer × fold results)
+# int N   → specific layer N (0 = token embedding)
+layer_mode: last
+
+# Lateralization: compute left/right hemisphere Pearson r and L-R asymmetry
+compute_lateralization: false
+
+# Nuisance regressors
+picture_nuisance_regressors: false
+
+# Output maps
+save_corr_maps_dir: null
+
+# Feature cache (saves GPU time when re-running same model/revision)
+feature_cache_dir: null    # e.g. .cache/lpp_features
+
+# Preprocessing
+hrf_model: glover
+trim_trs_start: 10
+trim_trs_end: 10
+smoothing_fwhm: 4.0
+high_pass_hz: 0.0078125    # 1/128 Hz
+# strict_lbg_parity: true    # trim->standardize order and plain mean/std
+# min_word_duration_sec: 0.0 # l-bg uses raw offset-onset durations
+max_voxels: null            # null = all in-mask voxels (paper / l-bg)
+# NeurIPS 2024 / l-bg — top fraction by ISC (see configs/embedding/neural/lpp.yaml).
+# reliable_voxel_fraction: 0.25
+# reliable_voxel_scores_path: /path/to/isc_10trials_en.gz
+mask_from_runs: 3
+apply_lbg_fixes: false
+random_state: 0

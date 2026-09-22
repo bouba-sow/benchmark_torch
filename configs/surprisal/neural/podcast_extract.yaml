@@ -1,0 +1,89 @@
+# ============================================================================
+# Podcast ECoG Encoding — Surprisal (Logit-Lens) Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Identical to configs/embedding/neural/podcast.yaml except:
+#   benchmark.feature_mode: surprisal
+#   output.save_dir: outputs/podcast/checkpoint_sweep_surprisal
+#
+# Predicts high-gamma power from per-layer logit-lens surprisal (Kuribayashi
+# et al. 2025, arXiv:2502.01615) instead of full LLM hidden-state embeddings:
+# for each layer, the model's OWN final norm + unembedding matrix is reused to
+# read a next-word probability off that layer's hidden state — a single
+# scalar predictor per (word, layer), no extra training (tuned-lens is not
+# used here). Every layer is regressed independently (same per-layer
+# lag-matrix ridge as the embeddings sweep) and every layer's score is saved
+# — nothing is averaged or dropped before saving — so scaling-law-per-layer
+# plots can be built later from podcast_by_electrode_layerwise.csv.
+#
+# Scope: standard HuggingFace causal-LM architectures only (gpt2, gptneo, opt,
+# pythia, olmo2, llama32, mistral, qwen3). CBR-RNN (custom architecture) is
+# not supported for surprisal mode.
+#
+# Single-stage GPU pipeline (unlike the two-stage NS-fMRI LME pipeline): ridge
+# regression needs no R, so logit-lens extraction + himalaya GPU ridge run
+# together in one H100 job — see scripts/slurm/jz/surprisal/podcast/.
+#
+# Run single array task (Jean Zay):
+#   python scripts/submit.py podcast surprisal extract --family gpt2
+#
+# Run locally (full family):
+#   .venv/bin/python scripts/run/embedding/neural/podcast.py \
+#     --config configs/surprisal/neural/podcast_extract.yaml \
+#     --from-registry --family gpt2 --device cuda --regression_device cuda
+# ============================================================================
+
+dataset:
+  bids_root: ${BENCHMARK_ROOT}/data/podcast
+  subjects: null          # null = all subjects with a highgamma .fif
+  # 64 lags at 32 Hz over 2 s (matches configs/surprisal/neural/podcast.yaml's window)
+  tmin: -1.0
+  tmax: 1.0
+  tmin_extract: -1.1
+  downsample_to: 32.0
+  drop_bads: true
+  clip_iqr: 5.0
+  baseline: [-0.2, 0.0]
+  baseline_mode: logratio
+  context_words: null
+  max_length: null
+  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/podcast/electrode_selection
+
+regression:
+  # Ridge penalty grid. Either an explicit list (e.g. [1000, 5000, 10000]) or
+  # a numpy expression string, e.g. "np.logspace(2, 6, 8)" — evaluated with
+  # only `np` in scope (see _resolve_alphas in run/embedding/neural/podcast.py).
+  # null → default 5-value log-spaced grid [10^3.5 … 10^8].
+  alpha: "np.logspace(1, 6, 8)"
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: true
+
+benchmark:
+  # ← surprisal mode: one scalar per (word, layer) instead of hidden-state vectors.
+  # `layerwise` is a no-op in this mode (logit-lens always produces all layers).
+  feature_mode: surprisal
+  layerwise: true
+  use_lag_matrix: true
+  n_cv_folds: 5
+  window_size: 0.2
+  step_size: 0.05
+  tokenizer_no_revision: true
+  # Fits BOLD ~ [wlen, freq] (baseline) and ~ [wlen, freq, surprisal_layer]
+  # (full) per layer; reports delta held-out Pearson r as surprisal's UNIQUE
+  # contribution after controlling for word length + lexical frequency —
+  # the confound Oh et al. (2024) propose for the inverse-scaling effect.
+  # Adds podcast_unique_surprisal_by_electrode.csv. Frequency is wordfreq's
+  # Zipf frequency (fast in-memory lookup, no model/cache needed).
+  compute_unique_surprisal: true
+  wordfreq_language: en
+
+cache:
+  # Separate cache namespace from embeddings ("logitlens_all" tag in the
+  # filename, see neuroai/features/logit_lens.py) — safe to share the directory.
+  features_dir: ${PODCAST_FEATURE_CACHE_DIR}
+
+output:
+  save_dir: outputs/podcast/checkpoint_sweep_surprisal
+
+models: []  # unused — registry scripts use --from-registry

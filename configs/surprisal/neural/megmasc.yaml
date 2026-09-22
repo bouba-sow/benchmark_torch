@@ -1,0 +1,91 @@
+# ============================================================================
+# MEG-MASC MEG — pooled surprisal LME, per LM layer, region x subject
+# ============================================================================
+#
+#   y ~ nuisances + surprisal_z + prev_surprisal_z +
+#       (1 | subject) + (1 + surprisal_z | region)
+# vs. the same without the surprisal terms — ONE pooled fit per layer, ALL
+# subjects together. `y` = mean MEG amplitude in a fixed post-onset window;
+# `region` = one of six coarse KIT sensor-position groups, the SAME grouping
+# for every subject (unlike per-subject anatomy), which is what makes pooling
+# well-posed here — unlike the other M/EEG LMEs in this codebase
+# (Broderick), which went two-stage (per-subject, then averaged).
+# `subject` gets a random INTERCEPT only: pymer4's predict on held-out rows
+# rejects a random-*slope* grouping factor ("Invalid grouping factor
+# specification, subject"), which would kill the delta_loglik_test metric;
+# `(1 | subject)` also matches the working pooled pattern of the codebase's
+# N400 pooled LMEs. `region` keeps the random slope (the informative one).
+# Validated: this converges in ~6 min/fit on the full 248k-row table.
+# Set lme.pooling: "none" to fall back to the two-stage per-subject design.
+# See neuroai/regressors/megmasc_lme.py and docs/megmasc_design.md §4.
+#
+# nuisances (default): worddur_z + wlen_z + freq_z + prev_worddur_z
+#   worddur / prev_worddur (acoustic duration + its lag) are added to the
+#   Broderick wlen_z + freq_z set because MEG-MASC is spoken.
+#   Run  --nuisances "wlen_z + freq_z"  for a parity comparison.
+#
+# Window: 250-450 ms — the peak/plateau of the sensor-space encoding time
+# course across 45 models (docs §6). ~50 ms earlier than the classic
+# 300-500 ms EEG N400 window.
+#
+# TWO-STAGE (R / pymer4 is CPU-only on Jean Zay):
+#   1. GPU — cache per-layer logit-lens surprisal (AND corpus perplexity,
+#      written to outputs_jeanzay/megmasc/perplexity/ in the same job):
+#        python scripts/run/surprisal/neural/megmasc_extract.py \
+#          --config configs/surprisal/neural/megmasc.yaml \
+#          --from-registry --family gpt2 --array-index 0 --device cuda
+#   2. CPU — fit the pooled LME, one process per layer:
+#        python scripts/run/surprisal/neural/megmasc_fit.py \
+#          --config configs/surprisal/neural/megmasc.yaml \
+#          --from-registry --family gpt2 --array-index 0 --n_workers 12
+# ============================================================================
+
+dataset:
+  bids_root: ${MEGMASC_BIDS_ROOT}
+  subjects: null            # null = the frozen 11-subject list
+  stories: null             # null = all four MASC stories
+
+  # Scalar-outcome window (s rel. word onset): mean MEG amplitude here is `y`.
+  window_tmin: 0.25
+  window_tmax: 0.45
+
+  # Epoch window (must cover baseline + outcome window) + baseline.
+  epoch_tmin: -0.2
+  epoch_tmax: 0.8
+  baseline: [-0.2, 0.0]
+
+  # Same preprocessing as the ridge encoder (configs/embedding/neural/megmasc.yaml)
+  # — MUST match exactly, so the word-locked epoch cache built for the
+  # encoder (data/megmasc_epoch_cache.py) is reused here instead of
+  # re-reading raw MEG (see cache.epochs_dir below).
+  l_freq: 0.1
+  h_freq: 40.0
+  target_sfreq: 50.0
+  robust_scale: true
+  clamp: 5.0
+  min_word_duration: 0.050
+
+  max_length: null
+  tokenizer_no_revision: true
+  trust_remote_code: false
+  wordfreq_language: en
+  lang: en
+  device: cpu               # GPU extract stage overrides this
+
+lme:
+  train_frac: 0.75          # split by story -> 3 train / 1 held-out
+  split_random_state: 0
+  verbose: false
+  allow_slope_fallback: true
+  layer_stride: 1
+  pooling: subject          # "subject" (pooled, default) | "none" (two-stage per-subject)
+  # nuisances: "wlen_z + freq_z"   # uncomment for the parity run
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/megmasc/surprisal_sweep
+
+cache:
+  features_dir: ${MEGMASC_LME_FEATURE_CACHE_DIR}
+  # Word-locked epoch cache — same one the ridge encoder sweep uses.
+  # Set so the LME never has to re-read raw MEG.
+  epochs_dir: ${MEGMASC_EPOCH_CACHE_DIR}

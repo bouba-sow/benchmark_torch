@@ -1,0 +1,62 @@
+# ============================================================================
+# ZuCo Reading — Task-Specific Reading (TSR) task — Embedding Ridge Checkpoint Sweep
+# ============================================================================
+#
+# Word-level ridge regression: rt (TRT, total reading time, ms, per subject)
+# ~ per-layer LLM contextual embedding. Behavioral analogue of
+# NeuralBenchmark's per-layer iEEG ridge regression (and of ZuCoEegEncoder's
+# per-subject EEG ridge); complements configs/surprisal/behavioral/zuco_reading_tsr.yaml (scalar
+# surprisal -> RT via LME).
+#
+# TSR = 407 Wikipedia sentences read with a relation-extraction task —
+# reading strategy may differ from naturalistic reading (task demand confound).
+#
+# NOTE on caching: ZuCo's SR/NR/TSR are DIFFERENT sentence sets (unlike
+# Provo/MECo's SP/FP/GP, which share one word set) — the embedding cache is
+# nested per task and NEVER shared across zuco_reading_embed_sweep_{sr,nr}.yaml.
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/behavioral/zuco_reading.py \
+#     --config configs/embedding/behavioral/zuco_reading_tsr.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  mat_root: ${BENCHMARK_ROOT}/data/zuco_reading/osfstorage
+  task: TSR                   # SR | NR | TSR
+  subjects: null
+  min_fixations: 1
+  min_trt: 50.0
+  max_trt: 5000.0
+  max_length: null
+
+group_cv_by_story: true
+min_trials_per_subject: 20
+n_jobs: 24         # bumped from 5 (was massively underusing the CPU fit stage's 40 allocated cores)
+subject_n_jobs: 10
+filter_sentence_edges: true
+
+# ---- grand-average-subject methodology (de Varda et al. 2026) ----
+# Average RT across subjects per (story_id, zone) word -> one "grand-average
+# subject" -> a single ridge CV per layer (CPU sklearn, thread-parallel across
+# layers -- see neuroai/benchmarks/zuco_reading_embed.py::_fit_average).
+# average_only=true skips the (deprecated) per-subject fitting branch
+# entirely -- see GecoEmbedBenchmarkConfig.average_only for the rationale.
+average_across_subjects: true
+average_only: true
+min_subjects_per_item: 1        # available-case mean
+
+regression:
+  n_splits: 5
+  alpha: "np.logspace(2, 6, 8)"
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: true
+
+cache:
+  features_dir: ${ZUCO_READING_EMBED_CACHE_DIR}
+
+output:
+  save_dir: outputs/zuco_reading/embedding_sweep/tsr
+
+models: []

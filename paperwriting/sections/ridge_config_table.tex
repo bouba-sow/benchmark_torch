@@ -1,0 +1,61 @@
+{\setlength{\tabcolsep}{5pt}
+\begin{longtable}{@{}lccl@{}}
+\caption{Ridge regression configuration for each dataset's BrainScore encoder: log-spaced $\alpha$ grid (number of grid points in parentheses), outer cross-validation fold count, and the grouping unit used so that no fold splits correlated observations. GroupKFold groups on the listed unit unless marked LOSO (leave-one-unit-out, i.e. fold count equals unit count). Datasets with no embedding/ridge track (OneStop, Szewczyk) are omitted.}
+% Pereira fMRI added 2026-09-09 -- it was missing here despite having a real,
+% actively-used embedding/ridge track (configs/embedding/neural/pereira.yaml,
+% neuroai/benchmarks/pereira_embed.py: 5-fold GroupKFold by passage,
+% alpha_logspace=[1,6,8]), found while auditing this table for a similar
+% staleness/omission bug alongside corr_ceiling_table.tex's noise-ceiling mixup.
+%
+% Same pass (2026-09-09) also fixed stale alpha grids for GECO/MECO/Provo/
+% ZuCo Reading -- their configs/*_embed_sweep_*.yaml files were "padded"
+% (widened) in a later calibration round (Sep 1-5) than whenever this table
+% was last written, and it was never refreshed. Verified against the live
+% YAML `alpha:` field for each: geco_embed_sweep_{fp,gp}.yaml (now identical,
+% "padded FP grid, shared across measures"), meco_embed_sweep_{fp,gp,sp}.yaml
+% (identical across measures), provo_embed_sweep_{fp,gp,sp}.yaml (identical
+% across measures) -- each measure's row was merged into one now that the
+% grids match. ZuCo Reading was split into NR vs SR/TSR since
+% zuco_reading_embed_sweep_{sr,tsr}.yaml use a narrower grid than NR's.
+% UCL Reading and Natural Stories SPR/fMRI were checked and already correct.
+% Nieuwland/Tuckute/Broderick/Le Petit Prince/Podcast/Fedorenko2016 checked
+% 2026-09-10 against their actual configs/*_checkpoint_sweep.yaml (these six
+% use the older embedding-checkpoint-sweep pipeline, config key "regression:"
+% /"data:", not the newer *_embed_sweep*.yaml pattern). Alpha grids were all
+% already correct. Fold counts were wrong for three: Broderick (config
+% n_splits=3, "20 runs -> 3 folds of ~7 runs", not 5), Podcast (config
+% n_cv_folds=3, "contiguous temporal folds", not 5), Tuckute (config
+% k_folds=4, not 5) -- fixed. Fedorenko2016 (n_splits=5), Nieuwland
+% (n_folds=10, alpha=[3162,42170,562341,1e8,1e9,1e10] -- a 6-point but
+% non-uniformly-spaced grid, "10^3.5-10^10 (6)" is an accurate min/max/count
+% summary), and Le Petit Prince (ridge_alphas: 1e3...2.15e5, i.e.
+% 10^3-10^5.3 (8)) were already correct.
+\label{tab:ridge-config} \\
+\toprule
+\textbf{Dataset} & \textbf{$\alpha$ grid (points)} & \textbf{Folds} & \textbf{Grouping unit} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{c}{\tablename\ \thetable{} -- continued} \\
+\toprule
+\textbf{Dataset} & \textbf{$\alpha$ grid (points)} & \textbf{Folds} & \textbf{Grouping unit} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+GECO (FP/GP) & $10^{1}$--$10^{10}$ (10) & 5 & screen \\
+MECO (FP/GP/SP) & $10^{0.5}$--$10^{10}$ (12) & 5 & passage \\
+Provo (FP/GP/SP) & $10^{0}$--$10^{10}$ (11) & 5 & text \\
+UCL Reading & $10^{1.5}$--$10^{9}$ (9) & 5 & sentence \\
+Natural Stories SPR & $10^{-1}$--$10^{5}$ (7) & 10 (LOSO) & story \\
+Natural Stories fMRI & $10^{-2}$--$10^{4}$ (6) & 8 (LOSO) & story \\
+ZuCo Reading (NR) & $10^{2.5}$--$10^{9}$ (8) & 5 & sentence \\
+ZuCo Reading (SR/TSR) & $10^{2}$--$10^{6}$ (8) & 5 & sentence \\
+Nieuwland & $10^{3.5}$--$10^{10}$ (6) & 10 & sentence item \\
+Tuckute & $10^{2}$--$10^{7}$ (5) & 4 & sentence \\
+Broderick & $10^{3.5}$--$10^{8}$ (5) & 3 & audiobook segment \\
+Le Petit Prince & $10^{3}$--$10^{5.3}$ (8) & 9 (LOSO) & section \\
+Podcast & $10^{3.5}$--$10^{8}$ (5) & 3 & contiguous time chunk \\
+Fedorenko2016 & $10^{3.5}$--$10^{8}$ (5) & 5 & sentence \\
+Pereira & $10^{1}$--$10^{6}$ (8) & 5 & passage \\
+\end{longtable}
+}

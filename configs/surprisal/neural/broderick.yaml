@@ -1,0 +1,112 @@
+# ============================================================================
+# Broderick 2018 EEG — Pooled LME per LM layer, region-averaged
+# ============================================================================
+#
+# eeg ~ wlen_z + freq_z + surprisal_z + prev_surprisal_z +
+#       (1 + wlen_z + freq_z + surprisal_z + prev_surprisal_z | subject) +
+#       (1 + surprisal_z | region)
+# vs. the same formula without surprisal_z / prev_surprisal_z, fit ONCE PER
+# LM LAYER, pooling every subject and 4 scalp regions together. See
+# neuroai/regressors/broderick_lme.py for the full formula rationale:
+#   - Broderick's 128 BioSemi channels are collapsed into 4 anatomical
+#     groups (left/right/posterior/occipital, via the existing
+#     neuroai.datasets.broderick.channel_region helper) and averaged BEFORE
+#     fitting, rather than crossed individually like ZuCo's electrode
+#     montage — crossing all 128 channels would pool ~28M rows, bigger than
+#     ZuCo's ~5M-row table that already failed to finish fitting within a
+#     1-4h walltime. Region-averaging cuts this to ~870K rows (19 subjects x
+#     ~11,400 words x 4 regions) — comfortably within scale (Podcast's
+#     ~1.4M rows was previously the largest "normal" pooled table here).
+#   - region gets a random SLOPE on surprisal_z (not just an intercept),
+#     same idea as LPP's Fedorenko-parcel slope — but with only 4 levels
+#     (thinner than LPP's 10), expect the Barr et al. fallback ladder to
+#     trigger more often.
+#   - eeg is a single scalar per (subject, region, word): mean amplitude in
+#     a fixed post-word-onset window (default 300-500 ms, the classic
+#     centro-parietal N400/semantic-surprise window, same convention as the
+#     Nieuwland N400 datasets) — NOT the full multi-lag TRF
+#     the ridge encoder (run/embedding/neural/broderick.py) regresses.
+#   - prev_surprisal_z spillover control: included, since word-locked scalp
+#     EEG is a genuinely discrete per-word response (same rationale as
+#     Fedorenko2016/Podcast/the N400 datasets, not the HRF-convolved fMRI
+#     datasets).
+#
+# Train/held-out split: chunk = segment_id (Broderick's 20 audiobook
+# segments) — the natural continuous-stimulus unit, never split across the
+# train/test boundary (same idea as Fedorenko2016/Podcast/LPP).
+#
+# TWO-STAGE PIPELINE (R/pymer4 is CPU-only on Jean Zay):
+#   1. GPU — extract + cache per-layer logit-lens surprisal for all 20
+#      segments:
+#        .venv/bin/python scripts/run/surprisal/neural/broderick_extract.py \
+#          --config configs/surprisal/neural/broderick.yaml \
+#          --model_name openai-community/gpt2 --device cuda
+#   2. CPU — fit one LME per LM layer (a flattened process-pool grid, NOT
+#      one SLURM job per layer):
+#        .venv/bin/python scripts/run/surprisal/neural/broderick_fit.py \
+#          --config configs/surprisal/neural/broderick.yaml \
+#          --model_name openai-community/gpt2 --n_workers 10
+# ============================================================================
+
+dataset:
+  bids_root: ${BENCHMARK_ROOT}/data/broderick
+  # sub-001 excluded: its epochs contain massive uncleaned artifacts
+  # (+-2500-3300uV vs the +-100uV artifact_threshold_uv below), which the
+  # LME pipeline's epoch loading does not reject — confirmed across all 102
+  # models' broderick_lme_by_subject_layer.csv (baseline_loglik_test ~
+  # -744000 for sub-001 at every layer/model, vs -28k..-46k for every other
+  # subject), producing spurious peak_delta_loglik_test outliers whenever a
+  # layer's full model happens to overfit sub-001's corrupted test partition.
+  subjects: [sub-002, sub-003, sub-004, sub-005, sub-006, sub-007, sub-008,
+             sub-009, sub-010, sub-011, sub-012, sub-013, sub-014, sub-015,
+             sub-016, sub-017, sub-018, sub-019]   # 18 subjects (sub-001 excluded)
+  n_runs: 20       # 20 audiobook segments ("The Old Man and the Sea")
+
+  # EEG scalar window (s relative to word onset) — mean amplitude over this
+  # window is the LME's "eeg" outcome.
+  window_tmin: 0.3
+  window_tmax: 0.5
+
+  # Epoch extraction window (must cover both baseline and target window
+  # above) and MNE-style baseline correction.
+  epoch_tmin: -0.2
+  epoch_tmax: 1.0
+  baseline: [-0.2, 0.0]
+
+  # Preprocessing (same defaults as the ridge/TRF encoder,
+  # run/embedding/neural/broderick.py)
+  l_freq: 1.0
+  h_freq: 8.0
+  target_sfreq: 32.0
+  average_ref: true
+  drop_bads: true
+
+  max_length: null
+  tokenizer_no_revision: true
+  trust_remote_code: false
+  wordfreq_language: en
+  # Device for the (cheap, ~11K-word) surprisal extraction forward passes.
+  # The CPU-only LME stage overrides this to "cpu" regardless — it only
+  # matters for the GPU extraction stage / direct single-job runs.
+  device: cpu
+
+lme:
+  train_frac: 0.75
+  split_random_state: 0
+  verbose: false
+  # Barr et al. (2013)-style simplification ladder if the full model fails
+  # to converge — see fit_broderick_lme_one_layer's docstring for the
+  # 4-step fallback order (region correlation -> region slope -> subject
+  # correlation -> all slopes dropped). Applied identically to both models
+  # so the LRT stays valid.
+  allow_slope_fallback: true
+  layer_stride: 1
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/broderick/surprisal_sweep
+
+cache:
+  # Must already contain this model's logit-lens fulltext surprisal cache
+  # (populated by run/surprisal/neural/broderick_extract.py) before running
+  # the CPU-only LME sweep.
+  features_dir: ${BRODERICK_LME_FEATURE_CACHE_DIR}

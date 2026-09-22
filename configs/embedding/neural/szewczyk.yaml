@@ -1,0 +1,68 @@
+# ============================================================================
+# Szewczyk & Federmeier N400 EEG Encoding — Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Predicts a scalar N400 amplitude (already averaged over 4 centro-parietal
+# ROI clusters — no per-electrode spatial data in this deposit) from LLM
+# hidden states at the sentence-final critical word, using single-output
+# ridge regression with GroupKFold cross-validation grouped by sentence frame.
+#
+# Dataset: Szewczyk & Federmeier (2021), eLife. OSF deposit w96nc.
+#   5 merged sub-experiments, ~138 subjects, ~2,300 unique (subexperiment,
+#   item, critical_word) trials. N400 = mean 300-500 ms voltage, pre-averaged
+#   in the .rds — no raw EEG. Language: English (en).
+#
+#   No discrete conditions (unlike the earlier N400 datasets) — cloze probability is a
+#   continuous manipulation. Primary metric uses all items pooled; secondary
+#   diagnostics split by cloze_p >= 0.5 ("expected") vs < 0.5 ("unexpected")
+#   purely for scaling-law comparison plots, and report the pooled Spearman
+#   correlation between predicted/actual N400 and cloze_p itself.
+#
+# CV strategy
+# -----------
+#   Groups = (subexperiment, item) frame: every critical-word completion of
+#   the same sentence context stays in the same fold. With n_splits=10, each
+#   test fold has ~141 of the 1,410 frames. Larger item count than the earlier N400 datasets justifies more folds than their 3-5; reduce to
+#   5 if the sweep is too slow.
+#
+# GPU strategy
+# ------------
+#   Every (subject, layer) ridge fit is an independent task (no valid way to
+#   batch all ~138 subjects into one shared-X fit — each only responds to a
+#   Latin-square subset of items). All ~138 x n_layers fits are flattened
+#   into one task queue and dispatched concurrently across CUDA streams
+#   (--n_gpu_workers, default 32) using the SVD/GCV-based GPU ridge path
+#   (cv_ridge_score_multioutput_gpu — analytic per-fold alpha selection, no
+#   nested CV grid search).
+#
+# Run locally (full Pythia family):
+#   .venv/bin/python scripts/run/embedding/neural/szewczyk.py \
+#     --config configs/embedding/neural/szewczyk.yaml \
+#     --from-registry --family pythia --device cuda
+#
+# Run a single model:
+#   .venv/bin/python scripts/run/embedding/neural/szewczyk.py \
+#     --config configs/embedding/neural/szewczyk.yaml \
+#     --models EleutherAI/pythia-1b --device cpu
+# ============================================================================
+
+dataset:
+  data_path: ${BENCHMARK_ROOT}/data/szewczyk/osfstorage/bind-5-dset_300-500.rds
+  max_length: null    # null -> use model's max_position_embeddings
+
+regression:
+  n_splits: 10                    # GroupKFold on (subexperiment, item) frame
+  alpha: null                     # null -> np.logspace(3.5, 8, 5)
+  scale: true
+  expected_cloze_threshold: 0.5   # secondary median-split for scaling curves only
+
+benchmark:
+  layerwise: true
+  tokenizer_no_revision: true
+  trust_remote_code: false
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs/szewczyk/embedding_sweep
+
+cache:
+  features_dir: ${SZEWCZYK_FEATURE_CACHE_DIR}

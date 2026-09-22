@@ -1,0 +1,44 @@
+# ============================================================================
+# OneStop Corpus — Go-Past / Regression-Path Duration (GP) — LME Checkpoint Sweep
+# ============================================================================
+#
+# Trial-level by-subject LME on raw go-past duration (IA_REGRESSION_PATH_DURATION,
+# ms), mirroring Provo's GP fit. See ``configs/surprisal/behavioral/onestop_fp.yaml`` for the full
+# note on shared SP/FP/GP caching.
+#
+# Run locally:
+#   .venv/bin/python scripts/run/surprisal/behavioral/onestop_fit.py \
+#     --config configs/surprisal/behavioral/onestop_gp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/onestop
+  measure: GP                 # SP | FP | GP
+  stories: null                # null = all 330 passages
+  min_dur: 50.0
+  max_dur: 5000.0
+  exclude_doc_edges: true
+  # Fixed 120-of-360 subject subset (seeded, frozen) — identical for every model.
+  subjects_file: ${BENCHMARK_ROOT}/configs/subjects/onestop_subjects_120.txt
+
+lme:
+  include_surprisal: true
+  include_prev_surprisal: true
+  include_freq: true  # Zipf lexical frequency nuisance (wordfreq)
+  filter_sentence_edges: true
+  compare_baseline: true
+  out_of_sample: true
+  partition_mod: 4
+  partition_fit_indices: [0, 1, 2]   # 75% train (in-sample loglik reusable later)
+  partition_test_indices: [3]        # 25% held-out (OOS ΔLogLik, correlations)
+  verbose: false
+
+cache:
+  # Shared across SP/FP/GP — do NOT nest per measure.
+  features_dir: ${ONESTOP_FEATURE_CACHE_DIR}
+
+output:
+  save_dir: outputs/onestop_checkpoint_sweep_lme/gp
+
+models: []

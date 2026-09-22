@@ -1,0 +1,50 @@
+# ============================================================================
+# ZuCo Reading — Normal Reading (NR) task — LME Checkpoint Sweep
+# ============================================================================
+#
+# Trial-level by-subject LME on raw TRT (total reading time, ms — Clark-2025-style
+# fit, mirroring UCL Reading / Natural Stories): Zipf frequency (wordfreq) + current-word +
+# spillover surprisal as fixed effects, random slopes by subject.
+#
+# NR = 300 Wikipedia sentences, naturalistic silent reading (no task judgment) —
+# closest analog to UCL's self-paced reading corpus.
+#
+# Requires R + lme4 on the runtime host (Jean Zay: module load r/4.5.2).
+#
+# Run locally:
+#   .venv/bin/python scripts/run/surprisal/behavioral/zuco_reading_fit.py \
+#     --config configs/surprisal/behavioral/zuco_reading_sr.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  mat_root: ${BENCHMARK_ROOT}/data/zuco_reading/osfstorage
+  task: SR                 # SR | NR | TSR
+  subjects: null            # null = all 12 ZuCo subjects
+  min_fixations: 1          # drop never-fixated words (TRT=0 / omission)
+  min_trt: 50.0             # ms, drop implausibly short TRT
+  max_trt: 5000.0           # ms, drop implausibly long TRT (regressions/blinks)
+
+lme:
+  include_surprisal: true
+  include_prev_surprisal: true   # spillover surprisal (previous word)
+  include_freq: true          # Zipf lexical frequency nuisance (wordfreq)
+  filter_sentence_edges: true    # drop sentence-initial / -final words
+  compare_baseline: true
+  out_of_sample: false
+  partition_mod: 4
+  partition_fit_indices: [0, 1]   # ~50% train
+  partition_test_indices: [2, 3]  # ~50% test (OOS ΔLogLik, correlations)
+  verbose: false
+
+cache:
+  # NOTE: run/surprisal/behavioral/zuco_reading_fit.py always nests these under a
+  # per-task subdirectory (.../<task_lower>/) to keep SR/NR/TSR caches from
+  # ever colliding (their story_id/zone ranges overlap) — the values below are
+  # illustrative; the actual path is <ZUCO_READING_FEATURE_CACHE_DIR>/nr/...
+  features_dir: ${ZUCO_READING_FEATURE_CACHE_DIR}/sr
+
+output:
+  save_dir: outputs/zuco_reading_checkpoint_sweep_lme/sr
+
+models: []

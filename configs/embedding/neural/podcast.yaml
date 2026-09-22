@@ -1,0 +1,85 @@
+# ============================================================================
+# Podcast ECoG Encoding — Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Predicts high-gamma power (70–200 Hz Hilbert envelope, preprocessed) from
+# LLM contextual activations using per-electrode lag-matrix ridge regression
+# with temporal 3-fold cross-validation (contiguous chunks, no data leakage).
+#
+# Data: Podcast BIDS dataset (ds005574), 9 subjects, ~5136 words, 512 Hz → 32 Hz
+# Pipeline: load highgamma .fif → epoch [-1, +1s] → IQR clip → lag-matrix ridge
+# Standards: Zada et al. 2025 (dataset), Schrimpf et al. 2021 (sliding context)
+#
+# Run single array task (Jean Zay):
+#   python scripts/submit.py podcast embedding fit --family gpt2
+#
+# Run locally (full family):
+#   .venv/bin/python scripts/run/embedding/neural/podcast.py \
+#     --config configs/embedding/neural/podcast.yaml \
+#     --from-registry --family gpt2 --device cuda
+# ============================================================================
+
+dataset:
+  bids_root: ${BENCHMARK_ROOT}/data/podcast
+  subjects: null          # null = all subjects with a highgamma .fif
+  # Epoch window (seconds relative to word onset) — 64 lags at 32 Hz over 2 s
+  # (matches the Podcast pooled-LME window, configs/surprisal/neural/podcast.yaml)
+  tmin: -1.0              # analysis start (s)
+  tmax: 1.0               # analysis end (s)
+  # No margin needed before tmin: tmin_extract only ever existed to give the
+  # (now-disabled, see baseline: null below) baseline-correction step extra
+  # native-rate samples before cropping to [tmin, tmax). With no baseline
+  # window to protect, tmin_extract == tmin is exactly correct (see
+  # podcast.py::load_subject_epochs — the `if baseline is not None` block
+  # that's the only consumer of that extra margin is skipped when
+  # baseline=None).
+  tmin_extract: -1.0
+  downsample_to: 32.0     # Hz
+  drop_bads: true
+  # Preprocessing
+  clip_iqr: 5.0
+  # No pre-onset baseline correction — matches the reference Hasson-lab
+  # tutorial (mne.Epochs(..., baseline=None)) and the pooled Podcast LME
+  # pipeline (configs/surprisal/neural/podcast.yaml). The outcome is instead
+  # z-scored per electrode on TRAIN-fold-only statistics inside the ridge CV
+  # loop (standardize_target=True, always on — see
+  # neuroai/benchmarks/podcast.py's reg_kwargs), so no test-fold information
+  # leaks into the normalization.
+  baseline: null
+  baseline_mode: logratio
+  # LLM context: null = unbounded sliding window up to model's own context length
+  # (50 % overlap when limit reached — Schrimpf et al. 2021 standard)
+  context_words: null
+  max_length: null
+  # Path to output dir of data/podcast/electrode_selection.py (contains selected_electrodes.csv).
+  # Set to null to use all channels (no language-responsiveness filtering).
+  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/podcast/electrode_selection
+
+regression:
+  alpha: null             # null → 5-value log-spaced grid [10^3.5 … 10^8]: [~3162, ~42170, ~562341, ~7.5M, 1e8]
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: false
+
+benchmark:
+  layerwise: true
+  # Lag-matrix: one multi-output ridge predicts all 128 time bins simultaneously,
+  # giving a temporal response function (TRF) at 32 Hz (31.25 ms per lag).
+  # Set to false to fall back to windowed-mean regression .
+  use_lag_matrix: true
+  n_cv_folds: 3           # contiguous temporal folds (avoids leakage)
+  # Fallback windowed-mean parameters (only used when use_lag_matrix: false)
+  window_size: 0.2
+  step_size: 0.05
+  tokenizer_no_revision: true
+
+cache:
+  # On Jean Zay (SCRATCH set): resolves to $SCRATCH/.cache/podcast_features
+  # Locally: set PODCAST_FEATURE_CACHE_DIR or falls back to repo .cache/
+  features_dir: ${PODCAST_FEATURE_CACHE_DIR}
+
+output:
+  # Per SLURM job: <save_dir>/<family>/<model_short>/podcast_checkpoint_scores.csv
+  save_dir: outputs/podcast/embedding_sweep
+
+models: []  # unused — registry scripts use --from-registry

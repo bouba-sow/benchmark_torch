@@ -1,0 +1,55 @@
+# ============================================================================
+# Provo Corpus — Go-Past / Regression-Path Duration (GP) — LME Checkpoint Sweep
+# ============================================================================
+#
+# Trial-level by-subject LME on raw go-past duration (IA_REGRESSION_PATH_DURATION,
+# ms — Clark-2025-style fit, mirroring UCL Reading / ZuCo Reading): unigram
+# (KenLM) + current-word + spillover surprisal as fixed effects, random slopes
+# by subject.
+#
+# GP = time from first fixating a word until the eyes move past it to the right
+# (including any regressive re-reading of earlier material) — captures
+# integration/regression difficulty rather than early lexical access.
+#
+# NOTE on caching: unlike ZuCo (SR/NR/TSR are three different sentence sets,
+# cached separately), Provo's SP/FP/GP measures share the exact same 55-passage
+# word set — only the outcome duration column differs. The surprisal + KenLM
+# caches below are therefore NOT nested per measure; a cache built while running
+# this config is reused as-is by provo_lme_sweep_{sp,fp}.yaml.
+#
+# Requires R + lme4 on the runtime host (Jean Zay: module load r/4.5.2).
+#
+# Run locally:
+#   .venv/bin/python scripts/run/surprisal/behavioral/provo_fit.py \
+#     --config configs/surprisal/behavioral/provo_gp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/provo/osfstorage
+  measure: GP                 # SP | FP | GP
+  texts: null                  # null = all 55 passages
+  min_dur: 50.0                 # ms, drop implausibly short durations
+  max_dur: 5000.0               # ms, drop implausibly long durations (regressions/blinks)
+  exclude_doc_edges: true       # also drop passage-initial/-final words
+
+lme:
+  include_surprisal: true
+  include_prev_surprisal: true
+  include_freq: true  # Zipf lexical frequency nuisance (wordfreq)
+  filter_sentence_edges: true
+  compare_baseline: true
+  out_of_sample: true
+  partition_mod: 4
+  partition_fit_indices: [0, 1, 2]   # 75% train (in-sample loglik reusable later)
+  partition_test_indices: [3]        # 25% held-out (OOS ΔLogLik, correlations)
+  verbose: false
+
+cache:
+  # Shared across SP/FP/GP — do NOT nest per measure (see note above).
+  features_dir: ${PROVO_FEATURE_CACHE_DIR}
+
+output:
+  save_dir: outputs/provo/surprisal_sweep/gp
+
+models: []

@@ -1,0 +1,60 @@
+# ============================================================================
+# OneStop Corpus — First-Pass / Gaze Duration (FP) — LME Checkpoint Sweep
+# ============================================================================
+#
+# Trial-level by-subject LME on raw first-pass duration (IA_FIRST_RUN_DWELL_TIME,
+# ms — Clark-2025-style fit, mirroring Provo / GECO / MECO / UCL Reading / ZuCo
+# Reading): Zipf frequency (wordfreq) + current-word + spillover surprisal as fixed
+# effects, random slopes by subject. **Default measure for OneStop.**
+#
+# FP = summed fixation duration during the first pass over a word (before the
+# eyes leave it, forward or backward) — the "standard" reading-time measure in
+# this literature (closest analog to SPR reading time).
+#
+# NOTE on caching: like Provo's SP/FP/GP, OneStop's three measures share the
+# exact same 330-passage word set (11 articles x 3 counterbalancing batches x
+# ~2 paragraphs x 2 difficulty levels) — only the outcome duration column
+# differs. The surprisal + KenLM caches below are therefore NOT nested per
+# measure; a cache built while running this config is reused as-is by
+# onestop_lme_sweep_{sp,gp}.yaml.
+#
+# Requires R + lme4 on the runtime host (Jean Zay: module load r/4.5.2).
+#
+# Run locally:
+#   .venv/bin/python scripts/run/surprisal/behavioral/onestop_fit.py \
+#     --config configs/surprisal/behavioral/onestop_fp.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/onestop
+  measure: FP                # SP | FP | GP
+  stories: null                # null = all 330 (article_batch, article_id, paragraph_id, difficulty_level) passages
+  min_dur: 50.0                # ms, drop implausibly short durations
+  max_dur: 5000.0              # ms, drop implausibly long durations (regressions/blinks)
+  exclude_doc_edges: true      # also drop passage-initial/-final words
+  # Fixed 120-of-360 subject subset (seeded, frozen) — identical for every
+  # model so cross-model scores are comparable. See the file's header for how
+  # it was drawn. Delete this line to sweep all 360 subjects.
+  subjects_file: ${BENCHMARK_ROOT}/configs/subjects/onestop_subjects_120.txt
+
+lme:
+  include_surprisal: true
+  include_prev_surprisal: true   # spillover surprisal (previous word)
+  include_freq: true          # Zipf lexical frequency nuisance (wordfreq)
+  filter_sentence_edges: true    # drops any row where is_edge=true (sentence OR doc edge)
+  compare_baseline: true
+  out_of_sample: true
+  partition_mod: 4
+  partition_fit_indices: [0, 1, 2]   # 75% train (in-sample loglik reusable later)
+  partition_test_indices: [3]        # 25% held-out (OOS ΔLogLik, correlations)
+  verbose: false
+
+cache:
+  # Shared across SP/FP/GP — do NOT nest per measure (see note above).
+  features_dir: ${ONESTOP_FEATURE_CACHE_DIR}
+
+output:
+  save_dir: outputs/onestop_checkpoint_sweep_lme/fp
+
+models: []

@@ -1,0 +1,63 @@
+# ============================================================================
+# UCL Self-Paced Reading (Frank et al. 2013) — Embedding Ridge Checkpoint Sweep
+# ============================================================================
+#
+# Word-level ridge regression: rt (self-paced reading time, ms, per subject)
+# ~ per-layer LLM contextual embedding. Behavioral analogue of
+# NeuralBenchmark's per-layer iEEG ridge regression; complements
+# configs/surprisal/behavioral/ucl_reading.yaml (scalar surprisal -> RT via LME).
+#
+# UCL Reading has only one measure (self-paced RT) — no SP/FP/GP split like
+# Provo/MECo eye-tracking. Fit independently per subject (see
+# neuroai.benchmarks.ucl_embed module docstring): 117 subjects, 361 sentences.
+#
+# NOTE on caching: embeddings are cached per (model, revision, story_id) —
+# story_id here is the UCL sentence number (1-361).
+#
+# Run locally:
+#   .venv/bin/python scripts/run/embedding/behavioral/ucl_reading.py \
+#     --config configs/embedding/behavioral/ucl_reading.yaml \
+#     --from-registry --family gpt2 --array-index 0 --device cuda
+# ============================================================================
+
+dataset:
+  root: ${BENCHMARK_ROOT}/data/ucl_reading
+  sentences: null              # null = all 361 sentences
+  min_accuracy: 0.0             # keep all 117 subjects (set e.g. 0.7 to filter low-accuracy subjects)
+  min_rt: 100.0                 # ms, standard SPR trimming
+  max_rt: 3000.0
+  context_words: 48             # >= longest sentence (38 words) -> full cumulative context
+  max_length: 512
+
+# Leave-sentences-out CV (GroupKFold on story_id) within each subject's own
+# trials — words within one sentence share overlapping context, so plain
+# shuffled KFold would leak correlated neighbours across train/test.
+group_cv_by_story: true
+# Fit independently per subject (mirrors NeuralBenchmark's per-electrode
+# fitting) -- skip a subject with fewer than this many trials left after
+# filtering. n_jobs = threads per subject (layers); subject_n_jobs =
+# concurrent subject processes. Total cores used ~= n_jobs * subject_n_jobs
+# -- size against your node's cpus-per-task and RAM (each concurrent
+# subject process holds its own embedding-array copy).
+min_trials_per_subject: 20
+n_jobs: 1
+subject_n_jobs: 7
+filter_sentence_edges: true    # drop sentence-initial / -final words
+
+regression:
+  n_splits: 5
+  # Embeddings are high-dimensional/collinear and RT is on a raw-ms scale, so
+  # this grid sits well above the iEEG ridge range (logspace(-3, 3, 7)). Watch
+  # the printed [ridge] chosen alpha (min/median/max) and widen if it pegs an edge.
+  alpha: "np.logspace(1.5, 9, 9)"
+  scale: true
+  random_state: 0
+  print_chosen_ridge_alpha: true
+
+cache:
+  features_dir: ${UCL_READING_EMBED_CACHE_DIR}
+
+output:
+  save_dir: outputs/ucl_reading/embedding_sweep
+
+models: []

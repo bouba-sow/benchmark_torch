@@ -1,0 +1,75 @@
+# ============================================================================
+# Nieuwland (2018) EEG N400 Encoding — Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Predicts EEG amplitude (6 centro-parietal channels × full epoch) from LLM
+# hidden states using multi-output himalaya GPU ridge regression with item-based
+# 10-fold cross-validation (GroupKFold on sentence item ID).
+#
+# Data: nm000228 BIDS dataset — 334 subjects, 9 UK labs, 80 Delong sentences,
+#       noun_expected / noun_unexpected conditions, RSVP EEG.
+#       EEG downsampled to 32 Hz, epoched −200 … 800 ms around noun onset.
+#
+# Pipeline: load BIDS EEG → epoch → 32 Hz → z-score per subject →
+#           extract LLM hidden state at noun → himalaya GPU ridge → save CSVs
+#
+# Primary metric: Spearman r in N400 window (200–500 ms), mean across 6 channels.
+#
+# Run single array task (Jean Zay):
+#   python scripts/submit.py nieuwland embedding fit --family gpt2
+#
+# Run locally (full family):
+#   .venv/bin/python scripts/run/embedding/neural/nieuwland.py \
+#     --config configs/embedding/neural/nieuwland.yaml \
+#     --from-registry --family gpt2 --device cuda
+# ============================================================================
+
+dataset:
+  bids_root: ${BENCHMARK_ROOT}/data/nieuwland
+  included_in_paper_only: true
+  # GLAS uses BioSemi-128 A1-H16 naming — incompatible with standard 10-20.
+  # Remove "glas" from this list to attempt GLAS loading (needs custom mapping).
+  exclude_labs: [glas]
+  min_trials: 20
+
+  # 6 centro-parietal channels used for N400 analysis (Nieuwland et al. 2018)
+  target_channels: [Cz, C3, C4, Pz, P3, P4]
+  target_sfreq: 32.0        # Hz — downsample all labs to this rate
+  epoch_tmin: -0.2          # seconds relative to noun onset
+  epoch_tmax: 0.8
+  baseline: [-0.2, 0.0]     # pre-stimulus baseline correction window
+  artifact_threshold_uv: 100.0
+
+  # N400 scoring window (used as primary metric aggregation window)
+  n400_tmin: 0.2
+  n400_tmax: 0.5
+
+  # LLM context: null = use model's own max_position_embeddings.
+  # Sentences are ~15 words so context is never a bottleneck.
+  max_length: null
+
+regression:
+  n_folds: 10               # item-based GroupKFold (split on sentence item_number)
+  alpha: [3162.0, 42170.0, 562341.0, 1.0e8, 1.0e9, 1.0e10]
+               # null → 5-value log-spaced grid [10^3.5 … 10^8]
+  scale: true
+  random_state: 0
+  # Lab one-hot covariate appended to X to absorb between-lab amplitude differences
+  add_lab_covariate: true
+
+benchmark:
+  layer_mode: all           # extract all layers for layerwise analysis
+  tokenizer_no_revision: true
+
+cache:
+  # On Jean Zay (SCRATCH set): resolves to $SCRATCH/.cache/nieuwland_features
+  # Locally: set NIEUWLAND_FEATURE_CACHE_DIR or falls back to repo .cache/
+  features_dir: ${NIEUWLAND_FEATURE_CACHE_DIR}
+  # Cached per-subject .npz epoch files (loaded once, reused across checkpoints)
+  epochs_dir: ${NIEUWLAND_EPOCH_CACHE_DIR}
+
+output:
+  # Per SLURM job: <save_dir>/<family>/<model_short>/nieuwland_checkpoint_scores.csv
+  save_dir: outputs_jeanzay/nieuwland/checkpoint_sweep
+
+models: []  # unused — registry scripts use --from-registry
