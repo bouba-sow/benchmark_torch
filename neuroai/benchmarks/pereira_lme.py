@@ -110,6 +110,10 @@ class PereiraLmeConfig:
     # of silently falling back to a model load (crashes on import for the
     # FLA-based trust_remote_code families, which need a live CUDA driver).
     require_cached_surprisal: bool = False
+    # Separate last-layer experiment: fit each language-atlas ROI independently.
+    roi_wise: bool = False
+    # With roi_wise: restrict to these ROI labels (None = all ROIs of the atlas).
+    rois: tuple[str, ...] | None = None
 
 
 @dataclass
@@ -134,6 +138,7 @@ def _fit_one_layer_worker(
     random_state: int,
     verbose: bool,
     allow_slope_fallback: bool,
+    roi: str | None = None,
 ) -> dict[str, tp.Any]:
     """Runs in its own spawned process: load the shared table, fit one layer."""
     import numpy as _np
@@ -143,10 +148,16 @@ def _fit_one_layer_worker(
 
     t0 = time.time()
     row: dict[str, tp.Any] = {"layer": layer_idx}
+    if roi is not None:
+        row["roi"] = roi
     try:
         base_df = _pd.read_parquet(base_parquet_path)
         surp_all = _np.load(surprisal_npy_path, mmap_mode="r")
         base_df["surprisal"] = _np.asarray(surp_all[:, layer_idx], dtype=_np.float64)
+        if roi is not None:
+            base_df = base_df.loc[base_df["roi"].astype(str) == roi].copy()
+            if base_df.empty:
+                raise ValueError(f"No observations for ROI {roi!r}")
 
         fit = fit_pereira_lme_one_layer(
             base_df,
@@ -154,6 +165,7 @@ def _fit_one_layer_worker(
             random_state=random_state,
             verbose=verbose,
             allow_slope_fallback=allow_slope_fallback,
+            per_roi=roi is not None,
         )
         row.update({
             "beta": fit.beta,
@@ -182,7 +194,7 @@ def _fit_one_layer_worker(
             "error": None,
         })
     except Exception as exc:  # noqa: BLE001 — one bad layer must not kill the pool
-        logger.error("Layer %d failed", layer_idx, exc_info=True)
+        logger.error("ROI %s layer %d failed", roi, layer_idx, exc_info=True)
         row["error"] = str(exc)
     row["fit_wall_time_s"] = time.time() - t0
     return row
@@ -293,8 +305,8 @@ class PereiraLmeBenchmark:
             len(layer_indices), self.cfg.lme.layer_stride, self.cfg.lme.n_workers,
         )
 
-        out_csv = out_dir / "pereira_lme_by_layer.csv"
-        out_columns = list(_LAYER_ROW_COLUMNS) + [
+        out_csv = out_dir / ("pereira_lme_by_roi.csv" if self.cfg.lme.roi_wise else "pereira_lme_by_layer.csv")
+        out_columns = (["roi"] if self.cfg.lme.roi_wise else []) + list(_LAYER_ROW_COLUMNS) + [
             k for k in (extra_fields or {}) if k not in _LAYER_ROW_COLUMNS
         ]
         done_layers: set[int] = set()
@@ -304,7 +316,10 @@ class PereiraLmeBenchmark:
                 existing_revision = existing["revision"] if "revision" in existing.columns else "main"
                 same_revision = existing_revision == revision
                 good = existing.loc[same_revision & existing["error"].isna()]
-                done_layers = set(good["layer"].tolist())
+                if self.cfg.lme.roi_wise:
+                    done_layers = set(zip(good["roi"].astype(str), good["layer"].astype(int)))
+                else:
+                    done_layers = set(good["layer"].tolist())
                 n_failed = int((same_revision & existing["error"].notna()).sum())
                 if done_layers:
                     logger.info("Skipping %d already-fit layer(s) for revision=%s", len(done_layers), revision)
@@ -322,7 +337,10 @@ class PereiraLmeBenchmark:
         import multiprocessing as mp
         ctx = mp.get_context("spawn")
 
-        pending = [li for li in layer_indices if li not in done_layers]
+        fit_rois = ([r for r in roi_names if self.cfg.lme.rois is None or r in self.cfg.lme.rois]
+                    if self.cfg.lme.roi_wise else [None])
+        tasks = [(roi, li) for roi in fit_rois for li in layer_indices
+                 if ((roi, li) not in done_layers if self.cfg.lme.roi_wise else li not in done_layers)]
         rows_out: list[dict] = []
         # max_tasks_per_child=1: recycle each worker after ONE layer fit —
         # lme4/rpy2's embedded R interpreter leaks memory across repeated
@@ -339,16 +357,19 @@ class PereiraLmeBenchmark:
                     random_state=self.cfg.lme.split_random_state,
                     verbose=self.cfg.lme.verbose,
                     allow_slope_fallback=self.cfg.lme.allow_slope_fallback,
-                ): li
-                for li in pending
+                    roi=roi,
+                ): (roi, li)
+                for roi, li in tasks
             }
             for fut in as_completed(futures):
-                li = futures[fut]
+                roi, li = futures[fut]
                 try:
                     row = fut.result()
                 except Exception as exc:
                     logger.error("Layer %d worker crashed: %s", li, exc, exc_info=True)
                     row = {"layer": li, "error": str(exc)}
+                if roi is not None:
+                    row["roi"] = roi
                 row["revision"] = revision
                 if extra_fields:
                     row.update(extra_fields)
@@ -358,8 +379,8 @@ class PereiraLmeBenchmark:
                         out_csv, mode="a", header=not out_csv.exists(), index=False,
                     )
                 logger.info(
-                    "  [layer %d] done in %.1fs — delta_loglik_test=%s converged=%s%s",
-                    li, row.get("fit_wall_time_s", float("nan")),
+                    "  [%s | layer %d] done in %.1fs — delta_loglik_test=%s converged=%s%s",
+                    roi or "pooled", li, row.get("fit_wall_time_s", float("nan")),
                     f"{row['delta_loglik_test']:.2f}" if row.get("delta_loglik_test") is not None else "NA",
                     row.get("converged"),
                     " (slope dropped)" if row.get("slope_dropped") else "",

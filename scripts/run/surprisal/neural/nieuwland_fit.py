@@ -110,6 +110,7 @@ def _build_benchmark_config(
             else bool(ds.get("trust_remote_code", False))
         ),
         wordfreq_language=str(ds.get("wordfreq_language", "en")),
+        paper_n400_tsv=(os.environ.get("NIEUWLAND_PAPER_N400_TSV") or ds.get("paper_n400_tsv") or None),
         # CPU-only stage: R (pymer4/lme4) is CPU-only on Jean Zay. Surprisal
         # is expected to already be cached by run/surprisal/neural/nieuwland_extract.py
         # (GPU stage) — a cache miss here silently falls back to loading the

@@ -91,6 +91,7 @@ def _build_benchmark_config(
         baseline=tuple(ds["baseline"]) if ds.get("baseline") else None,
         baseline_mode=str(ds.get("baseline_mode", "logratio")),
         electrode_selection_dir=ds.get("electrode_selection_dir") or None,
+        roi_map_path=ds.get("roi_map_path") or None,
         epoch_cache_dir=str(epoch_cache_dir) if epoch_cache_dir else None,
         feature_cache_dir=str(feature_cache_dir),
         max_length=int(ds["max_length"]) if ds.get("max_length") else None,
@@ -119,7 +120,9 @@ def _build_benchmark_config(
             save_word_predictions if save_word_predictions is not None
             else bool(lme.get("save_word_predictions", True))
         ),
-        window_s=window_s,
+        window_s=(window_s if window_s is not None else
+                  tuple(float(v) for v in lme["window_s"]) if lme.get("window_s") else None),
+        roi_wise=bool(lme.get("roi_wise", False)),
     )
     return PodcastLmeBenchmarkConfig(
         data=data_cfg,

@@ -27,7 +27,7 @@ import pandas as pd
 import polars as pl
 from joblib import Parallel, delayed
 
-from neuroai.analysis.benchmark_common import REPO_ROOT, OUTPUTS_JEANZAY
+from neuroai.analysis.benchmark_common import EXCLUDED_MODEL_IDS, REPO_ROOT, OUTPUTS_JEANZAY
 from scripts.summarize.benchmark import (
     _iter_model_score_files,
     _model_id_from_dir,
@@ -35,6 +35,8 @@ from scripts.summarize.benchmark import (
     _read_csv_safe,
     lookup_model_meta,
 )
+
+from scripts.dlt.dlt_keys import attach_story_zone
 
 DLT_DIR = REPO_ROOT / "outputs" / "dlt"
 CACHE_DIR = REPO_ROOT / "outputs" / "dlt_loglik_cache"
@@ -45,6 +47,26 @@ THRESHOLDS = (1.0, 2.0, 3.0, 4.0, 5.0)
 
 # dataset_key -> (sweep_root, scores_filename, per_word_filename, dlt_cost_csv)
 DATASET_SPEC: dict[str, tuple[Path, str, str, Path]] = {
+    "naturalstories": (
+        OUTPUTS_JEANZAY / "naturalstories/surprisal_sweep",
+        "spr_lme_checkpoint_scores.csv", "spr_lme_per_word.csv",
+        DLT_DIR / "naturalstories_dlt_cost.csv",
+    ),
+    "onestop": (
+        OUTPUTS_JEANZAY / "onestop/surprisal_sweep" / "fp",
+        "onestop_lme_checkpoint_scores.csv", "onestop_FP_lme_per_word.csv",
+        DLT_DIR / "onestop_dlt_cost.csv",
+    ),
+    "onestop_gp": (
+        OUTPUTS_JEANZAY / "onestop/surprisal_sweep" / "gp",
+        "onestop_lme_checkpoint_scores.csv", "onestop_GP_lme_per_word.csv",
+        DLT_DIR / "onestop_dlt_cost.csv",   # same text as FP, different duration measure
+    ),
+    "onestop_sp": (
+        OUTPUTS_JEANZAY / "onestop/surprisal_sweep" / "sp",
+        "onestop_lme_checkpoint_scores.csv", "onestop_SP_lme_per_word.csv",
+        DLT_DIR / "onestop_dlt_cost.csv",
+    ),
     "geco": (
         # Was geco/lme_sweep_dlt -- a stale legacy dir (last touched Jul 15,
         # effectively empty/single-row) that predates this dataset's 75/25
@@ -115,18 +137,15 @@ DATASET_SPEC: dict[str, tuple[Path, str, str, Path]] = {
 }
 
 
-def _pick_best_layer(scores: pd.DataFrame) -> int | None:
+def _pick_last_layer(scores: pd.DataFrame) -> int | None:
+    """Deepest layer. The DLT analyses are run at the last layer (as in
+    dlt/surprisal_corr.py), not at a per-model best layer: a best-layer search
+    gives deeper models more chances at a noisy peak, and the headline best layer
+    (max TRAIN delta_loglik) is a different quantity from this analysis's focus."""
     if "layer" not in scores.columns:
         return None
-    col = "test_delta_pearsonr" if "test_delta_pearsonr" in scores.columns else None
-    if col is None:
-        return None
-    s = pd.to_numeric(scores[col], errors="coerce")
-    lay = pd.to_numeric(scores["layer"], errors="coerce")
-    valid = lay.notna() & s.notna() & (s.abs() <= 0.1)
-    if not valid.any():
-        return None
-    return int(lay.loc[s[valid].idxmax()])
+    lay = pd.to_numeric(scores["layer"], errors="coerce").dropna()
+    return int(lay.max()) if not lay.empty else None
 
 
 def _final_revision(scores: pd.DataFrame) -> str:
@@ -140,6 +159,8 @@ def _process_one_model(dataset: str, family: str, model_dir: Path, scores_filena
                         per_word_filename: str, dlt_key: pd.DataFrame) -> list[dict] | None:
     try:
         model_id = _model_id_from_dir(model_dir)
+        if model_id in EXCLUDED_MODEL_IDS:  # broken upstream checkpoints, out of benchmark scope
+            return None
         score_files = sorted(model_dir.rglob(scores_filename)) or [model_dir / scores_filename]
         frames = [d for f in score_files if f.exists() and (d := _read_csv_safe(f)) is not None]
         if not frames:
@@ -147,7 +168,7 @@ def _process_one_model(dataset: str, family: str, model_dir: Path, scores_filena
         scores = pd.concat(frames, ignore_index=True)
         revision = _final_revision(scores)
         scores_rev = scores[scores["revision"].astype(str) == revision] if "revision" in scores.columns else scores
-        best_layer = _pick_best_layer(scores_rev)
+        best_layer = _pick_last_layer(scores_rev)
 
         per_word_path = model_dir / per_word_filename
         if not per_word_path.exists():
@@ -173,8 +194,7 @@ def _process_one_model(dataset: str, family: str, model_dir: Path, scores_filena
         if pw.empty:
             return None
 
-        pw["story_id"] = pw["sentid"].astype(int)
-        pw["zone"] = pw["sentpos"].astype(int)
+        pw = attach_story_zone(pw, natural_stories=dataset.startswith("naturalstories"))
         pw = pw.merge(dlt_key, on=["story_id", "zone"], how="left")
         pw = pw.dropna(subset=["total", "delta_loglik"])
         if pw.empty:

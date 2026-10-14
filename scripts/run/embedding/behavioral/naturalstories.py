@@ -216,6 +216,53 @@ def _score_row(ckpt: CheckpointItem, result) -> dict[str, Any]:
     }
 
 
+def run_activations_only(
+    checkpoints: list[CheckpointItem],
+    *,
+    model_id: str,
+    n_params: float,
+    batch_size: int,
+    cfg: dict,
+    feature_cache_dir: Path | None,
+    model_cfg: dict | None = None,
+) -> None:
+    """Extract and cache LLM word embeddings for every checkpoint, skipping
+    the ridge fit entirely -- mirrors podcast.py/broderick.py's
+    run_activations_only. NaturalStoriesEmbedGpuBenchmark's cache only
+    depends on word text (via _load_data/_extract_embeddings), not on the
+    ridge fit that follows."""
+    if feature_cache_dir is None:
+        raise ValueError(
+            "--activations_only requires a feature cache directory. "
+            "Set cache.features_dir in the YAML or pass --feature_cache_dir."
+        )
+    for ckpt in checkpoints:
+        logger.info("\n[%s] activations ── %s (step=%d) ──", model_id, ckpt.revision, ckpt.step)
+        load_model_id = resolve_load_model_id(model_cfg, ckpt.revision) if model_cfg else model_id
+        bench_cfg = _benchmark_config(
+            cfg,
+            model_id=model_id,
+            load_model_id=load_model_id,
+            revision=ckpt.revision,
+            n_params=n_params,
+            batch_size=batch_size,
+            output_dir=feature_cache_dir,  # unused for activations, just needs a Path
+            feature_cache_dir=feature_cache_dir,
+            trust_remote_code=bool((model_cfg or {}).get("trust_remote_code", False)),
+        )
+        encoder = NaturalStoriesEmbedGpuBenchmark(bench_cfg)
+        try:
+            df = encoder._load_data()
+            emb = encoder._extract_embeddings(df)
+            logger.info("[%s] %s — done, shape %s", model_id, ckpt.revision,
+                        "×".join(str(d) for d in emb.shape))
+        except Exception:
+            logger.error("[%s] %s — failed", model_id, ckpt.revision, exc_info=True)
+        finally:
+            clear_hf_model_cache()
+            free_gpu()
+
+
 def run_model_sweep(
     checkpoints: list[CheckpointItem],
     *,
@@ -383,6 +430,9 @@ def main() -> None:
     p.add_argument("--array-index", type=int, default=None)
     p.add_argument("--models", nargs="+", default=None)
     p.add_argument("--summary_only", action="store_true")
+    p.add_argument("--activations_only", action="store_true",
+                   help="Stage 1: extract and cache LLM word embeddings only (no ridge fit). "
+                        "Run on GPU; follow with the full sweep once cache is warm.")
     p.add_argument("--skip_summary", action="store_true")
     p.add_argument("--no_plots", action="store_true")
     p.add_argument("--dry_run", action="store_true")
@@ -410,6 +460,17 @@ def main() -> None:
             checkpoints = _checkpoint_items_from_task(task)
             if args.dry_run:
                 print(f"task: {task}")
+                return
+            if args.activations_only:
+                run_activations_only(
+                    checkpoints,
+                    model_id=task.model_id,
+                    n_params=model_cfgs[0]["n_params"],
+                    batch_size=model_cfgs[0]["batch_size"],
+                    cfg=cfg,
+                    feature_cache_dir=feature_cache_dir,
+                    model_cfg=model_cfgs[0],
+                )
                 return
             run_model_sweep(
                 checkpoints,

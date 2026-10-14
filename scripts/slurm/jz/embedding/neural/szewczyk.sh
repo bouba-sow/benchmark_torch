@@ -7,6 +7,10 @@
 # Optional overrides:
 #   CONFIG, SWEEP_ROOT
 #   SZEWCZYK_FEATURE_CACHE_DIR   — default: $BENCHMARK_CACHE_ROOT/szewczyk_features
+#   SZEWCZYK_FIT_CACHE_DIR       — default: $BENCHMARK_CACHE_ROOT/szewczyk_fit_cache
+#                                  (resume cache for the (subject, layer) ridge sweep;
+#                                  a SLURM timeout mid-sweep resumes from here instead
+#                                  of redoing the whole ~4-7k-fit sweep)
 #   N_GPU_WORKERS                 — flattened (subject, layer) concurrent CUDA-stream
 #                                    workers (default 32)
 #
@@ -20,6 +24,8 @@
 : "${SZEWCZYK_FAMILY:?Set SZEWCZYK_FAMILY before sourcing job_szewczyk_jz_common.sh}"
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -29,7 +35,7 @@ _COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$BENCHMARK_ROOT" || exit 1
 
 if [[ -n "${SCRATCH:-}" ]]; then
-  source "${_COMMON_DIR}/jz_cache_env.sh"
+  source "${BENCHMARK_ROOT}/scripts/slurm/jz/jz_cache_env.sh"
 else
   export BENCHMARK_CACHE_ROOT="${BENCHMARK_CACHE_ROOT:-$BENCHMARK_ROOT/.cache}"
   export SZEWCZYK_FEATURE_CACHE_DIR="${SZEWCZYK_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/szewczyk_features}"
@@ -98,6 +104,7 @@ szewczyk_jz_setup_env() {
   mkdir -p "$HF_HOME" "$HF_HUB_CACHE" "$TRANSFORMERS_CACHE" \
     "$HF_DATASETS_CACHE" "$BENCHMARK_CACHE_ROOT" \
     "${SZEWCZYK_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/szewczyk_features}" \
+    "${SZEWCZYK_FIT_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/szewczyk_fit_cache}" \
     "${SWEEP_ROOT}/${SZEWCZYK_FAMILY}" outputs_jeanzay/logs
 }
 
@@ -134,9 +141,10 @@ szewczyk_jz_run_gpu() {
     --family "${SZEWCZYK_FAMILY}" \
     --array-index "${IDX}" \
     --device cuda \
-    --regression_device cpu \
+    --regression_device cuda \
     --out_dir "${SWEEP_ROOT}" \
     --feature_cache_dir "${SZEWCZYK_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/szewczyk_features}" \
+    --fit_cache_dir "${SZEWCZYK_FIT_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/szewczyk_fit_cache}" \
     --n_gpu_workers "${N_GPU_WORKERS}" \
     --skip_summary \
     --no_plots

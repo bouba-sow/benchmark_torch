@@ -579,6 +579,60 @@ def prepare_szewczyk_paper_frame(df: pd.DataFrame) -> pl.DataFrame:
     return pl.from_pandas(out[cols].copy())
 
 
+def _n400_ceiling_formulas_michaelov_paper() -> tuple[str, str]:
+    """Baseline/full formulas matching
+    ``data/n400_paper_formula/osfstorage/calculate_fits/calculate_aics_michaelov.R``:
+    fixed effects surprisal + ZipfFrequency + ON (orthographic neighbourhood), random
+    intercepts for Subject, ContextCode (``chunk``), TargetWords (``target_word``) and Electrode.
+    The baseline (surprisal_z dropped) is this benchmark's own addition, needed for a delta-LL."""
+    res = "(1 | subject) + (1 | chunk) + (1 | target_word) + (1 | electrode)"
+    return f"n400 ~ freq_z + on_z + {res}", f"n400 ~ freq_z + on_z + surprisal_z + {res}"
+
+
+def prepare_michaelov_paper_frame(df: pd.DataFrame) -> pl.DataFrame:
+    """``df`` needs subject, electrode, chunk (ContextCode), target_word, freq (ZipfFrequency),
+    on (ON), surprisal, n400 -- the columns of ``michaelov_2024.tsv``."""
+    required = {"subject", "electrode", "chunk", "target_word", "freq", "on", "surprisal", "n400"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing columns for Michaelov-paper N400 frame: {sorted(missing)}")
+    out = df.copy()
+    for c in ("subject", "electrode", "chunk", "target_word"):
+        out[c] = out[c].astype(str)
+    out["freq_z"] = zscore_series(out["freq"])
+    out["on_z"] = zscore_series(out["on"])
+    out["surprisal_z"] = zscore_series(out["surprisal"])
+    out["n400"] = out["n400"].astype(float)
+    cols = ["subject", "electrode", "chunk", "target_word", "freq_z", "on_z", "surprisal_z", "n400"]
+    return pl.from_pandas(out[cols].copy())
+
+
+def _n400_ceiling_formulas_ryskin_paper() -> tuple[str, str]:
+    """Baseline/full formulas matching
+    ``data/n400_paper_formula/osfstorage/calculate_fits/calculate_aics_ryskin.R``:
+    ``n400 ~ surprisal + (1 + surprisal || Subject) + (1 + surprisal || Item) + (1 | Electrode)``.
+    The paper only fits the full model. The baseline drops surprisal everywhere (fixed effect and
+    the two by-surprisal random slopes, which cannot exist without it), so this delta-LL also
+    contains the slopes' contribution."""
+    full = "n400 ~ surprisal_z + (1 + surprisal_z || subject) + (1 + surprisal_z || chunk) + (1 | electrode)"
+    base = "n400 ~ (1 | subject) + (1 | chunk) + (1 | electrode)"
+    return base, full
+
+
+def prepare_ryskin_paper_frame(df: pd.DataFrame) -> pl.DataFrame:
+    """``df`` needs subject, electrode, chunk (base Item), surprisal, n400 (``ryskin_2021.tsv``)."""
+    required = {"subject", "electrode", "chunk", "surprisal", "n400"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing columns for Ryskin-paper N400 frame: {sorted(missing)}")
+    out = df.copy()
+    for c in ("subject", "electrode", "chunk"):
+        out[c] = out[c].astype(str)
+    out["surprisal_z"] = zscore_series(out["surprisal"])
+    out["n400"] = out["n400"].astype(float)
+    return pl.from_pandas(out[["subject", "electrode", "chunk", "surprisal_z", "n400"]].copy())
+
+
 def _n400_ceiling_direction_task(
     df: pd.DataFrame, source_ids: set, target_ids: set, item_col: str,
 ) -> pd.DataFrame | None:
@@ -619,6 +673,12 @@ def _n400_ceiling_direction_worker(
     try:
         if re_structure == "nieuwland_paper":
             data = prepare_nieuwland_paper_frame(tgt)
+        elif re_structure == "michaelov_paper":
+            data = prepare_michaelov_paper_frame(tgt)
+        elif re_structure == "ryskin_paper":
+            data = prepare_ryskin_paper_frame(tgt)
+        elif re_structure == "szewczyk_paper":
+            data = prepare_szewczyk_paper_frame(tgt)
         else:
             # prepare_n400_lme_frame requires a prev_surprisal column to
             # exist (it z-scores it into prev_surprisal_z), even though the
@@ -639,6 +699,12 @@ def _n400_ceiling_direction_worker(
 
         if re_structure == "nieuwland_paper":
             baseline_formula, full_formula = _n400_ceiling_formulas_nieuwland_paper()
+        elif re_structure == "michaelov_paper":
+            baseline_formula, full_formula = _n400_ceiling_formulas_michaelov_paper()
+        elif re_structure == "ryskin_paper":
+            baseline_formula, full_formula = _n400_ceiling_formulas_ryskin_paper()
+        elif re_structure == "szewczyk_paper":
+            baseline_formula, full_formula = _n400_ceiling_formulas_szewczyk_paper()
         else:
             baseline_formula, full_formula = _n400_ceiling_formulas(include_lab=include_lab)
 
@@ -688,6 +754,8 @@ def compute_n400_ceiling_delta_loglik(
     n_workers: int = 1,
     out_of_sample: bool = True,
     re_structure: str = "slopes",
+    mode: str = "split_half",
+    n_repeats: int = 1,
 ) -> N400DeltaLoglikCeilingResult:
     """Split-half noise ceiling for a pooled N400 LME's delta log-likelihood.
 
@@ -702,6 +770,12 @@ def compute_n400_ceiling_delta_loglik(
     required = {"subject", "n400", "frame_id", item_col}
     if re_structure == "nieuwland_paper":
         required |= {"lab"}  # no electrode column: n400 is already pre-averaged across electrodes
+    elif re_structure == "michaelov_paper":
+        required |= {"electrode", "target_word", "freq", "on"}
+    elif re_structure == "ryskin_paper":
+        required |= {"electrode"}
+    elif re_structure == "szewczyk_paper":
+        required |= {"chunk", "bline", "freq", "pos_start", "old20", "concr"}
     else:
         required |= {"electrode", "wlen", "freq"}
     missing = required - set(df.columns)
@@ -711,16 +785,28 @@ def compute_n400_ceiling_delta_loglik(
     rng = np.random.default_rng(seed)
     subjects = np.asarray(sorted(df["subject"].astype(str).unique()))
 
-    tasks: list[tuple[int, int, pd.DataFrame]] = []
-    for it in range(n_splits):
-        perm = rng.permutation(subjects)
-        half = len(perm) // 2
-        halves = (set(perm[:half].tolist()), set(perm[half:].tolist()))
-        for direction, (source_ids, target_ids) in enumerate((halves, halves[::-1])):
-            tgt = _n400_ceiling_direction_task(df, source_ids, target_ids, item_col)
-            if tgt is not None:
-                tasks.append((it, direction, tgt))
-
+    tasks: list[tuple[int, int, pd.DataFrame, int]] = []   # (iteration, direction, frame, split seed)
+    if mode == "loso":
+        # ONE pooled fit per repeat; each row's oracle = item mean over all OTHER subjects.
+        n_splits = n_repeats
+        keys = [item_col]
+        g = df.groupby(keys)["n400"]
+        tot, cnt = g.transform("sum"), g.transform("count")
+        gs = df.groupby(keys + [df["subject"].astype(str)])["n400"]
+        own_sum, own_cnt = gs.transform("sum"), gs.transform("count")
+        oracle = (tot - own_sum) / (cnt - own_cnt).where(cnt - own_cnt > 0)
+        tgt = df.assign(surprisal=oracle).dropna(subset=["surprisal"])
+        for rep in range(n_repeats):
+            tasks.append((rep, 0, tgt, seed + rep))
+    else:
+        for it in range(n_splits):
+            perm = rng.permutation(subjects)
+            half = len(perm) // 2
+            halves = (set(perm[:half].tolist()), set(perm[half:].tolist()))
+            for direction, (source_ids, target_ids) in enumerate((halves, halves[::-1])):
+                tgt = _n400_ceiling_direction_task(df, source_ids, target_ids, item_col)
+                if tgt is not None:
+                    tasks.append((it, direction, tgt, seed))
     iter_delta: dict[int, float] = {}
     iter_nobs: dict[int, int] = {}
     iter_failed: set[int] = set()
@@ -747,19 +833,19 @@ def compute_n400_ceiling_delta_loglik(
                 pool.submit(
                     _n400_ceiling_direction_worker, it, direction, tgt,
                     include_lab=include_lab, train_frac=train_frac,
-                    random_state=seed, verbose=verbose,
+                    random_state=rs, verbose=verbose,
                     out_of_sample=out_of_sample, re_structure=re_structure,
                 ): (it, direction)
-                for it, direction, tgt in tasks
+                for it, direction, tgt, rs in tasks
             }
             for fut in as_completed(futures):
                 iteration, direction, delta, n_obs, converged = fut.result()
                 _record(iteration, direction, delta, n_obs, converged)
     else:
-        for it, direction, tgt in tasks:
+        for it, direction, tgt, rs in tasks:
             iteration, direction, delta, n_obs, converged = _n400_ceiling_direction_worker(
                 it, direction, tgt, include_lab=include_lab, train_frac=train_frac,
-                random_state=seed, verbose=verbose,
+                random_state=rs, verbose=verbose,
                 out_of_sample=out_of_sample, re_structure=re_structure,
             )
             _record(iteration, direction, delta, n_obs, converged)
@@ -787,3 +873,123 @@ def compute_n400_ceiling_delta_loglik(
         per_iteration_n_obs=per_iter_nobs,
         per_direction_records=per_direction_records,
     )
+
+
+# ---------------------------------------------------------------------------
+# Extrapolated ceiling (Schrimpf et al. 2021, SI sec. 7)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class N400ExtrapolatedCeilingResult:
+    points: list[dict]                # one per fit: size (source subjects), draw, delta, n_obs, per_obs
+    v0: float                         # median asymptote over bootstraps
+    v0_ci: tuple[float, float]        # 2.5 / 97.5 percentile
+    tau0_median: float
+    n_bootstraps: int
+    finite_n_per_obs: dict = field(default_factory=dict)   # mean per-obs value at each source size
+
+
+def _exp_saturation(x, v0, tau0):
+    return v0 * (1.0 - np.exp(-x / tau0))
+
+
+def fit_exponential_ceiling(x: np.ndarray, v: np.ndarray, n_bootstraps: int = 100, seed: int = 0):
+    """Schrimpf et al. 2021 SI-7: fit ``v = v0 * (1 - exp(-x / tau0))`` to (x, v) points, with
+    ``n_bootstraps`` bootstraps that each resample the (x, v) points with replacement; the
+    ceiling is the median ``v0``. Returns (v0_median, (lo, hi), tau0_median, n_ok)."""
+    from scipy.optimize import curve_fit
+
+    rng = np.random.default_rng(seed)
+    x = np.asarray(x, float)
+    v = np.asarray(v, float)
+    v0s, taus = [], []
+    for _ in range(n_bootstraps):
+        idx = rng.integers(0, len(x), len(x))
+        try:
+            p, _ = curve_fit(
+                _exp_saturation, x[idx], v[idx], p0=[max(float(v.max()), 1e-4), float(np.median(x))],
+                bounds=([-1.0, 1e-3], [10.0, 1e5]), maxfev=20000,
+            )
+        except Exception:  # noqa: BLE001 -- degenerate resample; skip like a failed bootstrap
+            continue
+        v0s.append(p[0])
+        taus.append(p[1])
+    if not v0s:
+        return float("nan"), (float("nan"), float("nan")), float("nan"), 0
+    lo, hi = np.percentile(v0s, [2.5, 97.5])
+    return float(np.median(v0s)), (float(lo), float(hi)), float(np.median(taus)), len(v0s)
+
+
+def compute_n400_extrapolated_ceiling(
+    df: pd.DataFrame,
+    *,
+    item_col: str = "item_id",
+    include_lab: bool = False,
+    re_structure: str = "szewczyk_paper",
+    target_size: int = 8,
+    source_sizes: tuple[int, ...] = (1, 2, 3, 4, 6, 8, 12, 16, 20, 24),
+    n_draws: int = 20,
+    train_frac: float = 0.75,
+    split_seed: int = 0,
+    seed: int = 0,
+    n_workers: int = 1,
+    n_bootstraps: int = 100,
+    verbose: bool = False,
+    out_of_sample: bool = True,
+) -> N400ExtrapolatedCeilingResult:
+    """Ceiling extrapolated to infinitely many subjects (Schrimpf et al. 2021, SI-7), on the
+    real mixed model.
+
+    For each source size ``s`` and draw: pick ``target_size`` target subjects and ``s`` DISJOINT
+    source subjects; the oracle = mean N400 of the source subjects per item (constant per item
+    within a fit, so no leave-one-out artefact); fit the paper formula on the target subjects'
+    training chunks and score delta-logLik on their held-out chunks (``split_seed`` fixed, so the
+    held-out chunks are the same ones the model sweeps use). Then fit ``v0 (1 - exp(-x/tau0))``
+    over all (s, delta-LL-per-held-out-obs) points with bootstrapped points; ceiling = median
+    ``v0``. ``target_size`` subjects instead of Schrimpf's single target so the formula's
+    by-subject random effects stay estimable."""
+    subjects = np.asarray(sorted(df["subject"].astype(str).unique()))
+    max_src = len(subjects) - target_size
+    sizes = [s for s in source_sizes if 1 <= s <= max_src]
+    rng = np.random.default_rng(seed)
+
+    tasks = []   # (size, draw, frame)
+    for s in sizes:
+        for d in range(n_draws):
+            perm = rng.permutation(subjects)
+            tgt_ids = set(perm[:target_size].tolist())
+            src_ids = set(perm[target_size:target_size + s].tolist())
+            tgt = _n400_ceiling_direction_task(df, src_ids, tgt_ids, item_col)
+            if tgt is not None:
+                tasks.append((s, d, tgt))
+
+    kw = dict(include_lab=include_lab, train_frac=train_frac, random_state=split_seed,
+              verbose=verbose, out_of_sample=out_of_sample, re_structure=re_structure)
+    points: list[dict] = []
+
+    def _add(size, draw, delta, n_obs, conv):
+        if delta is None or n_obs <= 0:
+            return
+        points.append({"size": int(size), "draw": int(draw), "delta": float(delta),
+                       "n_obs": int(n_obs), "per_obs": float(delta) / int(n_obs), "converged": bool(conv)})
+
+    if n_workers > 1 and len(tasks) > 1:
+        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            futs = {pool.submit(_n400_ceiling_direction_worker, s, d, tgt, **kw): (s, d) for s, d, tgt in tasks}
+            for fut in as_completed(futs):
+                s, d, delta, n_obs, conv = fut.result()
+                _add(s, d, delta, n_obs, conv)
+    else:
+        for s, d, tgt in tasks:
+            _, _, delta, n_obs, conv = _n400_ceiling_direction_worker(s, d, tgt, **kw)
+            _add(s, d, delta, n_obs, conv)
+
+    points.sort(key=lambda p: (p["size"], p["draw"]))
+    if len(points) < 4:
+        return N400ExtrapolatedCeilingResult(points, float("nan"), (float("nan"),) * 2, float("nan"), 0)
+    x = np.array([p["size"] for p in points], float)
+    v = np.array([p["per_obs"] for p in points], float)
+    v0, ci, tau, n_ok = fit_exponential_ceiling(x, v, n_bootstraps=n_bootstraps, seed=seed)
+    finite = {int(s): float(np.mean([p["per_obs"] for p in points if p["size"] == s])) for s in sizes
+              if any(p["size"] == s for p in points)}
+    return N400ExtrapolatedCeilingResult(points, v0, ci, tau, n_ok, finite)

@@ -16,7 +16,7 @@
 #
 # corr/loglik datasets: the keys of scripts/dlt/surprisal_corr.py / dlt/delta_loglik.py
 # (podcast has its own scripts). difficulty runs the entries one after the other (a parallel run was
-# once OOM-killed): naturalstories_lme geco_lme provo_lme ucl_reading_lme meco_lme zuco_reading_nr_lme
+# once OOM-killed): naturalstories_lme geco_lme provo_lme ucl_reading_lme meco_lme onestop_lme zuco_reading_nr_lme
 # podcast_neural podcast_lme broderick_neural fedorenko2016 provo_embed meco_embed ucl_reading_embed
 # zuco_reading_nr_embed naturalstories_embed. Hard thresholds: THR="0 1 2 3 4 5 7" (env).
 set -uo pipefail
@@ -35,12 +35,12 @@ echo "Job started at $(date) on $(hostname)  mode=${MODE}"
 case "$MODE" in
   corr)
     DS="${1:?dataset required}"
-    if [[ "$DS" == "podcast" ]]; then "$PY" scripts/dlt/surprisal_corr_podcast.py --n_jobs 6 --force
-    else "$PY" scripts/dlt/surprisal_corr.py --dataset "$DS" --n_jobs 20 --force; fi ;;
+    if [[ "$DS" == "podcast" ]]; then "$PY" scripts/dlt/surprisal_corr_podcast.py --n_jobs "${SLURM_CPUS_PER_TASK:-6}" --force
+    else "$PY" scripts/dlt/surprisal_corr.py --dataset "$DS" --n_jobs "${SLURM_CPUS_PER_TASK:-20}" --force; fi ;;
   loglik)
     DS="${1:?dataset required}"
-    if [[ "$DS" == "podcast" ]]; then "$PY" scripts/dlt/delta_loglik_podcast.py --n_jobs 20 --force
-    else "$PY" scripts/dlt/delta_loglik.py --dataset "$DS" --n_jobs 20 --force; fi ;;
+    if [[ "$DS" == "podcast" ]]; then "$PY" scripts/dlt/delta_loglik_podcast.py --n_jobs "${SLURM_CPUS_PER_TASK:-20}" --force
+    else "$PY" scripts/dlt/delta_loglik.py --dataset "$DS" --n_jobs "${SLURM_CPUS_PER_TASK:-20}" --force; fi ;;
   difficulty)
     THR="${THR:-0 1 2 3 4 5 7}"
     OUT_DIR="outputs/dlt_difficulty"; LOG_DIR="${OUT_DIR}/logs"; mkdir -p "$LOG_DIR"
@@ -68,6 +68,7 @@ case "$MODE" in
       [provo_lme]="run_plot provo_lme provo $S/provo/surprisal_sweep $D/provo_dlt_cost.csv $S/provo/perplexity"
       [ucl_reading_lme]="run_plot ucl_reading_lme ucl_reading $S/ucl_reading/surprisal_sweep $D/ucl_reading_dlt_cost.csv $S/ucl_reading/perplexity"
       [meco_lme]="run_plot meco_lme meco $S/meco/surprisal_sweep $D/meco_dlt_cost.csv $S/meco/perplexity"
+      [onestop_lme]="run_plot onestop_lme onestop $S/onestop/surprisal_sweep/fp $D/onestop_dlt_cost.csv $S/onestop/perplexity"
       [zuco_reading_nr_lme]="run_plot zuco_reading_nr_lme zuco_reading_nr $S/zuco_reading/surprisal_sweep/nr $D/zuco_reading_nr_dlt_cost.csv $S/zuco_reading/perplexity"
       [podcast_neural]="run_plot podcast_neural podcast $S/podcast/embedding_sweep $D/podcast_dlt_cost.csv $S/podcast/perplexity 8"
       [podcast_lme]="run_plot podcast_lme podcast_lme $S/podcast/surprisal_sweep $D/podcast_dlt_cost.csv $S/podcast/perplexity"
@@ -79,7 +80,7 @@ case "$MODE" in
       [zuco_reading_nr_embed]="run_new_schema zuco_reading_nr_embed --sweep_root $S/zuco_reading/embedding_sweep/nr --dlt_cost $D/zuco_reading_nr_dlt_cost.csv --perplexity_dir $S/zuco_reading/perplexity"
       [naturalstories_embed]="run_new_schema naturalstories_embed --sweep_root $S/naturalstories/embedding_sweep --dlt_cost $D/naturalstories_dlt_cost.csv --perplexity_dir $S/naturalstories/perplexity"
     )
-    ORDER=(naturalstories_lme geco_lme provo_lme ucl_reading_lme meco_lme zuco_reading_nr_lme podcast_neural podcast_lme broderick_neural fedorenko2016 provo_embed meco_embed ucl_reading_embed zuco_reading_nr_embed naturalstories_embed)
+    ORDER=(naturalstories_lme geco_lme provo_lme ucl_reading_lme meco_lme onestop_lme zuco_reading_nr_lme podcast_neural podcast_lme broderick_neural fedorenko2016 provo_embed meco_embed ucl_reading_embed zuco_reading_nr_embed naturalstories_embed)
     NAMES=("$@"); [[ ${#NAMES[@]} -eq 0 ]] && NAMES=("${ORDER[@]}")
     for n in "${NAMES[@]}"; do
       [[ -n "${JOBS[$n]:-}" ]] || { echo "unknown difficulty entry '$n'" >&2; continue; }

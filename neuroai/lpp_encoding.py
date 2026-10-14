@@ -1026,6 +1026,32 @@ class LppFmriEncoder:
     # Feature extraction (single run)
     # ------------------------------------------------------------------
 
+    def extract_and_cache_only(self) -> None:
+        """Extract + cache raw per-word features for every story section,
+        skipping BOLD loading, HRF design and ridge encoding entirely.
+
+        Used by the RSA raw-embedding-cache backfill (2026-09-28): a plain
+        ``run_layerwise()``/``run_leave_one_run_out()`` call pays for a full
+        LOSO ridge-fit sweep just to get the (cache-side-effect) feature
+        extraction as a byproduct -- 40+ minutes for a large model. This
+        method does only the extraction, which is what ``feature_cache_dir``
+        actually needs; no BOLD/mask/ridge machinery is touched.
+        """
+        cfg = self.cfg
+        timelines = discover_lp_timelines(
+            cfg.bids_root, cfg.subject, cfg.lang,
+            source=cfg.bold_source, echo=cfg.echo,
+        )
+        if cfg.max_runs is not None:
+            timelines = timelines[: cfg.max_runs]
+        words_full = load_word_information_table(
+            cfg.bids_root, cfg.lang, apply_lbg_fixes=cfg.apply_lbg_fixes
+        )
+        for tl in timelines:
+            sec_df = words_for_section(words_full, tl.section)
+            sec_lm = self._words_df_for_features(sec_df)
+            self._extract_features(tl.section, sec_lm)
+
     def _extract_features(
         self,
         section: int,
@@ -1085,6 +1111,7 @@ class LppFmriEncoder:
                 hf_lbg_stride_delta=self.cfg.hf_lbg_stride_delta,
                 hf_lbg_max_length=self.cfg.hf_lbg_max_length,
                 tokenizer_no_revision=self.cfg.hf_tokenizer_no_revision,
+                cache_dir=self.cfg.feature_cache_dir,
                 trust_remote_code=self.cfg.hf_trust_remote_code,
                 n_params=self.cfg.hf_n_params,
                 dtype=surp_dtype,

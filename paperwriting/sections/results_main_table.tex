@@ -1,0 +1,24 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Group associations in final-layer direct prediction (Equation~\ref{eq:group}, preferred specification). Coefficients are in noise-ceiling-normalized score units with standard errors in parentheses (Satterthwaite degrees of freedom). Behavioral and neural columns are separate fits with random intercepts for dataset unit, model lineage, model and corpus, and dataset-unit random slopes for size and perplexity. The Neural $-$ behavioral columns come from a joint model of both domains with domain interactions and directly test whether a coefficient differs between them. Single-constraint and combined contrasts are relative to Standard LLMs conditional on parameter count and perplexity. $^*p<.05$, $^{**}p<.01$, $^{***}p<.001$. Robustness checks are in Table~\ref{tab:robustness}.}
+\label{tab:main-regression}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{3}{c}{Embeddings} & \multicolumn{3}{c}{Surprisal}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+& Behavioral & Neural & Neural $-$ behav. & Behavioral & Neural & Neural $-$ behav.\\
+\midrule
+Memory only & $.013\ (.008)$ & $-.031\ (.010)^{**}$ & $-.047\ (.010)^{***}$ & $-.001\ (.008)$ & $-.092\ (.065)$ & $-.089\ (.060)$ \\
+Data only & $.033\ (.012)^{**}$ & $-.006\ (.013)$ & $-.042\ (.014)^{**}$ & $.022\ (.011)$ & $-.367\ (.084)^{***}$ & $-.391\ (.079)^{***}$ \\
+Memory $\times$ data & $-.040\ (.012)^{**}$ & $.022\ (.014)$ & $.064\ (.015)^{***}$ & $-.026\ (.012)^{*}$ & $.384\ (.092)^{***}$ & $.417\ (.086)^{***}$ \\
+Both constraints & $.006\ (.009)$ & $-.016\ (.011)$ & $-.025\ (.011)^{*}$ & $-.005\ (.009)$ & $-.075\ (.072)$ & $-.063\ (.065)$ \\
+\midrule
+$\log_{10}$ parameters & $.004\ (.003)$ & $.026\ (.012)$ & $.024\ (.010)^{*}$ & $-.035\ (.014)^{*}$ & $.283\ (.192)$ & $.316\ (.159)$ \\
+$\log_{10}$ perplexity & $-.005\ (.003)$ & $-.020\ (.009)^{*}$ & $-.009\ (.008)$ & $-.058\ (.024)^{*}$ & $-.105\ (.111)$ & $-.049\ (.095)$ \\
+\midrule
+Rows / dataset units & 1,822 / 16 & 1,257 / 11 & joint & 1,822 / 16 & 1,257 / 11 & joint \\
+\bottomrule
+\end{tabular}}
+\end{table}

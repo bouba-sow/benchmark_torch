@@ -748,6 +748,13 @@ def cv_ridge_score_lag_matrix_gpu_batched(
             X_tr = sc.fit_transform(X_tr).astype(np.float32)
             X_te = sc.transform(X_te).astype(np.float32)
 
+        # No intercept is fitted below, so centre X on the TRAIN mean (RobustScaler centres
+        # on the median, which is not enough): with centred X and centred Y the no-intercept
+        # solve equals sklearn's fit_intercept=True ridge (2026-10-12 audit).
+        _x_mean = X_tr.mean(axis=0, dtype=np.float64).astype(np.float32)
+        X_tr = X_tr - _x_mean
+        X_te = X_te - _x_mean
+
         # A non-finite feature (e.g. a degenerate predictor, or — for
         # logit-lens surprisal — an early layer whose activations overflow
         # under the final unembed) makes every alpha's GCV score NaN, so
@@ -769,9 +776,10 @@ def cv_ridge_score_lag_matrix_gpu_batched(
             y_std[y_std < 1e-8] = 1.0
             Y_tr_fit = ((Y_tr - y_mean) / y_std).astype(np.float32)
         else:
-            Y_tr_fit = Y_tr
-            y_mean = np.zeros(C * T, dtype=np.float32)
+            # always centre Y (no intercept is fitted); only the scaling is optional
+            y_mean = Y_tr.mean(axis=0).astype(np.float32)
             y_std = np.ones(C * T, dtype=np.float32)
+            Y_tr_fit = (Y_tr - y_mean).astype(np.float32)
 
         Xt = torch.from_numpy(X_tr).to(dev)
         Yt = torch.from_numpy(Y_tr_fit).to(dev)
@@ -825,8 +833,7 @@ def cv_ridge_score_lag_matrix_gpu_batched(
         del Xt, Yt, eigvals, V, VtXtY, HY, best_W, Y_pred_t, Xte_t, res
         torch.cuda.empty_cache()
 
-        if standardize_target:
-            Y_pred = Y_pred * y_std.astype(np.float64) + y_mean.astype(np.float64)
+        Y_pred = Y_pred * y_std.astype(np.float64) + y_mean.astype(np.float64)
 
         # Reshape to (n_te, C, T) for per-channel metrics
         Y_pred_ct = Y_pred.reshape(len(te_idx), C, T)
@@ -1031,15 +1038,23 @@ def cv_ridge_score_multioutput_gpu(
             X_tr = sc.fit_transform(X_tr).astype(np.float32)
             X_te = sc.transform(X_te).astype(np.float32)
 
+        # No intercept is fitted below, so centre X on the TRAIN mean (RobustScaler centres
+        # on the median, which is not enough): with centred X and centred Y the no-intercept
+        # solve equals sklearn's fit_intercept=True ridge (2026-10-12 audit).
+        _x_mean = X_tr.mean(axis=0, dtype=np.float64).astype(np.float32)
+        X_tr = X_tr - _x_mean
+        X_te = X_te - _x_mean
+
         if standardize_target:
             y_mean = Y_tr.mean(axis=0)
             y_std = Y_tr.std(axis=0)
             y_std[y_std < 1e-8] = 1.0
             Y_tr_fit = ((Y_tr - y_mean) / y_std).astype(np.float32)
         else:
-            Y_tr_fit = Y_tr
-            y_mean = np.zeros(n_targets, dtype=np.float32)
+            # always centre Y (no intercept is fitted); only the scaling is optional
+            y_mean = Y_tr.mean(axis=0).astype(np.float32)
             y_std = np.ones(n_targets, dtype=np.float32)
+            Y_tr_fit = (Y_tr - y_mean).astype(np.float32)
 
         Xt = torch.from_numpy(X_tr).to(dev)
         Yt = torch.from_numpy(Y_tr_fit).to(dev)
@@ -1122,8 +1137,7 @@ def cv_ridge_score_multioutput_gpu(
         del Xt, Yt, U, S, Vt, UtY, HY, best_W, Y_pred_t, Xte_t, res
         torch.cuda.empty_cache()
 
-        if standardize_target:
-            Y_pred = Y_pred * y_std.astype(np.float64) + y_mean.astype(np.float64)
+        Y_pred = Y_pred * y_std.astype(np.float64) + y_mean.astype(np.float64)
 
         fold_pr[fi] = _pearsonr_columns(Y_te, Y_pred)
         fold_sr[fi] = _spearmanr_columns(Y_te, Y_pred)

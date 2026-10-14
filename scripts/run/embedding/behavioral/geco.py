@@ -563,7 +563,7 @@ def main() -> None:
     )
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("GECO_PERPLEXITY_DIR", "outputs_torch/geco/perplexity"),
+        default=os.environ.get("GECO_PERPLEXITY_DIR", "outputs_jeanzay/geco/perplexity"),
         help="Save each checkpoint's corpus perplexity here too (merges into the "
              "existing geco_perplexity_summary.csv tree). Set to '' to disable.",
     )
@@ -572,6 +572,11 @@ def main() -> None:
     output_family = args.output_family or args.family
 
     cfg = load_config(args.config)
+    # GECO embed is grand-average-subject-only by design (matches the report's
+    # documented metric). Default both flags ON so a bare/legacy config can
+    # never trigger a per-subject fit; an explicit 'average_only: false' still wins.
+    cfg.setdefault("average_across_subjects", True)
+    cfg.setdefault("average_only", True)
     if args.average_across_subjects:
         cfg["average_across_subjects"] = True
     if args.average_only:

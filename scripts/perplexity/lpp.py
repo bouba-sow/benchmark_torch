@@ -108,6 +108,7 @@ def load_model_and_tokenizer(
     model_id: str,
     n_params: float,
     device: str,
+    revision: str | None = None,
 ):
     """Load a causal LM with automatic multi-GPU sharding for large models.
 
@@ -125,7 +126,7 @@ def load_model_and_tokenizer(
     logger.info("Loading tokenizer + model: %s", model_id)
     tokenizer, model = _get_cached_causal_lm(
         model_id,
-        revision=None,
+        revision=revision,
         device=device,
         load_kw=load_kw,
         tokenizer_no_revision=True,
@@ -207,20 +208,26 @@ def compute_perplexity(
     max_length: int,
     stride: int | None = None,
 ) -> dict:
-    """Stride-based sliding-window perplexity on concatenated text.
+    """Stride-based sliding-window perplexity on concatenated text, from the model's logits.
 
-    Only the non-overlapping suffix of each window contributes to the loss,
-    matching the standard HuggingFace perplexity recipe.
+    Only the non-overlapping suffix of each window contributes (standard HF recipe), but
+    the next-token cross-entropy is computed HERE from ``logits`` rather than read from
+    ``model(labels=...).loss``: several trust_remote_code families (hard n-gram,
+    stickbreaking, alibi, forgetting, FoX) implement that loss with a different
+    shift/reduction/masking contract and returned perplexities off by 10-20x (2026-10-12
+    audit). Padding is never used (one sequence per forward).
+
+    ``perplexity`` is PER WORD: exp(total NLL / n_words), n_words = whitespace words of the
+    text. Per-token perplexity depends on the tokenizer's granularity and is not comparable
+    across models; it is kept as ``perplexity_per_token``.
     """
     if stride is None:
         stride = max_length // 2
 
     full_text = " ".join(texts)
+    n_words = len(full_text.split())
     import logging as _logging
     logger.info("Tokenising %d chars of text …", len(full_text))
-    # Suppress the "sequence longer than max_length" warning: it fires because we
-    # tokenize the full text in one call, but we never run it through the model
-    # at full length — the sliding window handles that below.
     _tok_logger = _logging.getLogger("transformers.tokenization_utils_base")
     _prev_level = _tok_logger.level
     _tok_logger.setLevel(_logging.ERROR)
@@ -229,94 +236,48 @@ def compute_perplexity(
     finally:
         _tok_logger.setLevel(_prev_level)
     input_ids: torch.Tensor = enc["input_ids"]
+    # Drop trailing special tokens (EOS/SEP appended by some tokenizers): not part of the text.
+    special = set(int(i) for i in (getattr(tokenizer, "all_special_ids", None) or []))
+    while input_ids.size(1) > 1 and int(input_ids[0, -1]) in special:
+        input_ids = input_ids[:, :-1]
     seq_len = input_ids.size(1)
-    logger.info("Total tokens: %d  |  max_length=%d  stride=%d", seq_len, max_length, stride)
+    logger.info("Total tokens: %d  |  words: %d  |  max_length=%d  stride=%d", seq_len, n_words, max_length, stride)
 
     inp_device = _input_device(model)
-    nlls: list[torch.Tensor] = []
+    total_nll = 0.0
+    n_scored = 0
     prev_end = 0
-
     for begin in range(0, seq_len, stride):
         end = min(begin + max_length, seq_len)
-        trg_len = end - prev_end  # tokens to evaluate (non-overlapping part)
-
+        trg_len = end - prev_end  # new tokens scored in this window
         ids = input_ids[:, begin:end].to(inp_device)
-        labels = ids.clone()
-        # Mask the overlapping prefix — use actual window length, not max_length,
-        # so the last (shorter) window doesn't get fully masked and produce nan loss.
-        window_len = end - begin
-        labels[:, : window_len - trg_len] = -100
-
         with torch.no_grad():
-            if type(model).__name__ == "GPTBERTForCausalLM":
-                # BabyLM-community's gpt-bert-* forward(labels=...) is built
-                # for a genuine masked-LM batch (predictions gathered at
-                # masked positions only): passed a full-sequence labels
-                # tensor, subword_prediction keeps its size-1 leading batch
-                # dim un-gathered, so their own F.cross_entropy(subword_
-                # prediction, gold_labels) fails with "batch_size (1) !=
-                # target batch_size (seq_len)". Bypass their labels path
-                # entirely: forward without labels, then do the same
-                # *shifted* next-token cross-entropy every other
-                # architecture gets internally via labels= — this exact
-                # shift convention (position p's logits predict the token at
-                # p+1) is the one already verified correct for this model in
-                # neuroai/features/logit_lens.py's native_only surprisal
-                # fallback.
-                out = model(ids, use_cache=False, return_dict=True)
-                logits = out.logits
-                if logits.dim() == 3:
-                    logits = logits[0]  # (seq_len, vocab) — drop batch dim
-                shift_logits = logits[:-1, :].float()
-                shift_labels = labels[0, 1:]  # overlap-prefix mask already applied above
-                loss = torch.nn.functional.cross_entropy(
-                    shift_logits, shift_labels, ignore_index=-100,
-                ).cpu()
-            else:
-                # return_dict=True forced explicitly — some trust_remote_code
-                # architectures default to a plain tuple otherwise (loss is
-                # the tuple's first element, not `.loss`), and every standard
-                # HF forward() already accepts this kwarg, so it's a no-op
-                # for the rest.
-                try:
-                    out = model(ids, labels=labels, use_cache=False, return_dict=True)
-                except TypeError:
-                    out = model(ids, labels=labels, return_dict=True)
-                # loss is mean NLL over unmasked tokens; multiply back to get
-                # sum. Some custom models (e.g. stickbreaking) return
-                # per-token loss tensors instead of a scalar — flatten to a
-                # scalar mean first.
-                loss = out.loss.cpu()
-                if loss.dim() > 0:
-                    loss = loss.reshape(-1).mean()
-            nlls.append(loss * trg_len)
-
-            # ── DEBUG: first-window logit stats — temporary, to confirm the
-            # forward pass actually depends on the model's weights/input rather
-            # than collapsing to a fixed/degenerate output. ────────────────────
-            if begin == 0:
-                try:
-                    logits = getattr(out, "logits", None)
-                    if logits is not None:
-                        lf = logits.detach().float()
-                        row0 = lf[0, -1]
-                        logger.warning(
-                            "[DEBUG-LOGITS] first window: shape=%s mean=%.6f std=%.6f "
-                            "last_tok_argmax=%d last_tok_top1_logit=%.4f loss=%.6f",
-                            tuple(logits.shape), lf.mean().item(), lf.std().item(),
-                            int(row0.argmax().item()), row0.max().item(), loss.item(),
-                        )
-                except Exception as exc:  # noqa: BLE001 - debug only
-                    logger.warning("[DEBUG-LOGITS] failed: %s", exc)
-
+            out = model(input_ids=ids, attention_mask=torch.ones_like(ids), use_cache=False, return_dict=True)
+        logits = out[0] if isinstance(out, tuple) else out.logits
+        if logits.dim() == 3:
+            logits = logits[0]
+        # position p predicts token p+1; score only the last trg_len tokens of the window
+        # (the very first token of the text is never scored).
+        n_win = end - begin
+        first = max(1, n_win - trg_len)
+        lp = torch.log_softmax(logits[first - 1 : n_win - 1].float(), dim=-1)
+        tgt = ids[0, first:n_win]
+        nll = -lp.gather(1, tgt.unsqueeze(1)).squeeze(1)
+        if not torch.isfinite(nll).all():
+            raise RuntimeError(f"non-finite token NLL in window [{begin}, {end})")
+        total_nll += float(nll.sum())
+        n_scored += int(nll.numel())
         prev_end = end
         if end == seq_len:
             break
 
-    total_nll = torch.stack(nlls).sum()
-    ppl = math.exp(total_nll.item() / seq_len)
-    logger.info("Perplexity: %.4f  (total_nll=%.4f, n_tokens=%d)", ppl, total_nll.item(), seq_len)
-    return {"perplexity": ppl, "n_tokens": int(seq_len)}
+    ppl_word = math.exp(total_nll / n_words)
+    ppl_tok = math.exp(total_nll / n_scored)
+    logger.info("Perplexity per word: %.4f | per token: %.4f (total_nll=%.4f, scored tokens=%d, words=%d)",
+                ppl_word, ppl_tok, total_nll, n_scored, n_words)
+    return {"perplexity": ppl_word, "perplexity_per_token": ppl_tok, "total_nll": total_nll,
+            "n_tokens": int(seq_len), "n_scored_tokens": n_scored, "n_words": n_words,
+            "perplexity_method": "logits_v2_per_word"}
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +299,7 @@ def run_model(
 
     if out_path.is_file() and not force:
         existing = json.loads(out_path.read_text())
-        if "error" not in existing:
+        if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
             logger.info("Already done: %s — skipping (use --force to recompute)", model_id)
             return existing
         logger.warning("Previous run had error — recomputing: %s", out_path)
@@ -406,7 +367,7 @@ def run_model(
         "family": model_entry["family"],
         "lang": lang,
         "perplexity": result["perplexity"],
-        "n_tokens": result["n_tokens"],
+        "n_tokens": result["n_tokens"], "n_words": result.get("n_words"), "perplexity_per_token": result.get("perplexity_per_token"), "perplexity_method": result.get("perplexity_method"),
         "max_length": max_length,
         "stride": max_length // 2,
         "device": device,
@@ -521,8 +482,10 @@ def compute_cbr_rnn_perplexity_over_texts(
         if end == len(inputs):
             break
 
-    ppl = math.exp(total_nll / n_scored)
-    logger.info("CBR-RNN perplexity: %.4f  (n_scored=%d)", ppl, n_scored)
+    n_words = len(full_text.split())
+    ppl_tok = math.exp(total_nll / n_scored)
+    ppl = math.exp(total_nll / n_words)  # per word, comparable across tokenizers
+    logger.info("CBR-RNN perplexity per word: %.4f | per token %.4f (n_scored=%d)", ppl, ppl_tok, n_scored)
 
     del model
     del tokenizer
@@ -530,7 +493,9 @@ def compute_cbr_rnn_perplexity_over_texts(
         torch.cuda.empty_cache()
 
     return {
-        "perplexity": ppl, "n_tokens": n_scored, "max_length": max_seq_len, "stride": stride,
+        "perplexity": ppl, "perplexity_per_token": ppl_tok, "n_words": n_words,
+        "perplexity_method": "logits_v2_per_word",
+        "n_tokens": n_scored, "max_length": max_seq_len, "stride": stride,
     }
 
 
@@ -558,7 +523,7 @@ def compute_cbr_rnn_perplexity(
     out_path = out_dir / safe / "perplexity.json"
     if out_path.is_file() and not force:
         existing = json.loads(out_path.read_text())
-        if "error" not in existing:
+        if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
             logger.info("Already done: %s — skipping (use --force to recompute)", model_id)
             return existing
         logger.warning("Previous run had error — recomputing: %s", out_path)
@@ -618,8 +583,10 @@ def compute_cbr_rnn_perplexity(
         if end == len(inputs):
             break
 
-    ppl = math.exp(total_nll / n_scored)
-    logger.info("CBR-RNN perplexity: %.4f  (n_scored=%d)", ppl, n_scored)
+    n_words = len(full_text.split())
+    ppl_tok = math.exp(total_nll / n_scored)
+    ppl = math.exp(total_nll / n_words)  # per word, comparable across tokenizers
+    logger.info("CBR-RNN perplexity per word: %.4f | per token %.4f (n_scored=%d)", ppl, ppl_tok, n_scored)
 
     del model
     del tokenizer
@@ -670,8 +637,8 @@ def parse_args() -> argparse.Namespace:
                    default=Path("data/lpp_fmri"),
                    help="LPP BIDS root (needs annotation/ for TextGrids)")
     p.add_argument("--out_dir", type=Path,
-                   default=Path("outputs_torch/lpp/perplexity"),
-                   help="Output directory (default: outputs_torch/lpp/perplexity)")
+                   default=Path("outputs_jeanzay/lpp/perplexity"),
+                   help="Output directory (default: outputs_jeanzay/lpp/perplexity)")
     p.add_argument("--force", action="store_true",
                    help="Recompute even if output already exists")
     p.add_argument("--all", action="store_true",

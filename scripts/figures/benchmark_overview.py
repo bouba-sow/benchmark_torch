@@ -175,11 +175,11 @@ def draw_bracket(ax, x0, x1, y, color, label):
 
 def _draw_fmri():
     print("Loading fMRI brain data …")
-    mask_img = nib.load(LAT / "masks" / "mask_lpp_en.nii.gz")
+    mask_img = nib.load(LAT / "lpp_fmri_extra" / "masks" / "mask_lpp_en.nii.gz")
     masker = NiftiMasker(mask_img=mask_img, standardize=False)
     masker.fit()
 
-    isc_10 = joblib.load(LAT / "isc" / "isc_10trials_en.gz")
+    isc_10 = joblib.load(LAT / "lpp_fmri_extra" / "average_subject" / "isc" / "isc_10trials_en.gz")
     isc_mean = np.mean(isc_10, axis=0)
 
     np.random.seed(7)
@@ -187,7 +187,7 @@ def _draw_fmri():
     score_flat = np.clip(score_flat + np.random.normal(0, 0.008, score_flat.shape), 0, None)
     score_img = masker.inverse_transform(score_flat)
 
-    bold_run0 = joblib.load(LAT / "lpp_en_average_subject" / "average_subject_run-0.gz")
+    bold_run0 = joblib.load(LAT / "lpp_fmri_extra" / "average_subject" / "bold" / "average_subject_run-0.gz")
     best_vox = int(np.argmax(isc_mean))
     bold_ts = bold_run0[:, best_vox]
     t_bold = np.arange(len(bold_ts)) * 2.0

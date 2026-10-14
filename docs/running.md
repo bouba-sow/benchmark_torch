@@ -34,17 +34,14 @@ python scripts/submit.py tuckute embedding --family pythia_checkpoints --submit
 
 ## Job scripts
 
-`scripts/slurm/torch/` holds what the jobs run (this is what `stages.yaml` currently points at,
-for NYU's Torch cluster — see `docs/torch_cluster.md`), organized as `embedding/` and
-`surprisal/` (each with `neural/` and `behavioral/` runners), `perplexity/` (one script per
-dataset, plus per-checkpoint Pythia), and `utils/` (setup, ceilings, DLT, data prep). See
-`scripts/slurm/torch/README.md`. `scripts/slurm/jz/` is the same tree as originally written for
-Jean Zay, kept for provenance but no longer referenced by `stages.yaml`.
+`scripts/slurm/jz/` holds what the jobs run, organized as `embedding/` and `surprisal/` (each
+with `neural/` and `behavioral/` runners), `perplexity/` (one script per dataset, plus per-checkpoint
+Pythia), and `utils/` (setup, ceilings, DLT, data prep). See `scripts/slurm/jz/README.md`.
 Perplexity is only computed there for datasets whose surprisal extraction does not already
 store it:
 
 ```bash
-sbatch scripts/slurm/torch/perplexity/naturalstories.sh
+sbatch scripts/slurm/jz/perplexity/naturalstories.sh
 ```
 
 ## Resources
@@ -54,8 +51,8 @@ Default: 2 h, no QoS. Profiles (`cpu`, `gpu`) and per-stage values live in
 `--partition`, `--qos`, `--gres`, `--cpus`, `--constraint`, `--mem`, `--max-concurrent`,
 `--env KEY=VAL` (for example `--env N_WORKERS=8` for the LME worker count).
 
-The account names in `stages.yaml` are those of the currently active cluster (Torch); change
-them once for your site if you move again.
+The account names in `stages.yaml` are those of the original cluster; change them once for
+your site.
 
 ## Without SLURM
 

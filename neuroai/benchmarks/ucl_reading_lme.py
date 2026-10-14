@@ -34,6 +34,16 @@ from ..features.llm import clear_hf_model_cache
 from ..sweep import csv_file_lock
 from .base import ModelConfig
 
+
+def _pw_dir(out_dir):
+    """Per-word prediction directory: mirrors ``out_dir`` under $SCRATCH (word_predictions_root)
+    so large per-word CSVs never land on $WORK (2026-10-12)."""
+    from .base import word_predictions_root
+
+    d = word_predictions_root(out_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
 logger = logging.getLogger(__name__)
 
 def _is_cbr_rnn(model_name: str) -> bool:
@@ -331,7 +341,7 @@ def run_layer_sweep(
     )
 
     out_csv = out_dir / scores_csv_name
-    per_word_csv = out_dir / per_word_csv_name
+    per_word_csv = _pw_dir(out_dir) / per_word_csv_name
 
     done_layers: set[int] = set()
     if out_csv.exists():

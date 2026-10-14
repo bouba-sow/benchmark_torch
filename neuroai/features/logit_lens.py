@@ -9,10 +9,11 @@ was already the last layer":
 
 No extra training is involved (that would be tuned-lens, not implemented
 here — Kuribayashi et al.'s paper's simpler variant). Sub-word tokens are
-aggregated per word via the MEAN surprisal across their constituent tokens,
-matching this repo's existing convention elsewhere (e.g.
-``neuroai.features.surprisal._surprisal_one_pair``) rather than the paper's
-sum (Kuribayashi et al. 2021, Eq. 2).
+aggregated per word via the SUM of their surprisals (the word's surprisal by the
+chain rule; Kuribayashi et al. 2021, Eq. 2). Until the 2026-10-12 audit this module
+used the MEAN, which divides by a tokenizer-dependent token count; ``subword_agg="mean"``
+reproduces it as a sensitivity variant. The LAST layer is always the model's own output
+logits (see ``SURPRISAL_CACHE_VERSION``).
 
 Scope: standard HuggingFace causal-LM architectures (GPT-2/GPT-Neo,
 GPT-NeoX/Pythia, Llama/Mistral/Qwen2-3/OLMo2-style, OPT, Mamba/Mamba2) plus
@@ -70,6 +71,34 @@ from .llm import (
     _save_cached_features,
     config_dim_attr,
 )
+
+# Bump whenever the numerical definition of cached surprisal changes, so stale caches are
+# never read back. v2 (2026-10-12 audit): word surprisal is the SUM over subword tokens,
+# target tokens are located by character offsets (BOS/EOS-safe), the last layer is the
+# model's own logits, and batches are checked against unbatched forwards.
+SURPRISAL_CACHE_VERSION = "v2"
+SubwordAgg = tp.Literal["sum", "mean"]
+
+
+def _aggregate_subwords(vals: np.ndarray, how: str) -> np.ndarray:
+    """Aggregate token surprisals (..., n_tokens) into word surprisal (...,).
+
+    ``sum`` is the word's surprisal -log p(word | context) (chain rule); ``mean`` is kept
+    only as a sensitivity variant. A word with any undefined token (no left context) is NaN.
+    """
+    if how == "sum":
+        return vals.sum(axis=-1)
+    if how == "mean":
+        return vals.mean(axis=-1)
+    raise ValueError(f"subword_agg must be 'sum' or 'mean', got {how!r}")
+
+
+def _valid_span(attention_mask_row: torch.Tensor) -> tuple[int, int]:
+    """[start, end) of the non-padded positions of one sequence (left or right padding)."""
+    nz = torch.nonzero(attention_mask_row, as_tuple=False).flatten()
+    if nz.numel() == 0:
+        return 0, 0
+    return int(nz[0]), int(nz[-1]) + 1
 
 logger = logging.getLogger(__name__)
 
@@ -153,8 +182,12 @@ def logit_lens_surprisal_all_layers(
     require_cache_hit: bool = False,
     dtype: "torch.dtype | str | None" = None,
     native_only: bool = False,
+    subword_agg: SubwordAgg = "sum",
 ) -> np.ndarray:
     """Per-layer logit-lens surprisal, one scalar per (word, layer).
+
+    Word surprisal is the SUM of its subword-token surprisals (``subword_agg="mean"`` is
+    a sensitivity variant). The last layer is read from the model's own logits.
 
     ``native_only=True`` forces the native final-layer-only path for ANY
     architecture (skips the per-earlier-layer ``final_norm`` + full-vocab
@@ -218,7 +251,7 @@ def logit_lens_surprisal_all_layers(
     if cache_dir is not None:
         cache_path = _fulltext_feature_cache_path(
             cache_dir, model_name, revision, lang, section_id,
-            eff_max_length, stride_delta, "logitlens_all",
+            eff_max_length, stride_delta, f"logitlens_all_{SURPRISAL_CACHE_VERSION}_{subword_agg}",
             untrained=untrained, untrained_seed=untrained_seed,
         )
         cached = _load_cached_features(cache_path)
@@ -236,6 +269,32 @@ def logit_lens_surprisal_all_layers(
             "refusing to load the model with require_cache_hit=True. Run the GPU "
             "prefetch stage for this model/checkpoint first."
         )
+
+    # CBR-RNN has a custom architecture not loadable via AutoModelForCausalLM
+    # (see neuroai.features.llm.contextual_word_embeddings_hf_fulltext's
+    # identically-gated branch for the embedding side of this same model).
+    # It was never routed through this function at all -- meaning cbr-rnn
+    # never got a standard "*_logitlens_all.npz" RSA surprisal cache, only
+    # its own dataset-specific caches used internally by the LME fit (see
+    # neuroai.features.cbr_rnn.contextual_word_surprisal_cbr_rnn). Reuse the
+    # already-tested per-(context, target) surprisal helper from that module,
+    # one call per word with a preceding-word sliding window (same
+    # context_words convention as this model's embedding extraction), to
+    # populate the SAME standard cache format every other architecture uses.
+    if "cbr-rnn" in model_name.lower() or "cbr_rnn" in model_name.lower():
+        from .cbr_rnn import _cbr_surprisal_one_pair, _get_cached_cbr_rnn
+
+        tokenizer, model = _get_cached_cbr_rnn(model_name, device)
+        context_words = 48
+        surps = np.empty(len(words), dtype=np.float32)
+        for i, word in enumerate(words):
+            context = " ".join(words[max(0, i - context_words):i])
+            surps[i] = _cbr_surprisal_one_pair(model, tokenizer, torch.device(device), context, word)[0]
+        result = surps[:, np.newaxis, np.newaxis]  # (n_words, 1, 1) -- CBR-RNN has no layer dim
+        if cache_path is not None:
+            _save_cached_features(cache_path, result)
+            logger.info("CBR-RNN logit-lens surprisal: cached → %s (shape %s)", cache_path.resolve(), result.shape)
+        return result
 
     load_kw: dict[str, tp.Any] = {"output_hidden_states": True, "trust_remote_code": trust_remote_code}
     if dtype is not None:
@@ -414,10 +473,14 @@ def logit_lens_surprisal_all_layers(
 
     with torch.no_grad():
         for k in sorted(chunk_to_words.keys()):
-            ids_k = overflow_enc["input_ids"][k : k + 1].to(input_device)
-            am_k = overflow_enc["attention_mask"][k : k + 1].to(input_device)
+            # Strip padding before the forward pass: some kernels (FoX/forgetting FLA)
+            # mis-handle padded sequences even with an attention mask. Surprisals are
+            # written back at their original (padded) positions.
+            v0, v1 = _valid_span(overflow_enc["attention_mask"][k])
+            ids_k = overflow_enc["input_ids"][k : k + 1, v0:v1].to(input_device)
+            am_k = torch.ones_like(ids_k)
 
-            ids_seq = ids_k[0]  # (seq_len,)
+            ids_seq = ids_k[0]  # (valid_len,)
             target_ids = ids_seq[1:]  # token at position p predicted from position p-1
 
             if native_only:
@@ -434,10 +497,10 @@ def logit_lens_surprisal_all_layers(
                 if n_layers is None:
                     n_layers = 1
                 surp_chunk = np.full((1, seq_len), np.nan, dtype=np.float32)
-                logits_l = out_fwd.logits[0].float()  # (seq_len, vocab)
+                logits_l = out_fwd.logits[0].float()  # (valid_len, vocab)
                 log_probs_l = torch.log_softmax(logits_l, dim=-1)
                 lp = log_probs_l[:-1, :].gather(1, target_ids.unsqueeze(1)).squeeze(1)
-                surp_chunk[0, 1:] = (-lp).cpu().numpy()
+                surp_chunk[0, v0 + 1 : v1] = (-lp).cpu().numpy()
                 if not torch.isfinite(lp).all():
                     n_bad = int((~torch.isfinite(lp)).sum().item())
                     logger.warning(
@@ -448,7 +511,9 @@ def logit_lens_surprisal_all_layers(
                     )
                 del out_fwd, logits_l, log_probs_l, lp
             else:
-                hs = _forward_hidden_states(model, ids_k, am_k, model_name=model_name)
+                hs, native_logits = _forward_hidden_states(
+                    model, ids_k, am_k, model_name=model_name, return_logits=True,
+                )
                 # Exclude the embedding layer (index 0) — logit-lens starts at
                 # the first transformer block, per Kuribayashi et al. (2025).
                 # Only strips it when actually present (native path); the
@@ -463,22 +528,20 @@ def logit_lens_surprisal_all_layers(
                 # layer l's readout; column 0 stays NaN (no left context).
                 surp_chunk = np.full((n_layers, seq_len), np.nan, dtype=np.float32)
                 for li, h in enumerate(layer_hs):
-                    h0 = h[0].float()  # (seq_len, D) — upcast before norm, not after
-                    # HF convention: the LAST hidden_states entry is already
-                    # post-final-norm (it equals last_hidden_state, what's fed
-                    # directly to lm_head) — applying final_norm again would
-                    # double-normalize it and corrupt the true final-layer
-                    # logits. Every earlier entry is the raw pre-norm residual
-                    # stream, so logit-lens needs final_norm applied there.
-                    # final_norm was upcast to float32 above; unembed stays
-                    # native dtype (see setup above) — only the LOGITS
-                    # output is upcast to float32, not the (vocab-sized)
-                    # unembed weight itself.
-                    normed = h0 if li == n_layers - 1 else final_norm(h0)
-                    logits_l = unembed(normed.to(unembed_dtype)).float()  # (seq_len, vocab)
+                    # Last layer: the model's own logits. Hook-captured block outputs
+                    # (stickbreaking, hard n-gram) are PRE-final-norm, so reconstructing
+                    # the last layer from hidden states is wrong for them; native logits
+                    # are correct for every architecture. Earlier layers: final_norm
+                    # (float32 copy) + the model's unembedding, i.e. the logit lens.
+                    if li == n_layers - 1:
+                        logits_l = native_logits[0].float()
+                        normed = None
+                    else:
+                        normed = final_norm(h[0].float())
+                        logits_l = unembed(normed.to(unembed_dtype)).float()  # (valid_len, vocab)
                     log_probs_l = torch.log_softmax(logits_l, dim=-1)
                     lp = log_probs_l[:-1, :].gather(1, target_ids.unsqueeze(1)).squeeze(1)
-                    surp_chunk[li, 1:] = (-lp).cpu().numpy()
+                    surp_chunk[li, v0 + 1 : v1] = (-lp).cpu().numpy()
                     if not torch.isfinite(lp).all():
                         n_bad = int((~torch.isfinite(lp)).sum().item())
                         logger.warning(
@@ -492,12 +555,9 @@ def logit_lens_surprisal_all_layers(
             for wi in chunk_to_words[k]:
                 tok_idx = word_assignments[wi][1]
                 vals = surp_chunk[:, tok_idx]  # (n_layers, n_subtoks)
-                if np.all(np.isnan(vals)):
-                    # Only the very first token of the whole text has no left
-                    # context at all — surprisal is undefined for it.
-                    out[wi] = np.full(n_layers, np.nan, dtype=np.float32)
-                else:
-                    out[wi] = np.nanmean(vals, axis=1).astype(np.float32)
+                # A word containing the very first token of the text (no left context)
+                # has undefined surprisal -> NaN (no partial sums).
+                out[wi] = _aggregate_subwords(vals, subword_agg).astype(np.float32)
 
     missing = [wi for wi, v in enumerate(out) if v is None]
     if missing:
@@ -537,8 +597,12 @@ def _trial_surprisal_cache_path(
     cache_key: str,
     untrained: bool,
     untrained_seed: int,
+    subword_agg: str = "sum",
 ) -> Path:
     """Cache key for trial-based (cross-sectional) logit-lens surprisal.
+
+    The name carries :data:`SURPRISAL_CACHE_VERSION` and the subword aggregation, so caches
+    written by the pre-audit code (mean, BOS-shifted) are never read back.
 
     Unlike :func:`_fulltext_feature_cache_path` (keyed by section/maxlen/
     stride for one continuous document), trial data has no natural "section"
@@ -550,7 +614,10 @@ def _trial_surprisal_cache_path(
     safe_rev = (revision or "main").replace("/", "_").replace("-", "_")
     safe_key = cache_key.replace("/", "_")
     tag = f"untrained{untrained_seed}" if untrained else "trained"
-    fname = f"logitlens_trials_{safe_model}_{safe_rev}_{safe_key}_{tag}.npz"
+    fname = (
+        f"logitlens_trials_{SURPRISAL_CACHE_VERSION}_{subword_agg}_"
+        f"{safe_model}_{safe_rev}_{safe_key}_{tag}.npz"
+    )
     return Path(cache_dir) / fname
 
 
@@ -574,6 +641,7 @@ def logit_lens_surprisal_trials(
     native_only: bool = False,
     native_batch_size: int = 16,
     layer_batch_size: int = 8,
+    subword_agg: SubwordAgg = "sum",
 ) -> np.ndarray:
     """Per-layer logit-lens surprisal for isolated ``(context, target)`` trial pairs.
 
@@ -631,8 +699,9 @@ def logit_lens_surprisal_trials(
     :func:`logit_lens_surprisal_all_layers` in a loop instead would redo that
     (possibly large) deepcopy on every single item.
 
-    Sub-word tokens of ``target`` are aggregated via MEAN surprisal, matching
-    ``_surprisal_one_pair``'s convention (not the paper's sum).
+    Sub-word tokens of ``target`` are aggregated via their SUM (the word's surprisal,
+    -log p(target | context)); ``subword_agg="mean"`` is a sensitivity variant only.
+    The last layer is the model's own logits; earlier layers use the logit lens.
 
     Pass ``cache_dir``/``cache_key`` to cache to (and read from) disk — the
     cache is checked BEFORE the model is loaded, so a cache hit never touches
@@ -655,6 +724,7 @@ def logit_lens_surprisal_trials(
     if cache_dir is not None:
         cache_path = _trial_surprisal_cache_path(
             cache_dir, model_name, revision, cache_key, untrained, untrained_seed,
+            subword_agg=subword_agg,
         )
         cached = _load_cached_features(cache_path)
         if cached is not None:
@@ -671,6 +741,22 @@ def logit_lens_surprisal_trials(
             "refusing to load the model with require_cache_hit=True. Run the GPU "
             "prefetch stage for this model/checkpoint first."
         )
+
+    # CBR-RNN special case -- see the identically-gated branch in
+    # logit_lens_surprisal_all_layers for the full rationale. Each (context,
+    # target) pair maps directly onto the already-tested per-pair helper.
+    if "cbr-rnn" in model_name.lower() or "cbr_rnn" in model_name.lower():
+        from .cbr_rnn import _cbr_surprisal_one_pair, _get_cached_cbr_rnn
+
+        tokenizer, model = _get_cached_cbr_rnn(model_name, device)
+        dev = torch.device(device)
+        result = np.empty((len(contexts), 1), dtype=np.float32)
+        for i, (ctx, tgt) in enumerate(zip(contexts, targets)):
+            result[i, 0] = _cbr_surprisal_one_pair(model, tokenizer, dev, ctx, tgt)[0]
+        if cache_path is not None:
+            _save_cached_features(cache_path, result)
+            logger.info("CBR-RNN logit-lens trial surprisal: cached → %s (shape %s)", cache_path.resolve(), result.shape)
+        return result
 
     import copy
 
@@ -782,80 +868,128 @@ def logit_lens_surprisal_trials(
     # only set from a real forward pass in the non-native branch.
     out: list[np.ndarray | None] = [None] * len(contexts)
     n_layers: int | None = 1 if native_only else None
+    special_ids = set(int(i) for i in (getattr(tokenizer, "all_special_ids", None) or []))
+    is_fast = bool(getattr(tokenizer, "is_fast", False))
 
-    def _flush_native_batch(pending: list[tuple[int, torch.Tensor, int, torch.Tensor]]) -> None:
-        # pending: (out_idx, ids_seq, n_ctx_eff, target_ids) tuples, all
-        # already on input_device. Right-pad to the batch's longest sequence
-        # — see the docstring above for why this is exact, not approximate,
-        # vs. one forward call per item.
-        if not pending:
-            return
-        max_len = max(ids_seq.shape[0] for _, ids_seq, _, _ in pending)
-        pad_id = tokenizer.pad_token_id
-        batch_ids = torch.full(
-            (len(pending), max_len), pad_id, dtype=torch.long, device=input_device,
-        )
-        batch_am = torch.zeros((len(pending), max_len), dtype=torch.long, device=input_device)
-        for bi, (_, ids_seq, _, _) in enumerate(pending):
-            L = ids_seq.shape[0]
-            batch_ids[bi, :L] = ids_seq
-            batch_am[bi, :L] = 1
-        out_fwd = model(
-            input_ids=batch_ids, attention_mask=batch_am, use_cache=False, return_dict=True,
-        )
-        logits_b = out_fwd.logits.float()  # (B, max_len, vocab)
-        log_probs_b = torch.log_softmax(logits_b, dim=-1)
-        for bi, (out_idx, _, n_ctx_eff, target_ids) in enumerate(pending):
-            surp_j = [
-                -log_probs_b[bi, n_ctx_eff + j - 1, target_ids[j]].item()
-                for j in range(len(target_ids))
+    def _target_positions(ctx_s: str, tgt_s: str) -> tuple[list[int], list[int]]:
+        """Input token ids and the positions of the target word's tokens.
+
+        Two context conventions coexist across callers: N400-style trial data passes a
+        PREFIX (text strictly before ``tgt``), the SPR/eye-tracking datasets pass
+        CUMULATIVE context ending with ``tgt``; auto-detected via the suffix check.
+        Target tokens are located by character offsets in the tokenization actually fed to
+        the model (special tokens included), so BOS/CLS prefixes and EOS/SEP suffixes can
+        never shift the target window (the pre-2026-10-12 code counted the context without
+        special tokens and was off by one for every BOS-adding tokenizer). Trailing special
+        tokens are dropped from the input. Positions whose token has no left context
+        (position 0) make the whole word undefined (empty list -> NaN).
+        """
+        cumulative = bool(tgt_s and ctx_s.endswith(tgt_s))
+        if cumulative:
+            full = ctx_s
+        else:
+            full = (ctx_s + " " + tgt_s).strip() if ctx_s else tgt_s
+        tgt_start = len(full) - len(tgt_s)
+        if is_fast:
+            enc = tokenizer(full, add_special_tokens=True, return_offsets_mapping=True)
+            ids = [int(i) for i in enc["input_ids"]]
+            pos = [
+                i for i, (a, b) in enumerate(enc["offset_mapping"])
+                if b > a and b > tgt_start and ids[i] not in special_ids
             ]
-            out[out_idx] = np.array([float(np.mean(surp_j))], dtype=np.float32)
-        del out_fwd, logits_b, log_probs_b
+        else:
+            ids = [int(i) for i in tokenizer(full, add_special_tokens=True)["input_ids"]]
+            plain = [int(i) for i in tokenizer(full, add_special_tokens=False)["input_ids"]]
+            n_pre = next(
+                (k for k in range(len(ids) - len(plain) + 1) if ids[k : k + len(plain)] == plain), 0,
+            )
+            prefix = full[:tgt_start].rstrip()
+            n_ctx = len(tokenizer(prefix, add_special_tokens=False)["input_ids"]) if prefix else 0
+            pos = list(range(n_pre + n_ctx, n_pre + len(plain)))
+        if not pos:
+            return ids, []
+        ids = ids[: pos[-1] + 1]
+        if len(ids) > eff_max_length:  # left-truncate, keep the target at the end
+            drop = len(ids) - eff_max_length
+            ids = ids[drop:]
+            pos = [p - drop for p in pos]
+        if pos[0] < 1:
+            return ids, []
+        return ids, pos
 
-    def _pad_batch(
-        pending: list[tuple[int, torch.Tensor, int, torch.Tensor]],
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        max_len = max(ids_seq.shape[0] for _, ids_seq, _, _ in pending)
+    def _pad_batch(pending: list[tuple[int, list[int], list[int]]]) -> tuple[torch.Tensor, torch.Tensor]:
+        max_len = max(len(ids) for _, ids, _ in pending)
         pad_id = tokenizer.pad_token_id
-        batch_ids = torch.full(
-            (len(pending), max_len), pad_id, dtype=torch.long, device=input_device,
-        )
+        batch_ids = torch.full((len(pending), max_len), pad_id, dtype=torch.long, device=input_device)
         batch_am = torch.zeros((len(pending), max_len), dtype=torch.long, device=input_device)
-        for bi, (_, ids_seq, _, _) in enumerate(pending):
-            L = ids_seq.shape[0]
-            batch_ids[bi, :L] = ids_seq
-            batch_am[bi, :L] = 1
+        for bi, (_, ids, _) in enumerate(pending):
+            batch_ids[bi, : len(ids)] = torch.tensor(ids, dtype=torch.long, device=input_device)
+            batch_am[bi, : len(ids)] = 1
         return batch_ids, batch_am
 
-    def _flush_layer_batch(pending: list[tuple[int, torch.Tensor, int, torch.Tensor]]) -> None:
-        # Same right-padding argument as _flush_native_batch — the norm/
-        # unembed readout below is per-token, so trailing padding after the
-        # (n_ctx_eff, target_ids) range being read cannot affect it.
+    def _readout(log_probs_b: torch.Tensor, pending) -> list[float]:
+        vals = []
+        for bi, (_, ids, pos) in enumerate(pending):
+            tok = [-float(log_probs_b[bi, p - 1, ids[p]]) for p in pos]
+            vals.append(float(_aggregate_subwords(np.asarray(tok, dtype=np.float64), subword_agg)))
+        return vals
+
+    def _compute(pending) -> list[np.ndarray]:
+        """Per-item (n_layers,) surprisal for one right-padded batch."""
         nonlocal n_layers
-        if not pending:
-            return
         batch_ids, batch_am = _pad_batch(pending)
-        hs = _forward_hidden_states(model, batch_ids, batch_am, model_name=model_name)
+        if native_only:
+            out_fwd = model(input_ids=batch_ids, attention_mask=batch_am, use_cache=False, return_dict=True)
+            log_probs_b = torch.log_softmax(out_fwd.logits.float(), dim=-1)
+            res = [np.array([v], dtype=np.float32) for v in _readout(log_probs_b, pending)]
+            del out_fwd, log_probs_b
+            return res
+        hs, native_logits = _forward_hidden_states(
+            model, batch_ids, batch_am, model_name=model_name, return_logits=True,
+        )
         layer_hs = _exclude_embedding_layer(hs, model)
         if n_layers is None:
             n_layers = len(layer_hs)
-
-        per_layer_batch = np.empty((len(pending), n_layers), dtype=np.float32)
+        per_layer = np.empty((len(pending), n_layers), dtype=np.float32)
         for li, h in enumerate(layer_hs):
-            h_b = h.float()  # (B, seq, D) — upcast before norm, not after
-            normed = h_b if li == n_layers - 1 else final_norm(h_b)
-            logits_b = unembed(normed.to(unembed_dtype)).float()  # (B, seq, vocab)
+            # Last layer = the model's own logits (correct for every architecture,
+            # including hook-captured pre-norm block outputs); earlier layers = logit lens.
+            if li == n_layers - 1:
+                logits_b = native_logits.float()
+            else:
+                logits_b = unembed(final_norm(h.float()).to(unembed_dtype)).float()
             log_probs_b = torch.log_softmax(logits_b, dim=-1)
-            for bi, (_, _, n_ctx_eff, target_ids) in enumerate(pending):
-                surp_j = [
-                    -log_probs_b[bi, n_ctx_eff + j - 1, target_ids[j]].item()
-                    for j in range(len(target_ids))
-                ]
-                per_layer_batch[bi, li] = float(np.mean(surp_j))
+            per_layer[:, li] = _readout(log_probs_b, pending)
             del logits_b, log_probs_b
-        for bi, (out_idx, _, _, _) in enumerate(pending):
-            out[out_idx] = per_layer_batch[bi].copy()
+        return [per_layer[bi].copy() for bi in range(len(pending))]
+
+    # Right-padded batching is only exact if the model honours the attention mask for a
+    # causal readout. FoX/forgetting FLA kernels do not (corr 0.38-0.81 with unbatched on
+    # Provo), so the first multi-item batch is also run item by item; on disagreement the
+    # rest of the run falls back to batch size 1.
+    batch_safe: bool | None = None
+
+    def _flush(pending) -> None:
+        nonlocal batch_safe
+        if not pending:
+            return
+        if batch_safe is False or len(pending) == 1:
+            res = [_compute([p])[0] for p in pending]
+        elif batch_safe is None:
+            batched = _compute(pending)
+            single = [_compute([p])[0] for p in pending]
+            diffs = [np.abs(a - b) for a, b in zip(batched, single)]
+            max_diff = max((float(np.nanmax(d)) for d in diffs if np.isfinite(d).any()), default=0.0)
+            batch_safe = max_diff <= 0.5
+            (logger.info if batch_safe else logger.warning)(
+                "Logit-lens trials [%s]: batched vs unbatched max |diff| = %.3g nats -> %s",
+                model_name, max_diff, "batching enabled" if batch_safe else "batch size 1 for this model",
+            )
+            res = batched if batch_safe else single
+        else:
+            res = _compute(pending)
+        for (out_idx, _, _), v in zip(pending, res):
+            out[out_idx] = v
 
     # Resumable partial checkpoint: a job killed mid-loop (e.g. 2h dev-QoS
     # walltime) keeps every finished trial and the next run skips them. The
@@ -900,93 +1034,24 @@ def logit_lens_surprisal_trials(
             logger.warning("Could not save partial trial-surprisal checkpoint: %s", exc)
         last_partial_save = time.monotonic()
 
-    pending_native: list[tuple[int, torch.Tensor, int, torch.Tensor]] = []
-    pending_layer: list[tuple[int, torch.Tensor, int, torch.Tensor]] = []
-
+    batch_size = native_batch_size if native_only else layer_batch_size
+    pending: list[tuple[int, list[int], list[int]]] = []
     with torch.no_grad():
         for item_idx, (ctx, tgt) in enumerate(zip(contexts, targets)):
             if done[item_idx]:
                 continue
-            ctx_s = ctx.strip()
-            tgt_s = tgt.strip()
-            # Two context conventions coexist across callers (see
-            # neuroai.features.surprisal._surprisal_one_pair, the original
-            # source of this dual-mode logic): N400-style trial data passes a
-            # PREFIX (text strictly before ``tgt``), while the SPR/eye-tracking
-            # LME datasets (Natural Stories, Provo, GECO, MECO, OneStop, UCL
-            # Reading, ZuCo Reading) pass CUMULATIVE context — the running
-            # join of words through the current one, ending with ``tgt`` as a
-            # substring. Auto-detected via the suffix check, same as
-            # ``_surprisal_one_pair``.
-            cumulative = bool(tgt_s and ctx_s.endswith(tgt_s))
-            if cumulative:
-                full = ctx_s
-                prefix_text = ctx_s[: -len(tgt_s)].rstrip()
-                n_ctx = (
-                    len(tokenizer(prefix_text, add_special_tokens=False)["input_ids"])
-                    if prefix_text else 0
-                )
-            else:
-                full = (ctx_s + " " + tgt_s).strip() if ctx_s else tgt_s
-                n_ctx = (
-                    len(tokenizer(ctx_s, add_special_tokens=False)["input_ids"])
-                    if ctx_s else 0
-                )
-
-            # Both branches below now defer their forward pass into a
-            # batch (pending_native / pending_layer), building their own
-            # padded attention_mask over the batch — so only the unpadded
-            # per-item token ids are needed here, not a per-item mask.
-            enc = tokenizer(full, return_tensors="pt", truncation=True, max_length=eff_max_length)
-            ids_seq = enc["input_ids"][0].to(input_device)
-            # Left-truncation shifts every position back by however many
-            # leading tokens were dropped — recompute n_ctx relative to the
-            # (possibly truncated) sequence actually fed to the model rather
-            # than the untruncated one used to derive it above.
-            if len(ids_seq) >= eff_max_length:
-                full_len_untruncated = len(tokenizer(full, add_special_tokens=True)["input_ids"])
-                dropped = max(0, full_len_untruncated - len(ids_seq))
-                n_ctx_eff = max(0, n_ctx - dropped)
-            else:
-                n_ctx_eff = n_ctx
-            target_ids = ids_seq[n_ctx_eff:]
-            if len(target_ids) == 0:
-                # n_layers may still be unknown here (e.g. this is the first
-                # item) — leave the pre-seeded None placeholder, backfilled
-                # after the loop once n_layers is guaranteed known from a
-                # real item.
+            ids, pos = _target_positions(ctx.strip(), tgt.strip())
+            if not pos:
+                # No scoreable target tokens (empty target, or target at position 0
+                # with no left context): left as None, backfilled with NaN below.
                 continue
-
-            if native_only:
-                # No per-layer reconstruction — deferred into pending_native
-                # and run as part of a native_batch_size-sized batched
-                # forward call (see _flush_native_batch and the docstring
-                # above) instead of one forward call per trial.
-                pending_native.append((item_idx, ids_seq, n_ctx_eff, target_ids))
-                if len(pending_native) >= native_batch_size:
-                    _flush_native_batch(pending_native)
-                    pending_native = []
-                    _save_partial()
-                continue
-
-            # Deferred into pending_layer and run as part of a
-            # layer_batch_size-sized batched forward call (see
-            # _flush_layer_batch above) instead of one forward call per
-            # trial. _flush_layer_batch uses _forward_hidden_states (not a
-            # raw model() call) so custom trust_remote_code architectures
-            # that silently return hidden_states=None (e.g. the BabyLM MoE
-            # model) fall back to forward hooks on the transformer blocks —
-            # same fallback logit_lens_surprisal_all_layers already uses.
-            pending_layer.append((item_idx, ids_seq, n_ctx_eff, target_ids))
-            if len(pending_layer) >= layer_batch_size:
-                _flush_layer_batch(pending_layer)
-                pending_layer = []
+            pending.append((item_idx, ids, pos))
+            if len(pending) >= batch_size:
+                _flush(pending)
+                pending = []
                 _save_partial()
-
-        _flush_native_batch(pending_native)
-        pending_native = []
-        _flush_layer_batch(pending_layer)
-        pending_layer = []
+        _flush(pending)
+        pending = []
 
     if any(item is None for item in out):
         if n_layers is None:

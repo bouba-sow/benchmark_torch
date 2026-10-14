@@ -59,7 +59,7 @@ back to it by within-recording word index.
 
 **Epoch cache.** The bandpass + resample + RobustScaler + epoching is
 model-independent and is the slow step (~8 KIT reads per subject at ~30 s
-each). It is precomputed once per subject (`scripts/slurm/torch/utils/data_prep/megmasc_prime_cache.sh`,
+each). It is precomputed once per subject (`scripts/slurm/jz/utils/data_prep/megmasc_prime_cache.sh`,
 CPU only) into one `.npz` keyed by an MD5 of the preprocessing parameters;
 all model sweeps read the warm cache and do no raw-MEG I/O.
 
@@ -247,7 +247,7 @@ scripts/figures/megmasc_timecourse.py        the §6 figure
 configs/embedding/neural/megmasc.yaml     encoding config
 configs/surprisal/neural/megmasc.yaml            LME config
 configs/subjects/megmasc_subjects.json             the frozen 11-subject list
-scripts/slurm/torch/megmasc_*.sh             per-family SLURM launchers (1 GPU, -C h100, 6 h)
-scripts/slurm/torch/utils/data_prep/megmasc_prime_cache.sh   CPU epoch-cache prime array
-scripts/slurm/torch/utils/ceilings/correlation.sh CPU noise-ceiling array
+scripts/slurm/jz/megmasc_*.sh             per-family SLURM launchers (1 GPU, -C h100, 6 h)
+scripts/slurm/jz/utils/data_prep/megmasc_prime_cache.sh   CPU epoch-cache prime array
+scripts/slurm/jz/utils/ceilings/correlation.sh CPU noise-ceiling array
 ```

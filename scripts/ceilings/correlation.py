@@ -667,6 +667,78 @@ def handler_nieuwland(subjects: list[str] | None = None) -> tuple[dict, list[Blo
     return info, [Block("", "pearson", long)]
 
 
+# ---- Nieuwland N400 from the paper's own preprocessed per-trial values ----
+def handler_nieuwland_paper() -> tuple[dict, list[Block]]:
+    """Same 160 items x 334 subjects table the paper-formula LME is fit on
+    (``lme.paper_n400_tsv``): the paper's per-trial N400, already averaged over the 6
+    centro-parietal channels, so there is a single unit (``_all``)."""
+    import re
+
+    tsv = DATA_ROOT / "n400_paper_formula" / "osfstorage" / "datasets" / "nieuwland_2018.tsv"
+    df = pd.read_csv(tsv, sep="\t").drop_duplicates()
+    df = df.dropna(subset=["n400", "FullText", "TargetWords"])
+    key = lambda t: re.sub(r"[^a-z]", "", str(t).lower())  # noqa: E731
+    df["item"] = df["FullText"].map(key).str[:20] + "|" + df["TargetWords"].map(key)
+    long = pd.DataFrame(dict(subject=df["subject"].astype(str), item=df["item"],
+                             unit="_all", value=df["n400"].astype(float)))
+    info = dict(name="Nieuwland N400 EEG (paper n400)", modality="EEG",
+                metric="paper_n400_item_correlation",
+                note="paper's per-trial n400 (6-channel mean, 200-500 ms); "
+                     "item=(context prefix, noun) [160]; split subjects [334]")
+    return info, [Block("pearson", "pearson", long), Block("spearman", "spearman", long)]
+
+
+# ---- Szewczyk & Federmeier paper table, ONE study at a time ---------------
+def _szewczyk_study_handler(slug: str) -> Callable[[], tuple[dict, list[Block]]]:
+    """Split-half subject reliability of the item-mean target the embedding track predicts
+    (baseline-regressed N400, neuroai.datasets.szewczyk_paper) for one of the five separate
+    experiments in szewczyk_2022.tsv (they are not pooled)."""
+    def handler() -> tuple[dict, list[Block]]:
+        from neuroai.datasets.szewczyk_paper import STUDIES, TSV, load_study
+
+        df = load_study(REPO_ROOT / TSV, slug)
+        long = pd.DataFrame(dict(subject=df["Subject"].astype(str), item=df["item"], unit="_all",
+                                 value=df["n400_resid"].astype(float)))
+        info = dict(name=f"Szewczyk N400 EEG ({STUDIES[slug]})", modality="EEG",
+                    metric="paper_n400_item_correlation",
+                    note="baseline-regressed paper N400 (300-500 ms, 4 centro-parietal ROI clusters); "
+                         f"item=(context, critical word); split subjects [{df['Subject'].nunique()}]")
+        return info, [Block("pearson", "pearson", long), Block("spearman", "spearman", long)]
+    return handler
+
+
+# ---- Michaelov 2024 / Ryskin 2021 N400 from the paper's own tables --------
+def _n400_paper_blocks(df: pd.DataFrame, item: pd.Series) -> list[Block]:
+    """Per-electrode blocks (units = electrodes, headline = mean over electrodes) plus the
+    electrode-averaged variant (one unit ``_all``), for both Pearson and Spearman."""
+    long = pd.DataFrame(dict(subject=df["Subject"].astype(str), item=item,
+                             unit=df["Electrode"].astype(str), value=df["N400"].astype(float)))
+    long = long.dropna(subset=["value"])
+    avg = (long.groupby(["subject", "item"], as_index=False)["value"].mean().assign(unit="_all"))
+    return [Block("pearson", "pearson", long), Block("spearman", "spearman", long),
+            Block("pearson_elecmean", "pearson", avg), Block("spearman_elecmean", "spearman", avg)]
+
+
+def handler_michaelov_paper() -> tuple[dict, list[Block]]:
+    df = pd.read_csv(DATA_ROOT / "n400_paper_formula/osfstorage/datasets/michaelov_2024.tsv", sep="\t")
+    df = df.dropna(subset=["N400", "Subject", "Electrode", "ContextCode", "Condition"])
+    item = df["ContextCode"].astype(str) + "|" + df["Condition"].astype(str)
+    info = dict(name="Michaelov N400 EEG (paper N400)", modality="EEG",
+                metric="paper_n400_item_correlation",
+                note="paper's per-trial N400 per electrode; item=(ContextCode,Condition) [500]; split subjects [50]")
+    return info, _n400_paper_blocks(df, item)
+
+
+def handler_ryskin_paper() -> tuple[dict, list[Block]]:
+    df = pd.read_csv(DATA_ROOT / "n400_paper_formula/osfstorage/datasets/ryskin_2021.tsv", sep="\t")
+    df = df.dropna(subset=["N400", "Subject", "Electrode", "Item", "Condition"])
+    item = df["Item"].astype(str) + "|" + df["Condition"].astype(str)
+    info = dict(name="Ryskin N400 EEG (paper N400)", modality="EEG",
+                metric="paper_n400_item_correlation",
+                note="paper's per-trial N400 per electrode; item=(Item,Condition) [640]; split subjects [24]")
+    return info, _n400_paper_blocks(df, item)
+
+
 # ---- Fedorenko2016 ECoG (Spearman) — subject-unique electrodes ------------
 def handler_fedorenko2016() -> tuple[dict, list[Block]]:
     from neuroai.datasets.fedorenko2016 import Fedorenko2016Dataset
@@ -952,6 +1024,11 @@ HANDLERS: dict[str, Callable[[], tuple[dict, list[Block]]]] = {
     "tuckute": handler_tuckute,
     "ns_fmri": handler_ns_fmri,
     "nieuwland": handler_nieuwland,
+    "nieuwland_paper": handler_nieuwland_paper,
+    "szewczyk_f2007": _szewczyk_study_handler("f2007"),
+    "szewczyk_h2019": _szewczyk_study_handler("h2019"),
+    "michaelov_paper": handler_michaelov_paper,
+    "ryskin_paper": handler_ryskin_paper,
     "fedorenko2016": handler_fedorenko2016,
     "podcast": handler_podcast,
     "lpp": handler_lpp,
@@ -963,7 +1040,8 @@ HANDLERS: dict[str, Callable[[], tuple[dict, list[Block]]]] = {
 # Light (item-structured / tabular) vs heavy (MNE / nilearn / .fif loading).
 LIGHT = {"szewczyk", "naturalstories_spr", "tuckute", "ns_fmri",
          "fedorenko2016", "geco", "provo", "ucl_reading",
-         "pereira"}  # xarray .nc load, no MNE/nilearn
+         "pereira", "nieuwland_paper", "michaelov_paper", "ryskin_paper",
+         "szewczyk_f2007", "szewczyk_h2019"}  # xarray .nc load, no MNE/nilearn
 HEAVY = {"nieuwland", "podcast", "lpp", "broderick",
          "meco",  # meco reads a large .rda across many subjects
          "onestop"}  # 360 subjects x 3 measures, each a full reload+modal-word pass

@@ -47,7 +47,7 @@ dataset:
   baseline_mode: logratio
   context_words: null
   max_length: null
-  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_torch/podcast/electrode_selection
+  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/podcast/electrode_selection
 
 regression:
   # Ridge penalty grid. Either an explicit list (e.g. [1000, 5000, 10000]) or

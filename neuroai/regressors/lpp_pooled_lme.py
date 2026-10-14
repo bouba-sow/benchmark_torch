@@ -123,12 +123,18 @@ def prepare_lpp_lme_frame(df: pd.DataFrame) -> pl.DataFrame:
     return pl.from_pandas(out[cols].copy())
 
 
-def lpp_lme_formulas() -> tuple[str, str]:
-    """Baseline/full formulas for the pooled LPP fMRI LME (one LM layer)."""
+def lpp_lme_formulas(*, per_region: bool = False) -> tuple[str, str]:
+    """Baseline/full formulas for pooled or one-region LPP fMRI fits."""
     nuisances = "wlen_z + freq_z + sentpos_z"
+    re_section = "(1 | section)"
+
+    if per_region:
+        baseline = f"bold ~ {nuisances} + {re_section}"
+        full = f"bold ~ {nuisances} + surprisal_z + {re_section}"
+        return baseline, full
+
     re_region_base = "(1 | region)"
     re_region_full = "(1 + surprisal_z | region)"
-    re_section = "(1 | section)"
 
     baseline = f"bold ~ {nuisances} + {re_region_base} + {re_section}"
     full = f"bold ~ {nuisances} + surprisal_z + {re_region_full} + {re_section}"
@@ -166,7 +172,7 @@ def prepare_lpp_lme_frame_persubject(df: pd.DataFrame) -> pl.DataFrame:
     return pl.from_pandas(out[cols].copy())
 
 
-def lpp_lme_formulas_persubject() -> tuple[str, str]:
+def lpp_lme_formulas_persubject(*, per_region: bool = False) -> tuple[str, str]:
     """Baseline/full formulas for the per-subject pooled LPP fMRI LME.
 
     Adds ``(1 | subject)`` (intercept-only -- not a random slope, matching
@@ -177,10 +183,16 @@ def lpp_lme_formulas_persubject() -> tuple[str, str]:
     of the average-subject formula's region/section structure, otherwise
     unchanged."""
     nuisances = "wlen_z + freq_z + sentpos_z"
-    re_region_base = "(1 | region)"
-    re_region_full = "(1 + surprisal_z | region)"
     re_section = "(1 | section)"
     re_subject = "(1 | subject)"
+
+    if per_region:
+        baseline = f"bold ~ {nuisances} + {re_section} + {re_subject}"
+        full = f"bold ~ {nuisances} + surprisal_z + {re_section} + {re_subject}"
+        return baseline, full
+
+    re_region_base = "(1 | region)"
+    re_region_full = "(1 + surprisal_z | region)"
 
     baseline = f"bold ~ {nuisances} + {re_region_base} + {re_section} + {re_subject}"
     full = f"bold ~ {nuisances} + surprisal_z + {re_region_full} + {re_section} + {re_subject}"
@@ -196,6 +208,7 @@ def fit_lpp_lme_one_layer(
     allow_slope_fallback: bool = True,
     save_per_word: bool = False,
     persubject: bool = False,
+    per_region: bool = False,
 ) -> LmeFitResult:
     """Fit the pooled LPP fMRI LME for one LM layer.
 
@@ -222,7 +235,8 @@ def fit_lpp_lme_one_layer(
     )
 
     baseline_formula, full_formula = (
-        lpp_lme_formulas_persubject() if persubject else lpp_lme_formulas()
+        lpp_lme_formulas_persubject(per_region=per_region)
+        if persubject else lpp_lme_formulas(per_region=per_region)
     )
     outcome = "bold"
     beta_term = "surprisal_z"
@@ -249,9 +263,8 @@ def fit_lpp_lme_one_layer(
             "without the region slope-intercept correlation."
         )
         full_formula_nocorr = full_formula.replace(
-            "(1 + surprisal_z | region)",
-            "(1 + surprisal_z || region)",
-        )
+            "(1 + surprisal_z | region)", "(1 + surprisal_z || region)"
+        ) if not per_region else full_formula
         full_model = _fit(full_formula_nocorr)
         converged = _converged(full_model)
         if not (base_ok and converged):
@@ -262,15 +275,16 @@ def fit_lpp_lme_one_layer(
             )
             nuisances = "wlen_z + freq_z + sentpos_z"
             re_subject = " + (1 | subject)" if persubject else ""
-            baseline_formula = f"bold ~ {nuisances} + (1 | region) + (1 | section){re_subject}"
+            region_re = " + (1 | region)" if not per_region else ""
+            baseline_formula = f"bold ~ {nuisances}{region_re} + (1 | section){re_subject}"
             full_formula = (
-                f"bold ~ {nuisances} + surprisal_z + (1 | region) + (1 | section){re_subject}"
+                f"bold ~ {nuisances} + surprisal_z{region_re} + (1 | section){re_subject}"
             )
             baseline_model = _fit(baseline_formula)
             base_ok = _converged(baseline_model)
             full_model = _fit(full_formula)
             converged = _converged(full_model)
-            slope_dropped = True
+            slope_dropped = not per_region
 
     base_loglik, _, _, _ = _fit_stats(baseline_model)
     loglik, aic, bic, _ = _fit_stats(full_model)

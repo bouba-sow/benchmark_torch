@@ -127,6 +127,11 @@ def _load_model_df(slug: str) -> pd.DataFrame | None:
     df = pd.read_csv(f)
     if df.empty:
         return None
+    # The baked-in ``group`` can be stale (e.g. after a regrouping, when only some
+    # datasets were re-summarized); a model split across two groups is duplicated
+    # by the group-by in _bucket_model_df. Re-derive it from the single source.
+    from neuroai.analysis.benchmark_common import family_group
+    df["group"] = [family_group(f, m) for f, m in zip(df["family"], df["model_id"])]
     # Guarantee a ceiling-normalised column (score / noise ceiling). Older CSVs
     # without it fall back to the raw score.
     if "score_norm" not in df.columns:
@@ -138,6 +143,15 @@ def _load_model_df(slug: str) -> pd.DataFrame | None:
     for c in ("score_best_norm", "score_last_norm"):
         if c not in df.columns:
             df[c] = df.get(c.replace("_norm", ""), df["score_norm"])
+    # NS fMRI: composites (Pareto etc.) use the LANGUAGE network only (6 fROIs), not the pooled language+MD score.
+    # Set env NS_FMRI_NETWORK=all to reproduce the previous all-fROI behaviour. Per-dataset summary CSVs keep both.
+    import os as _os
+    if slug in ("ns_fmri", "ns_fmri__surprisal") and _os.environ.get("NS_FMRI_NETWORK", "lang") == "lang" \
+            and "score_lang_norm" in df.columns:
+        df = df.dropna(subset=["score_lang_norm"]).copy()
+        for c in ("score_norm", "score_best_norm", "score_last_norm"):
+            df[c] = df["score_lang_" + c.replace("score_", "")] if ("score_lang_" + c.replace("score_", "")) in df.columns else df["score_lang_norm"]
+        df["score"] = df["score_lang"]
     return df
 
 
@@ -800,8 +814,8 @@ def build_pareto_figure(mode: str = "embedding", layer_sel: str = "best",
     m = _neural_behavioral_merged(mode, layer_sel)
     suffix = "_".join(size_cols)
     return _draw_pareto_figure(
-        m, "Neural score  (mean fraction of noise ceiling) →",
-        "Behavioral score  (mean fraction of noise ceiling) →",
+        m, "BrainScore  (mean fraction of noise ceiling) →",
+        "BehavScore  (mean fraction of noise ceiling) →",
         f"Neural–behavioral trade-off and Pareto front — {mode} features, "
         f"{layer_sel} layer  (top-right = good at both)",
         f"pareto_neural_behavioral_{mode}_{layer_sel}_{suffix}.png",
@@ -1044,7 +1058,7 @@ def build_hard_case_pareto_section() -> str:
         n = _dlt_hard_word_count(thr)
         panels.append((m, f"cost ≥ {thr:g}\n(Σn_hard≈{n:,} words, summed across datasets)"))
     out = _draw_pareto_row(
-        panels, "Neural score  (fraction of ceiling) →", "Behavioral score  (fraction of ceiling) →",
+        panels, "BrainScore  (fraction of ceiling) →", "BehavScore  (fraction of ceiling) →",
         "Neural–behavioral trade-off across DLT-hardness thresholds  (top-right = good at both)",
         "pareto_hard_case_thresholds_n_params.png",
     )
@@ -1623,8 +1637,8 @@ def build_pareto_section() -> str:
     panels = [(_neural_behavioral_merged(mode, layer_sel), f"{mode.capitalize()}, {layer_sel} layer")
               for mode in MODES for layer_sel in LAYERS]
     out = _draw_pareto_grid(
-        panels, "Neural score (mean fraction of noise ceiling) →",
-        "Behavioral score (mean fraction of noise ceiling) →",
+        panels, "BrainScore (mean fraction of noise ceiling) →",
+        "BehavScore (mean fraction of noise ceiling) →",
         "Neural–behavioral trade-off and Pareto front (top-right = good at both)",
         "pareto_neural_behavioral_grid_n_params.png",
     )
@@ -1666,8 +1680,8 @@ def build_pareto_section_zscore() -> str:
     panels = [(_neural_behavioral_merged_zscore(mode, layer_sel), f"{mode.capitalize()}, {layer_sel} layer")
               for mode in MODES for layer_sel in LAYERS]
     out = _draw_pareto_grid(
-        panels, "Neural score (mean robust z-score across datasets) →",
-        "Behavioral score (mean robust z-score across datasets) →",
+        panels, "BrainScore (mean robust z-score across datasets) →",
+        "BehavScore (mean robust z-score across datasets) →",
         "Neural–behavioral trade-off and Pareto front, z-scored (top-right = good at both)",
         "pareto_neural_behavioral_grid_zscore.png",
     )
@@ -1709,8 +1723,8 @@ def build_supplementary_perplexity_section() -> str:
     panels_ppl = [(_neural_behavioral_merged(mode, layer_sel), f"{mode.capitalize()}, {layer_sel} layer")
                   for mode in MODES for layer_sel in LAYERS]
     out_ppl = _draw_pareto_grid(
-        panels_ppl, "Neural score (mean fraction of noise ceiling) →",
-        "Behavioral score (mean fraction of noise ceiling) →",
+        panels_ppl, "BrainScore (mean fraction of noise ceiling) →",
+        "BehavScore (mean fraction of noise ceiling) →",
         "Neural–behavioral trade-off and Pareto front (top-right = good at both)",
         "pareto_neural_behavioral_grid_perplexity.png", size_col="perplexity",
     )

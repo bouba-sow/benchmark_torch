@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -59,6 +60,8 @@ GROUP_COLS = {
     "zuco_reading_tsr": ["story_id"],
     "lpp": ["section"],
     "fedorenko2016": ["sentence_id"],
+    "megmasc": ["story"],
+    "onestop": ["story_id"],
 }
 
 
@@ -163,6 +166,28 @@ def _export_lpp(bids_root: Path, lang: str = "en") -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
+def _export_onestop(root: Path) -> pd.DataFrame:
+    # story_id encodes batch/article/paragraph/difficulty, so each passage (incl.
+    # each difficulty variant) is its own running text. Canonical word list over
+    # all subjects (same one the surprisal sweep scores).
+    from neuroai.datasets.onestop import OnestopDataset
+
+    ds = OnestopDataset(root, measure="FP", aggregate=True)
+    word_df = ds.load_words().sort_values(["story_id", "zone"]).reset_index(drop=True)
+    word_df["position"] = word_df.groupby("story_id").cumcount()
+    return word_df[["story_id", "zone", "position", "word"]]
+
+
+def _export_megmasc(bids_root: Path) -> pd.DataFrame:
+    # Same canonical list as megmasc_lme._load_all_words: global word_idx running
+    # index over stories (needed to join with megmasc_lme_per_word.csv).
+    from neuroai.benchmarks.megmasc_lme import _load_all_words
+
+    words_df = _load_all_words(str(bids_root), None).sort_values("word_idx")
+    words_df["position"] = words_df.groupby("story").cumcount()
+    return words_df[["story", "word_idx", "position", "word"]].reset_index(drop=True)
+
+
 _MECO_ROOT = (
     REPO_ROOT / "data" / "meco" / "osfstorage" / "release 2.0" / "version 2.1"
     / "wave 1" / "primary data" / "eye tracking data"
@@ -186,6 +211,8 @@ EXPORTERS = {
     # no French spaCy support is wired up here.
     "lpp": (_export_lpp, REPO_ROOT / "data" / "Lepetitprince_fMRI"),
     "fedorenko2016": (_export_fedorenko2016, REPO_ROOT / "data" / "fedorenko2016"),
+    "onestop": (_export_onestop, REPO_ROOT / "data" / "onestop"),
+    "megmasc": (_export_megmasc, Path(os.path.expandvars("${MEGMASC_BIDS_ROOT}"))),
 }
 
 
@@ -249,20 +276,49 @@ def _integration_costs(doc) -> list[int]:
 
 
 def _dlt_costs_for_text(words: list[str], nlp) -> pd.DataFrame:
+    """One row per INPUT word (len == len(words)).
+
+    spaCy re-tokenizes the joined text (contractions, trailing punctuation,
+    words with internal spaces), so token count != word count and a positional
+    ``iloc[:len(words)]`` shifted every cost after the first split token. Tokens
+    are mapped back to words by character offset in the single-space-joined text
+    and their storage / integration / total are summed (punctuation and clitics
+    cost 0, so this is the content token's cost). ``token_idx``/``head*``/``dep``
+    describe the word's highest-cost token (first token on ties); ``head_idx`` is
+    a spaCy token index, not a word index. ``n_tokens`` is the number of spaCy
+    tokens the word was split into.
+    """
+    from bisect import bisect_right
+
     doc = nlp(" ".join(words))
     integ = _integration_costs(doc)
     store = [int(_introduces_discourse_referent(tok)) for tok in doc]
-    total = [integ[i] + store[i] for i in range(len(doc))]
-    return pd.DataFrame({
-        "token_idx": [tok.i for tok in doc],
-        "word": [tok.text for tok in doc],
-        "head_idx": [tok.head.i for tok in doc],
-        "head": [tok.head.text for tok in doc],
-        "dep": [tok.dep_ for tok in doc],
-        "storage": store,
-        "integration": integ,
-        "total": total,
-    })
+
+    starts, pos = [], 0
+    for w in words:
+        starts.append(pos)
+        pos += len(w) + 1
+    by_word: list[list[int]] = [[] for _ in words]
+    for tok in doc:
+        wi = bisect_right(starts, tok.idx) - 1
+        if 0 <= wi < len(words):
+            by_word[wi].append(tok.i)
+
+    rows = []
+    for w, toks in zip(words, by_word):
+        if not toks:
+            rows.append((-1, w, -1, "", "", 0, 0, 0, 0))
+            continue
+        tot = [integ[i] + store[i] for i in toks]
+        main = toks[max(range(len(toks)), key=lambda k: (tot[k], -k))]
+        rows.append((
+            main, w, doc[main].head.i, doc[main].head.text, doc[main].dep_,
+            sum(store[i] for i in toks), sum(integ[i] for i in toks), sum(tot), len(toks),
+        ))
+    return pd.DataFrame(
+        rows,
+        columns=["token_idx", "word", "head_idx", "head", "dep", "storage", "integration", "total", "n_tokens"],
+    )
 
 
 def _parse_dataset(nlp, words_df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
@@ -279,7 +335,7 @@ def _parse_dataset(nlp, words_df: pd.DataFrame, group_cols: list[str]) -> pd.Dat
         words = g["word"].astype(str).tolist()
         if not words:
             continue
-        cost_df = _dlt_costs_for_text(words, nlp).iloc[: len(words)].reset_index(drop=True)
+        cost_df = _dlt_costs_for_text(words, nlp)
         g = g.reset_index(drop=True)
         merged = pd.concat([g.drop(columns=["word"]), cost_df], axis=1)
         frames.append(merged)

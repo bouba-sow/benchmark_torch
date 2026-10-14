@@ -139,7 +139,7 @@ def _save_perplexity(task, surp: np.ndarray, perplexity_dir: str) -> None:
         "step": task.step,
         "tokens_seen": task.tokens_seen,
         "corpus": "provo",
-        "perplexity": round(corpus_ppl, 4),
+        "perplexity": round(corpus_ppl, 4), "perplexity_method": "surprisal_v2_sum_per_word",
         "n_words": n_words,
     }
 

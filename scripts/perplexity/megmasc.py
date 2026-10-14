@@ -8,7 +8,7 @@ identical recipe to ``perplexity/nieuwland.py`` (shared helpers from
 ``perplexity/lpp.py``).
 
 Output: ``<out_dir>/<model_safe>/perplexity.json`` (default out_dir
-``outputs_torch/megmasc/perplexity``), the layout ``load_perplexity_dir``
+``outputs_jeanzay/megmasc/perplexity``), the layout ``load_perplexity_dir``
 in ``neuroai/analysis/benchmark_common.py`` expects.
 
 Runs standalone, and is also invoked automatically by
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 SUMMARY_CSV = "megmasc_perplexity_summary.csv"
 CORPUS_LABEL = "megmasc"
-DEFAULT_OUT = Path("outputs_torch/megmasc/perplexity")
+DEFAULT_OUT = Path("outputs_jeanzay/megmasc/perplexity")
 
 
 def _import_lpp_perplexity():
@@ -117,7 +117,7 @@ def run_model(
 
     if out_path.is_file() and not force:
         existing = json.loads(out_path.read_text())
-        if "error" not in existing:
+        if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
             logger.info("Already done: %s — skipping", model_id)
             return existing
         logger.warning("Previous run had error — recomputing: %s", out_path)
@@ -127,7 +127,7 @@ def run_model(
         texts = load_megmasc_text(bids_root)
 
     try:
-        tokenizer, model = load_model_and_tokenizer(model_id, n_params, device)
+        tokenizer, model = load_model_and_tokenizer(model_id, n_params, device, revision=model_entry.get("load_revision"))
     except Exception as exc:  # noqa: BLE001
         logger.error("FAILED %s (model load): %s", model_id, exc, exc_info=True)
         out_path.write_text(json.dumps({
@@ -161,12 +161,34 @@ def run_model(
     record = {
         "model_id": model_id, "label": label, "n_params": n_params, "family": family,
         "corpus": CORPUS_LABEL, "lang": "en",
-        "perplexity": result["perplexity"], "n_tokens": result["n_tokens"],
+        "perplexity": result["perplexity"], "n_tokens": result["n_tokens"], "n_words": result.get("n_words"), "perplexity_per_token": result.get("perplexity_per_token"), "perplexity_method": result.get("perplexity_method"),
         "max_length": max_length, "stride": max_length // 2,
         "device": device, "torch_dtype": torch_dtype, "n_stories": len(texts),
     }
     if model_entry.get("revision"):
         record["revision"] = model_entry["revision"]
+    out_path.write_text(json.dumps(record, indent=2))
+    logger.info("Saved → %s  (ppl=%.2f)", out_path, record["perplexity"])
+    return record
+
+
+def run_cbr_rnn(model_id: str, texts: list[str], out_dir: Path, device: str, force: bool = False) -> dict | None:
+    """Perplexity for a CBR-RNN model (custom architecture; shared core in perplexity/lpp.py)."""
+    out_path = out_dir / _safe_dir(model_id) / "perplexity.json"
+    if out_path.is_file() and not force:
+        existing = json.loads(out_path.read_text())
+        if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
+            logger.info("Already done: %s — skipping", model_id)
+            return existing
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    result = _lpp.compute_cbr_rnn_perplexity_over_texts(model_id, texts, device)
+    record = {
+        "model_id": model_id, "label": "CBR-RNN-M" if model_id.endswith("-m") else "CBR-RNN",
+        "n_params": 17_360_688, "family": "cbr_rnn", "corpus": CORPUS_LABEL, "lang": "en",
+        "perplexity": result["perplexity"], "n_tokens": result["n_tokens"], "n_words": result.get("n_words"), "perplexity_per_token": result.get("perplexity_per_token"), "perplexity_method": result.get("perplexity_method"),
+        "max_length": result["max_length"], "device": device, "torch_dtype": "float32",
+        "n_stories": len(texts),
+    }
     out_path.write_text(json.dumps(record, indent=2))
     logger.info("Saved → %s  (ppl=%.2f)", out_path, record["perplexity"])
     return record
@@ -197,11 +219,15 @@ def main() -> None:
     p.add_argument("--array_index", type=int, default=None)
     p.add_argument("--model_id", default=None)
     p.add_argument("--n_params", type=float, default=None)
+    p.add_argument("--load_revision", default=None,
+                   help="HF revision to load (e.g. OLMo-2 stage1-step...); the result is still stored as the model's main entry")
     p.add_argument("--device", default="cuda")
     p.add_argument("--bids_root", type=Path, default=None)
     p.add_argument("--out_dir", type=Path, default=DEFAULT_OUT)
     p.add_argument("--force", action="store_true")
     p.add_argument("--summarize", action="store_true")
+    p.add_argument("--architecture", default=None, choices=("cbr_rnn",),
+                   help="custom (non-HF-causal-LM) architecture; use with --model_id")
     args = p.parse_args()
 
     if "BENCHMARK_ROOT" not in os.environ:
@@ -216,7 +242,9 @@ def main() -> None:
     bids_root = args.bids_root or _default_bids_root()
     texts = load_megmasc_text(bids_root)
 
-    if args.from_registry:
+    if args.architecture == "cbr_rnn":
+        run_cbr_rnn(args.model_id or "cclark/cbr-rnn", texts, out_dir, args.device, force=args.force)
+    elif args.from_registry:
         from neuroai.models.registry import (
             registry_model_configs, resolve_family_task, resolve_load_model_id,
         )
@@ -233,7 +261,8 @@ def main() -> None:
         }
         run_model(entry, bids_root, out_dir, args.device, force=args.force, texts=texts)
     elif args.model_id:
-        run_model({"model_id": args.model_id, "n_params": args.n_params, "family": "adhoc"},
+        run_model({"model_id": args.model_id, "n_params": args.n_params, "family": "adhoc",
+                   "load_revision": args.load_revision},
                   bids_root, out_dir, args.device, force=args.force, texts=texts)
     elif args.all:
         for entry in flat_model_list():

@@ -232,7 +232,8 @@ PODCAST_LOGLIK_CACHE = LOGLIK_CACHE_DIR / "podcast_lme.csv"
 PODCAST_DLL_CEILING_SLUG = "podcast_ieeg__surprisal"
 
 
-def _load_dll_bin(path: Path, ceiling_slug: str, dlt_bin: str, hard_gt: float) -> pd.DataFrame | None:
+def _load_dll_bin(path: Path, ceiling_slug: str, dlt_bin: str, hard_gt: float,
+                  ceiling: float | None = None) -> pd.DataFrame | None:
     """One (dataset, dlt_bin, hard_gt) slice of a dlt_loglik_cache/*.csv file,
     ceiling-normalised -- model_id/family/group/label/n_params/score."""
     if not path.is_file():
@@ -241,7 +242,8 @@ def _load_dll_bin(path: Path, ceiling_slug: str, dlt_bin: str, hard_gt: float) -
     df = df[np.isclose(df["hard_gt_threshold"].astype(float), hard_gt) & (df["dlt_bin"] == dlt_bin)]
     if df.empty or "score" not in df.columns:
         return None
-    ceiling = dll_ceiling_for(ceiling_slug)
+    if ceiling is None:   # default: the dataset's all-words ceiling; an explicit value = bin-specific ceiling
+        ceiling = dll_ceiling_for(ceiling_slug)
     rows = []
     for model_id, g in df.groupby("model"):
         v = g["score"].iloc[0]
@@ -277,3 +279,65 @@ def load_podcast_dll(dlt_bin: str, hard_gt: float = 2.0) -> pd.DataFrame:
     if d is None:
         return pd.DataFrame()
     return d.rename(columns={"score": "neural"})
+
+
+# ---------------------------------------------------------------------------
+# BIN-SPECIFIC ceilings (2026-10-09): each DLT bin divided by the split-half ceiling computed on that bin's own
+# words (scripts/ceilings/dll_behavioral_bins.py, dll_podcast_region_bins.py; copies in
+# outputs/noise_ceilings/dll_bins/). Ceilings of thin bins are unstable (a few words at cost >= 4), so the
+# bin-ceiling figures are restricted to cost <= 2 (MAX_BIN_CEILING_THRESHOLD).
+# ---------------------------------------------------------------------------
+BIN_CEILING_DIR = REPO_ROOT / "outputs" / "noise_ceilings" / "dll_bins"
+PODCAST_BINCEIL_CACHE = LOGLIK_CACHE_DIR / "podcast_lme_binceil.csv"
+MAX_BIN_CEILING_THRESHOLD = 2.0
+
+
+def _bin_key(dlt_bin: str, hard_gt: float) -> str:
+    return "easy" if dlt_bin == "easy" else f"hard{int(round(hard_gt))}"
+
+
+def load_behavioral_dll_bincal(dlt_bin: str, hard_gt: float = 2.0) -> pd.DataFrame:
+    """BehavScore with each dataset/measure entry's DLT bin divided by that bin's OWN ceiling, averaged per model
+    across LOGLIK_CACHE_FILES entries (entries whose bin ceiling is non-positive are skipped)."""
+    import json
+
+    if dlt_bin == "hard" and hard_gt > MAX_BIN_CEILING_THRESHOLD:
+        raise ValueError(f"bin ceilings are only used up to cost >= {MAX_BIN_CEILING_THRESHOLD:g}")
+    key = _bin_key(dlt_bin, hard_gt)
+    frames = []
+    for report_slug, (cache_stem, _slug) in LOGLIK_CACHE_FILES.items():
+        path = LOGLIK_CACHE_DIR / f"{cache_stem}.csv"
+        cj = BIN_CEILING_DIR / "behavioral" / f"delta_loglik_ceiling_{cache_stem}_bins.json"
+        if not path.is_file() or not cj.is_file():
+            continue
+        ceiling = json.loads(cj.read_text())["per_bin"][key]["ceiling_delta_loglik_per_obs"]
+        if not (ceiling and np.isfinite(ceiling) and ceiling > 0):
+            continue
+        d = _load_dll_bin(path, "", dlt_bin, hard_gt, ceiling=ceiling)
+        if d is not None:
+            frames.append(d)
+    if not frames:
+        return pd.DataFrame()
+    long_df = pd.concat(frames, ignore_index=True)
+    return (long_df.groupby(["model_id", "family", "group", "label", "n_params"], as_index=False)
+            .agg(behav=("score", "mean")))
+
+
+def load_podcast_dll_bincal(dlt_bin: str, hard_gt: float = 2.0) -> pd.DataFrame:
+    """NeuralScore (Podcast) per bin, per-region normalised by the bin's own ceiling
+    (scripts/dlt/podcast_bin_ceiling_scores.py)."""
+    if dlt_bin == "hard" and hard_gt > MAX_BIN_CEILING_THRESHOLD:
+        raise ValueError(f"bin ceilings are only used up to cost >= {MAX_BIN_CEILING_THRESHOLD:g}")
+    if not PODCAST_BINCEIL_CACHE.is_file():
+        return pd.DataFrame()
+    df = pd.read_csv(PODCAST_BINCEIL_CACHE)
+    df = df[np.isclose(df["hard_gt_threshold"].astype(float), hard_gt) & (df["dlt_bin"] == dlt_bin)]
+    rows = []
+    for _, g in df.groupby("model"):
+        r = g.iloc[0]
+        if pd.isna(r["norm"]):
+            continue
+        meta = lookup_model_meta(r["model"], r["family"], n_params_fallback=r["n_params"])
+        rows.append({"model_id": r["model"], "family": meta.family, "group": meta.group, "label": meta.label,
+                     "n_params": meta.n_params, "neural": float(r["norm"])})
+    return pd.DataFrame(rows)

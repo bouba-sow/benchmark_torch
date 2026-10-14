@@ -32,7 +32,10 @@ import pandas as pd
 
 sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())))
 
-from neuroai.regressors.n400_pooled_lme import compute_n400_ceiling_delta_loglik
+from neuroai.regressors.n400_pooled_lme import (
+    compute_n400_ceiling_delta_loglik,
+    compute_n400_extrapolated_ceiling,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -55,7 +58,7 @@ def _load_nieuwland_paper_pooled() -> tuple[pd.DataFrame, bool]:
     built with an item_id/frame_id split, with
     ``frame_id`` = the base item number reused as the train/test chunk
     boundary and the ``(1|item)`` random-intercept grouping."""
-    path = REPO_ROOT / "data" / "87gmv" / "osfstorage" / "datasets" / "nieuwland_2018.tsv"
+    path = REPO_ROOT / "data" / "n400_paper_formula" / "osfstorage" / "datasets" / "nieuwland_2018.tsv"
     df = pd.read_csv(path, sep="\t")
     df = df.rename(columns={"item": "base_item"})
     df = df.dropna(subset=["n400", "lab", "base_item"]).reset_index(drop=True)
@@ -133,8 +136,82 @@ def _load_nieuwland_real_pooled() -> tuple[pd.DataFrame, bool]:
     return base_df, True  # include_lab=True (matches the real Nieuwland sweep's n400_lme_formulas call)
 
 
+PAPER_DATASETS = REPO_ROOT / "data" / "n400_paper_formula" / "osfstorage" / "datasets"
+
+
+def _load_michaelov_paper_pooled() -> tuple[pd.DataFrame, bool]:
+    """Michaelov et al. (2024) from the paper's own table (one row per subject x item x electrode).
+    ``item_id`` = (ContextCode, Condition) -- where surprisal varies; ``chunk``/``frame_id`` =
+    ContextCode (train/test unit and the ``(1|ContextCode)`` grouping); ``target_word`` =
+    TargetWords (the ``(1|TargetWords)`` grouping the paper's R script uses)."""
+    df = pd.read_csv(PAPER_DATASETS / "michaelov_2024.tsv", sep="\t")
+    df = df.dropna(subset=["N400", "Subject", "Electrode", "ContextCode", "Condition",
+                           "TargetWords", "ZipfFrequency", "ON"]).reset_index(drop=True)
+    df["ContextCode"] = df["ContextCode"].astype(str)
+    pair = df[["ContextCode", "Condition"]].drop_duplicates().sort_values(["ContextCode", "Condition"])
+    pair["item_id"] = np.arange(len(pair))
+    df = df.merge(pair, on=["ContextCode", "Condition"], how="left")
+    out = pd.DataFrame({
+        "subject": df["Subject"].astype(str), "electrode": df["Electrode"].astype(str),
+        "chunk": df["ContextCode"], "frame_id": df["ContextCode"], "item_id": df["item_id"],
+        "target_word": df["TargetWords"].astype(str), "freq": df["ZipfFrequency"].astype(float),
+        "on": df["ON"].astype(float), "n400": df["N400"].astype(float),
+    })
+    return out, False
+
+
+def _load_ryskin_paper_pooled() -> tuple[pd.DataFrame, bool]:
+    """Ryskin et al. (2021) from the paper's own table. ``item_id`` = (Item, Condition);
+    ``chunk``/``frame_id`` = base Item (the ``(1 + surprisal || Item)`` grouping and train/test unit)."""
+    df = pd.read_csv(PAPER_DATASETS / "ryskin_2021.tsv", sep="\t")
+    df = df.dropna(subset=["N400", "Subject", "Electrode", "Item", "Condition"]).reset_index(drop=True)
+    df["Item"] = df["Item"].astype(str)
+    pair = df[["Item", "Condition"]].drop_duplicates().sort_values(["Item", "Condition"])
+    pair["item_id"] = np.arange(len(pair))
+    df = df.merge(pair, on=["Item", "Condition"], how="left")
+    out = pd.DataFrame({
+        "subject": df["Subject"].astype(str), "electrode": df["Electrode"].astype(str),
+        "chunk": df["Item"], "frame_id": df["Item"], "item_id": df["item_id"],
+        "n400": df["N400"].astype(float),
+    })
+    return out, False
+
+
+SZEWCZYK_SUB_EXPERIMENT: str | None = None   # set from --sub_experiment (szewczyk_paper only)
+
+
+def _load_szewczyk_paper_pooled() -> tuple[pd.DataFrame, bool]:
+    """Szewczyk & Federmeier from ``szewczyk_2022.tsv`` -- the SAME table and row filter the
+    model sweep uses (neuroai/benchmarks/n400_szewczyk_lme.py), carrying the paper covariates
+    (bline, logfreq, pos_start, old20, concr). ``item_id`` = (FullText, TargetWords) -- where
+    surprisal varies, so it is the split-half item key; ``chunk``/``frame_id`` =
+    dataset_Item (train/test unit and the ``(1 + bline_z || chunk)`` grouping). Pair with
+    ``--re_structure szewczyk_paper``."""
+    df = pd.read_csv(PAPER_DATASETS / "szewczyk_2022.tsv", sep="\t")
+    df["chunk"] = df["dataset"].astype(str) + "_" + df["Item"].astype(str)
+    if SZEWCZYK_SUB_EXPERIMENT:
+        if SZEWCZYK_SUB_EXPERIMENT not in set(df["dataset"]):
+            raise ValueError(f"--sub_experiment {SZEWCZYK_SUB_EXPERIMENT!r} not in {sorted(df['dataset'].unique())}")
+        df = df[df["dataset"] == SZEWCZYK_SUB_EXPERIMENT]
+    items = df[["FullText", "TargetWords"]].drop_duplicates().reset_index(drop=True)
+    items["item_id"] = items.index
+    df = df.merge(items, on=["FullText", "TargetWords"], how="left")
+    df = df[df["n400"].notna()].reset_index(drop=True)
+    out = pd.DataFrame({
+        "subject": df["Subject"].astype(str), "chunk": df["chunk"], "frame_id": df["chunk"],
+        "item_id": df["item_id"].astype(int), "bline": df["bline"].astype(float),
+        "freq": df["logfreq"].astype(float), "pos_start": df["pos_start"].astype(float),
+        "old20": df["old20"].astype(float), "concr": df["concr"].astype(float),
+        "n400": df["n400"].astype(float),
+    })
+    return out, False
+
+
 DATASET_LOADERS = {
+    "szewczyk_paper": _load_szewczyk_paper_pooled,
     "nieuwland_paper": _load_nieuwland_paper_pooled,
+    "michaelov_paper": _load_michaelov_paper_pooled,
+    "ryskin_paper": _load_ryskin_paper_pooled,
     "szewczyk": _load_szewczyk_pooled,
     "nieuwland_real": _load_nieuwland_real_pooled,
 }
@@ -153,16 +230,25 @@ def main() -> None:
     ap.add_argument("--n_splits", type=int, default=15)
     ap.add_argument("--n_workers", type=int, default=1)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--mode", choices=("split_half", "loso", "extrap"), default="split_half",
+                    help="extrap = Schrimpf et al. 2021 SI-7 extrapolation to infinitely many subjects")
+    ap.add_argument("--target_size", type=int, default=8, help="extrap: target subjects per fit")
+    ap.add_argument("--n_draws", type=int, default=20, help="extrap: random target/source draws per source size")
+    ap.add_argument("--n_repeats", type=int, default=1, help="loso: repeats over chunk splits (seed+rep)")
     ap.add_argument("--out_of_sample", dest="out_of_sample", action="store_true", default=True,
                      help="Fit on a train chunk-split, evaluate on held-out chunks (default).")
     ap.add_argument("--in_sample", dest="out_of_sample", action="store_false",
                      help="Fit and score on ALL data (Timkey et al.'s literal in-sample description).")
-    ap.add_argument("--re_structure", choices=["slopes", "nieuwland_paper"], default="slopes",
+    ap.add_argument("--re_structure", choices=["slopes", "nieuwland_paper", "michaelov_paper", "ryskin_paper", "szewczyk_paper"], default="slopes",
                      help="'slopes' = this codebase's default correlated-random-slope structure; "
                           "'nieuwland_paper' = surprisal+lab(fixed)+intercepts for subject/item, no "
                           "electrode/frequency term (use with --dataset nieuwland_paper or szewczyk).")
     ap.add_argument("--out_dir", default=str(OUT_DIR))
+    ap.add_argument("--sub_experiment", default=None,
+                    help="szewczyk_paper only: restrict to one sub-experiment (tsv 'dataset' column)")
     args = ap.parse_args()
+    global SZEWCZYK_SUB_EXPERIMENT
+    SZEWCZYK_SUB_EXPERIMENT = args.sub_experiment
 
     base_df, include_lab = DATASET_LOADERS[args.dataset]()
     if base_df.empty:
@@ -174,11 +260,36 @@ def main() -> None:
         base_df[item_col].nunique(), item_col, base_df["frame_id"].nunique(),
     )
 
+    if args.mode == "extrap":
+        t0 = time.time()
+        ex = compute_n400_extrapolated_ceiling(
+            base_df, item_col=item_col, include_lab=include_lab, re_structure=args.re_structure,
+            target_size=args.target_size, n_draws=args.n_draws, seed=args.seed, n_workers=args.n_workers,
+            out_of_sample=args.out_of_sample,
+        )
+        logger.info("extrapolated ceiling v0 = %.5g (95%% CI %.5g .. %.5g), tau0 = %.3g, %d bootstraps ok, %d fits, %.0fs",
+                    ex.v0, ex.v0_ci[0], ex.v0_ci[1], ex.tau0_median, ex.n_bootstraps, len(ex.points), time.time() - t0)
+        logger.info("finite-N mean per obs by source size: %s", {k: round(v, 5) for k, v in ex.finite_n_per_obs.items()})
+        out_dir = Path(args.out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+        sub_tag = "" if not args.sub_experiment else "_" + "".join(c for c in args.sub_experiment if c.isalnum())
+        out_path = out_dir / f"delta_loglik_ceiling_{args.dataset}_n400_{'oos' if args.out_of_sample else 'insample'}_{args.re_structure}{sub_tag}_extrap.json"
+        out_path.write_text(json.dumps({
+            "dataset": args.dataset, "method": "schrimpf_et_al_2021_si7_exponential_extrapolation",
+            "sub_experiment": args.sub_experiment, "re_structure": args.re_structure, "out_of_sample": args.out_of_sample,
+            "target_size": args.target_size, "n_draws": args.n_draws, "seed": args.seed,
+            "ceiling_delta_loglik_per_obs": ex.v0, "ci95": list(ex.v0_ci), "tau0": ex.tau0_median,
+            "n_bootstraps_ok": ex.n_bootstraps, "finite_n_per_obs_by_source_size": ex.finite_n_per_obs,
+            "points": ex.points,
+        }, indent=2))
+        logger.info("wrote %s", out_path)
+        return
+
     t0 = time.time()
     result = compute_n400_ceiling_delta_loglik(
         base_df, item_col=item_col, include_lab=include_lab,
         n_splits=args.n_splits, seed=args.seed, n_workers=args.n_workers,
         out_of_sample=args.out_of_sample, re_structure=args.re_structure,
+        mode=args.mode, n_repeats=args.n_repeats,
     )
     elapsed = time.time() - t0
 
@@ -190,12 +301,16 @@ def main() -> None:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    suffix = f"{'oos' if args.out_of_sample else 'insample'}_{args.re_structure}"
+    sub_tag = "" if not args.sub_experiment else "_" + "".join(c if c.isalnum() else "" for c in args.sub_experiment)
+    suffix = f"{'oos' if args.out_of_sample else 'insample'}_{args.re_structure}{sub_tag}{'' if args.mode == 'split_half' else '_' + args.mode}"
     out_path = out_dir / f"delta_loglik_ceiling_{args.dataset}_n400_{suffix}.json"
     out_path.write_text(json.dumps({
         "dataset": args.dataset,
         "method": "timkey_et_al_2026_split_half_n400_adapted",
         "out_of_sample": args.out_of_sample,
+        "mode": args.mode,
+        "sub_experiment": args.sub_experiment,
+        "n_repeats": args.n_repeats,
         "re_structure": args.re_structure,
         "n_splits_requested": result.n_iterations_requested,
         "n_splits_converged": result.n_iterations_used,

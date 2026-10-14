@@ -277,6 +277,62 @@ def _layerwise_rows(
 
 
 # ---------------------------------------------------------------------------
+# Stage 1 — activations only (GPU, no regression) — for RSA cache backfill
+# ---------------------------------------------------------------------------
+
+def run_activations_only(
+    checkpoints: list[CheckpointItem],
+    *,
+    model_id: str,
+    n_params: float,
+    batch_size: int,
+    cfg: dict,
+    device: str,
+    feature_cache_dir: Path | None,
+    model_cfg: dict | None = None,
+) -> None:
+    """Extract and cache LLM word embeddings for every checkpoint, skipping
+    EEG loading and regression entirely -- mirrors podcast.py's
+    run_activations_only. Broderick's feature cache only depends on word
+    text (via _load_all_words/_extract_features), not on any EEG epoch data,
+    so this needs no subject/channel information at all."""
+    if feature_cache_dir is None:
+        raise ValueError(
+            "--activations_only requires a feature cache directory. "
+            "Set cache.features_dir in the YAML or pass --feature_cache_dir."
+        )
+    for ckpt in checkpoints:
+        logger.info("\n[%s] activations ── %s (step=%d) ──", model_id, ckpt.revision, ckpt.step)
+        load_model_id = resolve_load_model_id(model_cfg, ckpt.revision) if model_cfg else model_id
+        bench_cfg = _build_benchmark_config(
+            cfg,
+            model_id=model_id,
+            load_model_id=load_model_id,
+            revision=ckpt.revision,
+            n_params=n_params,
+            batch_size=batch_size,
+            device=device,
+            output_dir=feature_cache_dir,  # unused for activations, just needs a Path
+            feature_cache_dir=feature_cache_dir,
+            epoch_cache_dir=None,
+            n_jobs=1,
+            model_cfg=model_cfg,
+        )
+        encoder = BroderickEegEncoder(bench_cfg)
+        words_df = encoder._load_all_words()
+        words = words_df["word"].astype(str).tolist()
+        try:
+            emb = encoder._extract_features(words)
+            logger.info("[%s] %s — done, shape %s", model_id, ckpt.revision,
+                        "×".join(str(d) for d in emb.shape))
+        except Exception:
+            logger.error("[%s] %s — failed", model_id, ckpt.revision, exc_info=True)
+        finally:
+            clear_hf_model_cache()
+            free_gpu()
+
+
+# ---------------------------------------------------------------------------
 # Per-model sweep
 # ---------------------------------------------------------------------------
 
@@ -511,6 +567,9 @@ def main() -> None:
                         "Forces the sequential per-subject path (n_subjects_batch=1 behaviour). "
                         "On by default; pass --no-save_word_predictions to disable.")
     p.add_argument("--summary_only", action="store_true")
+    p.add_argument("--activations_only", action="store_true",
+                   help="Stage 1: extract and cache LLM word embeddings only (no EEG/regression). "
+                        "Run on GPU; follow with the full sweep once cache is warm.")
     p.add_argument("--skip_summary", action="store_true")
     p.add_argument("--no_plots", action="store_true")
     p.add_argument("--dry_run", action="store_true")
@@ -573,6 +632,18 @@ def main() -> None:
         ]
         if args.dry_run:
             print(f"task: {task}")
+            return
+        if args.activations_only:
+            run_activations_only(
+                checkpoints,
+                model_id=task.model_id,
+                n_params=model_cfgs[0]["n_params"],
+                batch_size=model_cfgs[0]["batch_size"],
+                cfg=cfg,
+                device=args.device,
+                feature_cache_dir=feature_cache_dir,
+                model_cfg=model_cfgs[0],
+            )
             return
         run_model_sweep(
             checkpoints,

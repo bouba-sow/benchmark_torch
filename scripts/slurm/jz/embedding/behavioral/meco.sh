@@ -29,6 +29,8 @@
 # would otherwise leak in and silently write output into the wrong directory.
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -139,6 +141,7 @@ meco_jz_run_array_task_gpu() {
   echo "MECO_WORD_PREDICTIONS_ROOT=${MECO_WORD_PREDICTIONS_ROOT:-unset (falls back to SWEEP_ROOT)}"
   echo "MECO_AVERAGE_ACROSS_SUBJECTS=${MECO_AVERAGE_ACROSS_SUBJECTS:-0}"
   echo "MECO_AVERAGE_ONLY=${MECO_AVERAGE_ONLY:-0}"
+  echo "MECO_AVERAGE_RIDGE_DEVICE=${MECO_AVERAGE_RIDGE_DEVICE:-cuda}"
 
   meco_jz_check_data || exit 1
   meco_jz_setup_env
@@ -150,6 +153,9 @@ meco_jz_run_array_task_gpu() {
     _avg_flag=(--average_only)
   elif [[ "${MECO_AVERAGE_ACROSS_SUBJECTS:-0}" == "1" ]]; then
     _avg_flag=(--average_across_subjects)
+  fi
+  if [[ -n "${MECO_AVERAGE_RIDGE_DEVICE:-}" ]]; then
+    _avg_flag+=(--average_ridge_device "${MECO_AVERAGE_RIDGE_DEVICE}")
   fi
 
   "${PY[@]}" scripts/run/embedding/behavioral/meco.py \

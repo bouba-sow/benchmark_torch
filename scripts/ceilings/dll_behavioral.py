@@ -74,7 +74,7 @@ def _load_meco_trials(measure: str = "FP") -> "pd.DataFrame":  # noqa: F821
 
 def _load_provo_trials(measure: str = "FP") -> "pd.DataFrame":  # noqa: F821
     from neuroai.datasets.provo import ProvoDataset
-    root = REPO_ROOT / "data" / "Provo" / "osfstorage"
+    root = REPO_ROOT / "data" / "provo" / "osfstorage"
     ds = ProvoDataset(
         str(root), measure, texts=None, min_dur=50.0, max_dur=5000.0,
         exclude_doc_edges=True, aggregate=False,
@@ -84,7 +84,7 @@ def _load_provo_trials(measure: str = "FP") -> "pd.DataFrame":  # noqa: F821
 
 def _load_ucl_reading_trials() -> "pd.DataFrame":  # noqa: F821
     from neuroai.datasets.ucl_reading import UCLReadingDataset
-    root = REPO_ROOT / "data" / "UCL_reading"
+    root = REPO_ROOT / "data" / "ucl_reading"
     ds = UCLReadingDataset(
         str(root), sentences=None, min_accuracy=0.0, min_rt=100.0, max_rt=3000.0,
         aggregate=False,
@@ -94,7 +94,7 @@ def _load_ucl_reading_trials() -> "pd.DataFrame":  # noqa: F821
 
 def _load_zuco_reading_trials(task: str = "NR") -> "pd.DataFrame":  # noqa: F821
     from neuroai.datasets.zuco_reading import ZuCoReadingDataset
-    root = REPO_ROOT / "data" / "q3zws" / "osfstorage"
+    root = REPO_ROOT / "data" / "zuco_reading" / "osfstorage"
     ds = ZuCoReadingDataset(
         str(root), task, subjects=None, min_fixations=1, min_trt=50.0, max_trt=5000.0,
         aggregate=False,
@@ -119,7 +119,7 @@ def _onestop_subjects_120() -> list[str]:
 
 def _load_onestop_trials(measure: str = "FP") -> "pd.DataFrame":  # noqa: F821
     from neuroai.datasets.onestop import OnestopDataset
-    root = REPO_ROOT / "data" / "OneStop"
+    root = REPO_ROOT / "data" / "onestop"
     ds = OnestopDataset(
         str(root), measure, stories=None, min_dur=50.0, max_dur=5000.0,
         exclude_doc_edges=True, aggregate=False, subjects=_onestop_subjects_120(),

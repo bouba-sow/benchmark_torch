@@ -504,7 +504,7 @@ def main() -> None:
     args = p.parse_args()
 
     cfg = load_config(args.config)
-    out_dir = Path(args.out_dir or cfg.get("output", {}).get("save_dir", "outputs_torch/fedorenko2016/embedding_sweep"))
+    out_dir = Path(args.out_dir or cfg.get("output", {}).get("save_dir", "outputs_jeanzay/fedorenko2016/embedding_sweep"))
 
     cache_raw = (cfg.get("cache") or {}).get("features_dir")
     feature_cache_dir = Path(os.path.expandvars(str(cache_raw))).resolve() if cache_raw else None

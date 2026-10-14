@@ -1,45 +1,45 @@
-{\setlength{\tabcolsep}{5pt}
-\begin{longtable}{@{}lccc@{}}
-\caption{Split-half correlation noise ceilings (BrainScore normalization, $\sqrt{r_{\mathrm{SB}}}$, Appendix~\ref{app:corr-ceiling}) for every dataset in the embedding/ridge track, and the fraction of that ceiling reached by the best model. Rows marked $\dagger$ have a ceiling below 0.01 -- an absolute reliability so low that a high percent-of-ceiling figure reflects very little recoverable signal in the human data itself, not a strong model fit; we report these for completeness but do not treat them as headline results.}
-\label{tab:corr-ceilings} \\
+{\small\setlength{\tabcolsep}{4pt}
+\begin{longtable}{@{}lrlrrr@{}}
+\caption{Correlation references used to normalize the final-layer embedding scores. Maximum is the largest normalized score among models with a finite result, not a selected layer. Pearson and Rank indicate Pearson- and Spearman-based split-half references; ISC denotes the precomputed intersubject-correlation conversion. Above counts normalized scores greater than one. Rank references are reliability normalizers, not exact Pearson ceilings. See Appendix~\ref{app:corr-ceiling} for aggregation and target-matching qualifications.}\label{tab:corr-ceilings} \\
 \toprule
-\textbf{Dataset} & \textbf{Modality} & \textbf{Ceiling ($\sqrt{r_{\mathrm{SB}}}$)} & \textbf{Best model's \% of ceiling} \\
+Dataset / measure & Reference & Type & $N$ & Maximum & Above \\
 \midrule
 \endfirsthead
-\multicolumn{4}{c}{\tablename\ \thetable{} -- continued} \\
+\multicolumn{6}{c}{\tablename\ \thetable{} -- continued} \\
 \toprule
-\textbf{Dataset} & \textbf{Modality} & \textbf{Ceiling ($\sqrt{r_{\mathrm{SB}}}$)} & \textbf{Best model's \% of ceiling} \\
+Dataset / measure & Reference & Type & $N$ & Maximum & Above \\
 \midrule
 \endhead
-\midrule \multicolumn{4}{r}{\textit{continued on next page}} \\
+\midrule\multicolumn{6}{r}{Continued on next page} \\
 \endfoot
 \bottomrule
 \endlastfoot
-ZuCo Reading SR & Behavioral & 0.819 & 81\% \\
-ZuCo Reading & Behavioral & 0.819 & 79\% \\
-MECO SP & Behavioral & 0.930 & 79\% \\
-MECO & Behavioral & 0.899 & 72\% \\
-Provo SP & Behavioral & 0.943 & 69\% \\
-Provo & Behavioral & 0.933 & 68\% \\
-GECO & Behavioral & 0.627 & 65\% \\
-ZuCo Reading TSR & Behavioral & 0.819 & 65\% \\
-GECO GP & Behavioral & 0.529 & 62\% \\
-OneStop SP & Behavioral & 0.888 & 62\% \\
-UCL Reading & Behavioral & 0.689 & 56\% \\
-Natural Stories SPR & Behavioral & 0.914 & 55\% \\
-MECO GP & Behavioral & 0.684 & 51\% \\
-OneStop & Behavioral & 0.829 & 51\% \\
-Le Petit Prince fMRI & fMRI & 0.912 & 49\% \\
-Provo GP & Behavioral & 0.919 & 47\% \\
-Fedorenko2016 ECoG & ECoG & 0.711 & 40\% \\
-OneStop GP & Behavioral & 0.776 & 38\% \\
-Nieuwland N400 EEG & EEG (N400) & 0.344 & 35\% \\
-Tuckute fMRI & fMRI & 0.480 & 34\% \\
-Pereira fMRI & fMRI & 0.507 & 30\% \\
-Natural Stories fMRI & fMRI & 0.628 & 28\% \\
-Podcast iEEG & iEEG & 0.398 & 23\% \\
-Broderick EEG & EEG & 0.108 & 22\% \\
-MEG-MASC (Gwilliams) & MEG & 0.097 & 20\% \\
-MEG-MASC (Gwilliams) & MEG & 0.097 & 20\% \\
+GECO FP & 0.627 & Pearson & 118 & 0.587 & 0/118 \\
+GECO GP & 0.529 & Pearson & 118 & 0.543 & 0/118 \\
+MECO FP & 0.899 & Pearson & 118 & 0.650 & 0/118 \\
+MECO GP & 0.684 & Pearson & 118 & 0.453 & 0/118 \\
+MECO SP & 0.930 & Pearson & 118 & 0.737 & 0/118 \\
+Natural Stories SPR & 0.914 & Pearson & 118 & 0.450 & 0/118 \\
+OneStop FP & 0.829 & Pearson & 118 & 0.422 & 0/118 \\
+OneStop GP & 0.776 & Pearson & 118 & 0.310 & 0/118 \\
+OneStop SP & 0.888 & Pearson & 118 & 0.523 & 0/118 \\
+Provo FP & 0.933 & Pearson & 118 & 0.604 & 0/118 \\
+Provo GP & 0.919 & Pearson & 118 & 0.403 & 0/118 \\
+Provo SP & 0.943 & Pearson & 118 & 0.608 & 0/118 \\
+UCL SPR & 0.689 & Pearson & 118 & 0.470 & 0/118 \\
+ZuCo NR & 0.819 & Pearson & 118 & 0.741 & 0/118 \\
+ZuCo SR & 0.819 & Pearson & 118 & 0.757 & 0/118 \\
+ZuCo TSR & 0.819 & Pearson & 118 & 0.598 & 0/118 \\
+Le Petit Prince fMRI & 0.912 & ISC & 118 & 0.447 & 0/118 \\
+Natural Stories fMRI & 0.628 & Pearson & 118 & 0.120 & 0/118 \\
+Pereira fMRI & 0.507 & Pearson & 118 & 0.238 & 0/118 \\
+Tuckute fMRI & 0.480 & Pearson & 118 & 0.299 & 0/118 \\
+Fedorenko intracranial & 0.711 & Rank & 118 & 0.291 & 0/118 \\
+Broderick EEG & 0.108 & Pearson & 118 & 0.148 & 0/118 \\
+MEG-MASC & 0.097 & Pearson & 118 & 0.129 & 0/118 \\
+Nieuwland N400 & 0.887 & Rank & 118 & 0.425 & 0/118 \\
+Federmeier 2007 N400 & 0.693 & Rank & 118 & 0.746 & 0/118 \\
+Hubbard 2019 N400 & 0.708 & Rank & 118 & 0.777 & 0/118 \\
+Podcast ECoG & 0.398 & Pearson & 118 & 0.157 & 0/118 \\
 \end{longtable}
 }

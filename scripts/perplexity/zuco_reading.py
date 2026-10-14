@@ -145,7 +145,7 @@ def run_model(
 
     if out_path.is_file() and not force:
         existing = json.loads(out_path.read_text())
-        if "error" not in existing:
+        if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
             logger.info("Already done: %s — skipping", model_id)
             return existing
         logger.warning("Previous run had error — recomputing: %s", out_path)
@@ -196,7 +196,7 @@ def run_model(
         "family": model_entry["family"],
         "corpus": CORPUS_LABEL,
         "perplexity": result["perplexity"],
-        "n_tokens": result["n_tokens"],
+        "n_tokens": result["n_tokens"], "n_words": result.get("n_words"), "perplexity_per_token": result.get("perplexity_per_token"), "perplexity_method": result.get("perplexity_method"),
         "max_length": max_length,
         "stride": max_length // 2,
         "device": device,
@@ -282,7 +282,7 @@ def compute_cbr_rnn_perplexity(
         if end == len(inputs):
             break
 
-    ppl = math.exp(total_nll / n_scored)
+    ppl = math.exp(total_nll / len(full_text.split()))  # per word (2026-10-12 audit)
     logger.info("CBR-RNN perplexity: %.4f  (n_scored=%d)", ppl, n_scored)
 
     del model, tokenizer
@@ -295,7 +295,7 @@ def compute_cbr_rnn_perplexity(
         "n_params": 17_360_688,
         "family": "cbr_rnn",
         "corpus": CORPUS_LABEL,
-        "perplexity": ppl,
+        "perplexity": ppl, "perplexity_method": "logits_v2_per_word",
         "n_tokens": n_scored,
         "max_length": max_seq_len,
         "stride": stride,
@@ -344,7 +344,7 @@ def parse_args() -> argparse.Namespace:
                    default=Path("data/zuco_reading/osfstorage"),
                    help="ZuCo osfstorage root containing task1- SR/, task2 - NR/, etc.")
     p.add_argument("--out_dir", type=Path,
-                   default=Path("outputs_torch/zuco_reading/perplexity"))
+                   default=Path("outputs_jeanzay/zuco_reading/perplexity"))
     p.add_argument("--force", action="store_true")
     p.add_argument("--all", action="store_true")
     p.add_argument("--list", action="store_true")

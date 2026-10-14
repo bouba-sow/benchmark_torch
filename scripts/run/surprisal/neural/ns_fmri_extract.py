@@ -129,7 +129,7 @@ def _save_ns_fmri_perplexity(
     model_id: str, revision: str, n_params: float | None,
     perplexity: float, n_tokens: int, max_length: int,
 ) -> None:
-    perplexity_dir = Path("outputs_torch") / "ns_fmri/perplexity"
+    perplexity_dir = Path("outputs_jeanzay") / "ns_fmri/perplexity"
     safe = model_id.replace("/", "_")
     rev_safe = (revision or "main").replace("/", "_")
     out_dir = perplexity_dir / safe
@@ -138,7 +138,7 @@ def _save_ns_fmri_perplexity(
     record = {
         "model_id": model_id, "revision": revision or "main", "label": model_id.split("/")[-1],
         "n_params": n_params, "family": "pythia", "dataset": "naturalstories_fmri",
-        "perplexity": perplexity, "n_tokens": n_tokens, "max_length": max_length,
+        "perplexity": perplexity, "perplexity_method": "logits_v2_per_word", "n_tokens": n_tokens, "max_length": max_length,
     }
     out_path.write_text(json.dumps(record, indent=2))
     logger.info("Saved NS-fMRI perplexity %.4f for %s @ %s", perplexity, model_id, revision or "main")
@@ -147,7 +147,7 @@ def _save_ns_fmri_perplexity(
 def _collect_ns_fmri_perplexity_summary() -> None:
     import pandas as pd
 
-    perplexity_dir = Path("outputs_torch") / "ns_fmri/perplexity"
+    perplexity_dir = Path("outputs_jeanzay") / "ns_fmri/perplexity"
     rows = []
     for p in sorted(perplexity_dir.glob("*/*_ns_fmri_perplexity.json")):
         try:
@@ -186,10 +186,10 @@ def _extract_perplexity(
     model_id = task.load_model_id
     revision = task.revision if task.revision not in ("main", "") else None
     out_path = (
-        Path("outputs_torch") / "ns_fmri/perplexity" / model_id.replace("/", "_")
+        Path("outputs_jeanzay") / "ns_fmri/perplexity" / model_id.replace("/", "_")
         / f"{(revision or 'main').replace('/', '_')}_ns_fmri_perplexity.json"
     )
-    if out_path.is_file():
+    if out_path.is_file() and json.loads(out_path.read_text()).get("perplexity_method") == "logits_v2_per_word":
         logger.info("NS-fMRI perplexity already cached for %s @ %s — skipping", model_id, revision or "main")
         return
     try:
@@ -348,7 +348,7 @@ def main() -> None:
     p.add_argument("--skip_perplexity", action="store_true",
                    help="Skip the post-extraction NS-fMRI-corpus perplexity computation")
     p.add_argument("--collect_perplexity_summary", action="store_true",
-                   help="Rebuild outputs_torch/ns_fmri/perplexity/ns_fmri_perplexity_summary.csv "
+                   help="Rebuild outputs_jeanzay/ns_fmri/perplexity/ns_fmri_perplexity_summary.csv "
                         "from every *_ns_fmri_perplexity.json on disk and exit.")
     args = p.parse_args()
 

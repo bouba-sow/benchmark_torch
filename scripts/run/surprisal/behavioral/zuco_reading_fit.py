@@ -102,7 +102,7 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
         # never wrote to, so every Stage 2 (CPU) job silently missed the cache
         # and fell back to recomputing surprisal via full CPU forward passes
         # (15-55+ min per checkpoint instead of the ~2-3 min the LME fit itself
-        # takes) — see outputs_torch/logs/zuco_reading_*_lme_cpu_*.out.
+        # takes) — see outputs_jeanzay/logs/zuco_reading_*_lme_cpu_*.out.
         task_feat_dir = str(feat_path) if feat_path.name == task_tag else str(feat_path / task_tag)
         cache["features_dir"] = task_feat_dir
 
@@ -402,7 +402,7 @@ def main() -> None:
                         "On by default; pass --no-save_word_predictions to disable.")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("ZUCO_READING_PERPLEXITY_DIR", "outputs_torch/zuco_reading/perplexity"),
+        default=os.environ.get("ZUCO_READING_PERPLEXITY_DIR", "outputs_jeanzay/zuco_reading/perplexity"),
         help="Perplexity JSON/CSV root for scaling-vs-PPL plots",
     )
     args = p.parse_args()

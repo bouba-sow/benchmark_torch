@@ -25,6 +25,8 @@
 : "${PODCAST_FAMILY:?Set PODCAST_FAMILY before sourcing job_podcast_jz_common.sh}"
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -35,7 +37,7 @@ cd "$BENCHMARK_ROOT" || exit 1
 
 # shellcheck source=scripts/slurm/jz/jz_cache_env.sh
 if [[ -n "${SCRATCH:-}" ]]; then
-  source "${_COMMON_DIR}/jz_cache_env.sh"
+  source "${BENCHMARK_ROOT}/scripts/slurm/jz/jz_cache_env.sh"
 else
   export BENCHMARK_CACHE_ROOT="${BENCHMARK_CACHE_ROOT:-$BENCHMARK_ROOT/.cache}"
   export PODCAST_FEATURE_CACHE_DIR="${PODCAST_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/podcast_features}"

@@ -1,0 +1,87 @@
+# ============================================================================
+# Tuckute et al. (2023) fMRI — Pooled LME per LM layer (last-word logit-lens
+# surprisal)
+# ============================================================================
+#
+# y ~ mean_wlen_z + mean_freq_z + surprisal_z +
+#     (1 + mean_wlen_z + mean_freq_z + surprisal_z | subject) +
+#     (1 | roi) +
+#     (1 + surprisal_z | sentence_id)
+# vs. the same formula without surprisal_z, fit ONCE PER LM LAYER, pooling
+# every subject, ROI, and sentence together. See
+# neuroai/regressors/tuckute_pooled_lme.py for the full formula rationale:
+#   - predictor = LAST-WORD surprisal (context already absorbed via one
+#     forward pass over the sentence), not a sentence mean — following
+#     Lin & Schuler (2025, arXiv:2506.11338) / Hosseini et al. (2024)'s
+#     convention for isolated-sentence fMRI data.
+#   - no prev_surprisal spillover term (no equivalent confound at sentence
+#     granularity).
+#   - nuisances are MEAN word length / MEAN wordfreq frequency across the
+#     sentence (Tuckute's sentences are fixed at 6 words, so sentence length
+#     itself has no variance to use as a nuisance).
+#   - roi is a CROSSED random effect (fixed canonical LANG_ROIS labels,
+#     shared across subjects); sentence_id is a third crossed random effect
+#     (needed because, unlike Pereira fMRI, Tuckute keeps distinct per-ROI
+#     responses rather than aggregating across regions).
+#
+# Only ONE condition is pooled per run (default "B" — the 1,000-sentence
+# naturalistic baseline, all 10 subjects). D/S sentences were adversarially
+# optimized to drive/suppress the language network and are each seen by only
+# 2-3 of the 10 subjects — pooling them with B would contaminate the
+# surprisal-BOLD relationship and unbalance the subject panel. Set
+# dataset.condition to "D" or "S" to sweep those separately.
+#
+# TWO-STAGE PIPELINE (same split as every other pooled LME in this
+# codebase): on Jean Zay, R (pymer4/lme4, needed for the LME fit) is only
+# available on CPU partitions, not GPU. So:
+#   1. GPU stage — extract + cache per-layer last-word logit-lens surprisal
+#      for all sentences in the condition (2,000 sentences max, one forward
+#      pass each):
+#        .venv/bin/python scripts/run/surprisal/neural/tuckute_extract.py \
+#          --config configs/surprisal/neural/tuckute.yaml \
+#          --model_name openai-community/gpt2 --device cuda
+#   2. CPU stage — fit one LME per layer, reading surprisal from that cache
+#      (N layers fit concurrently via a spawned process pool — NOT one SLURM
+#      job per layer):
+#        .venv/bin/python scripts/run/surprisal/neural/tuckute_fit.py \
+#          --config configs/surprisal/neural/tuckute.yaml \
+#          --model_name openai-community/gpt2 --n_workers 10
+# ============================================================================
+
+dataset:
+  data_root: ${BENCHMARK_ROOT}/data/tuckute_fmri/osfstorage
+  condition: B
+  max_length: null
+  tokenizer_no_revision: true
+  trust_remote_code: false
+  wordfreq_language: en
+  # Device for the (cheap, <=2000-sentence) surprisal extraction forward
+  # passes. The CPU-only LME stage overrides this to "cpu" regardless (see
+  # run/surprisal/neural/tuckute_fit.py) — it only matters for the GPU extraction
+  # stage / direct single-job runs.
+  device: cpu
+
+lme:
+  train_frac: 0.75
+  split_random_state: 0
+  verbose: false
+  # Barr et al. (2013)-style simplification ladder if the full model fails
+  # to converge — see fit_tuckute_lme_one_layer's docstring for the 4-step
+  # fallback order. Applied identically to both models so LRT stays valid.
+  allow_slope_fallback: true
+  # Separate last-layer experiment: fit each ROI independently, with roi
+  # omitted from both formulas because each fit contains one ROI.
+  roi_wise: true
+  last_layer_only: true
+  layer_stride: 1
+  n_workers: 2
+  require_cached_surprisal: true
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/tuckute/surprisal_roi_lastlayer
+
+cache:
+  # Must already contain this model's logit-lens fulltext surprisal cache
+  # (populated by run/surprisal/neural/tuckute_extract.py) before running the
+  # CPU-only LME sweep.
+  features_dir: ${TUCKUTE_LME_FEATURE_CACHE_DIR}

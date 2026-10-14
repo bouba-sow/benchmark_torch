@@ -1,0 +1,25 @@
+{
+  "n_groups": 1,
+  "groups": [
+    [
+      {
+        "family": "opt",
+        "array_index": 7,
+        "model_id": "facebook/opt-66b",
+        "revision": "main",
+        "datasets": [
+          "naturalstories",
+          "ucl_reading",
+          "tuckute",
+          "fedorenko2016",
+          "nieuwland",
+          "podcast"
+        ]
+      }
+    ]
+  ],
+  "dataset_model_pairs": 6,
+  "loads": [
+    6
+  ]
+}

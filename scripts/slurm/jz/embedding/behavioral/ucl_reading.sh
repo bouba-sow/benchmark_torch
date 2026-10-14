@@ -24,6 +24,8 @@
 # the wrong directory.
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -140,6 +142,9 @@ ucl_reading_jz_run_array_task_gpu() {
     _avg_flag=(--average_only)
   elif [[ "${UCL_READING_AVERAGE_ACROSS_SUBJECTS:-0}" == "1" ]]; then
     _avg_flag=(--average_across_subjects)
+  fi
+  if [[ -n "${UCL_READING_AVERAGE_RIDGE_DEVICE:-}" ]]; then
+    _avg_flag+=(--average_ridge_device "${UCL_READING_AVERAGE_RIDGE_DEVICE}")
   fi
 
   "${PY[@]}" scripts/run/embedding/behavioral/ucl_reading.py \

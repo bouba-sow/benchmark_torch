@@ -17,7 +17,7 @@
 #   STAGE=parse sbatch scripts/slurm/jz/utils/dlt/costs.sh meco         # only the parse (words already exported)
 #   sbatch scripts/slurm/jz/utils/dlt/costs.sh nieuwland                # costs at the critical noun (N400 items)
 #
-# Datasets: naturalstories geco provo meco ucl_reading zuco_reading_{sr,nr,tsr} podcast broderick lpp
+# Datasets: naturalstories geco provo meco onestop ucl_reading zuco_reading_{sr,nr,tsr} podcast broderick lpp
 # fedorenko2016 (see scripts/dlt/costs.py) and nieuwland. Results: outputs/dlt/<dataset>_dlt_cost.csv.
 set -euo pipefail
 : "${WORK:?Set WORK (e.g. export WORK=/lustre/fswork/projects/rech/ldh/una68ug)}"

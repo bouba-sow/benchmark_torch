@@ -1,0 +1,333 @@
+# ============================================================================
+# Le Petit Prince (LPP) fMRI — Checkpoint Sweep Configuration
+# ============================================================================
+#
+# Run:
+#   python scripts/run/embedding/neural/lpp.py --config configs/embedding/neural/lpp.yaml
+#
+# Paths use ${BENCHMARK_ROOT} (expanded by os.path.expandvars).
+#   Local default: the repo root (auto-detected by load_config).
+#   Jean Zay:       export BENCHMARK_ROOT=$WORK/benchmark
+#
+# To run a partial sweep (e.g. fewer Pythia-12B steps), use --steps on the CLI
+# instead of creating a separate config file:
+#   python scripts/run/embedding/neural/lpp.py \
+#     --config configs/embedding/neural/lpp.yaml \
+#     --models EleutherAI/pythia-12b-deduped --steps 2000 4000 8000 16000
+#
+# This file fully specifies:
+#   - Dataset-specific params (Le Petit Prince).
+#   - Which models and checkpoints to sweep.
+#   - Encoding / regression hyper-parameters.
+#   - Analysis toggles (per-layer, lateralization).
+#   - Output settings.
+#
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Active dataset selector
+# ---------------------------------------------------------------------------
+# Only the block matching this key is read at runtime.
+active_dataset: lpp
+
+
+# ---------------------------------------------------------------------------
+# Dataset configurations
+# ---------------------------------------------------------------------------
+datasets:
+
+  lpp:
+    bids_root: ${BENCHMARK_ROOT}/data/lpp_fmri
+
+    # Language: en | fr | cn
+    lang: en
+
+    # fMRI target (match l-bg ``fit_average_subject.py``):
+    #   single_subject — one participant per encoding run (``subjects`` below).
+    #   average_subject — mean masked BOLD over ``average_subject_subjects`` (or
+    #     ``subjects`` if set, else all ``derivatives/sub-<LANG>*`` participants).
+    #     The sweep runs **one** encoding job; ``subjects: [ref]`` only picks who
+    #     defines run↔section pairing when not using explicit average list.
+    fmri_unit: average_subject
+
+    # Optional explicit list for group mean (overrides ``subjects`` for averaging).
+    # null with fmri_unit=average_subject → all English participants under derivatives/.
+    average_subject_subjects: null
+    # Use l-bg precomputed average subject directly (average_subject_run-0..8.gz).
+    # When set, this is preferred over recomputing from derivatives.
+    average_subject_precomputed_dir: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/average_subject/bold
+
+    # For fmri_unit: single_subject — list of IDs or null to auto-discover.
+    # For average_subject with average_subject_subjects: null — may be omitted or
+    # set to [first_id] to choose which participant defines BIDS run order.
+    subjects: [sub-EN057]
+
+    # BOLD source: "derivatives" (preprocessed, recommended) | "raw"
+    bold_source: derivatives
+
+    # Echo index — only relevant when bold_source: raw.
+    echo: 2
+
+    # Apply l-bg word-table fixes (index drops / replacements for EN/FR).
+    # Matches ``extract_llm_activations.py`` word table cleanup.
+    apply_lbg_fixes: true
+
+    # Same as encoding.brain_mask_path (dataset-level alias).
+    lbg_brain_mask_path: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/masks/mask_lpp_en.nii.gz
+
+
+# ---------------------------------------------------------------------------
+# Models & checkpoints
+# ---------------------------------------------------------------------------
+# Each entry defines one model family. The sweep iterates over all
+# checkpoints listed (or derived from steps for Pythia).
+#
+# Fields per model:
+#   model_id     — HuggingFace model identifier
+#   label        — short display name (used in plot titles and CSV)
+#   n_layers     — total hidden layers including token embedding (layer 0)
+#   n_params     — approximate parameter count (used for scaling plots)
+#   device       — "cuda" | "cpu" | "auto"
+#   family       — "pythia" | "olmo2" | "gpt2" | "other"
+#   checkpoints  — sub-section (see below)
+#
+# Checkpoint sub-sections:
+#   For Pythia (family: pythia):
+#     type: steps
+#     steps: [0, 128, 512, ...]   → revisions become "step0", "step128", etc.
+#
+#   For OLMo-2 (family: olmo2):
+#     type: revisions
+#     revisions: [stage1-step150-tokens1B, ...]
+# ---------------------------------------------------------------------------
+models:
+
+  # ---- Pythia 1B ----
+  - model_id: EleutherAI/pythia-1b-deduped
+    label: Pythia-1B-deduped
+    n_layers: 17
+    n_params: 1.0e9
+    device: cuda
+    family: pythia
+    checkpoints:
+      type: steps
+      steps:
+        - 0
+        - 128
+        - 512
+        - 1000
+        - 2000
+        - 4000
+        - 8000
+        - 16000
+        - 32000
+        - 64000
+        - 128000
+        - 143000
+
+  # ---- Pythia 1.4B ----
+  - model_id: EleutherAI/pythia-1.4b-deduped
+    label: Pythia-1.4B-deduped
+    n_layers: 17
+    n_params: 1.4e9
+    device: cuda
+    family: pythia
+    checkpoints:
+      type: steps
+      steps:
+        - 0
+        - 128
+        - 512
+        - 1000
+        - 2000
+        - 4000
+        - 8000
+        - 16000
+        - 32000
+        - 64000
+        - 128000
+        - 143000
+
+  # ---- Pythia 2.8B ----
+  - model_id: EleutherAI/pythia-2.8b-deduped
+    label: Pythia-2.8B-deduped
+    n_layers: 33
+    n_params: 2.8e9
+    device: cuda
+    family: pythia
+    checkpoints:
+      type: steps
+      steps:
+        - 0
+        - 128
+        - 512
+        - 1000
+        - 2000
+        - 4000
+        - 8000
+        - 16000
+        - 32000
+        - 64000
+        - 128000
+        - 143000
+
+  # ---- Pythia 6.9B ----
+  - model_id: EleutherAI/pythia-6.9b-deduped
+    label: Pythia-6.9B-deduped
+    n_layers: 33
+    n_params: 6.9e9
+    device: cuda
+    family: pythia
+    checkpoints:
+      type: steps
+      steps:
+        - 0
+        - 128
+        - 512
+        - 1000
+        - 2000
+        - 4000
+        - 8000
+        - 16000
+        - 32000
+        - 64000
+        - 128000
+        - 143000
+
+  # ---- Pythia 12B ----
+  - model_id: EleutherAI/pythia-12b-deduped
+    label: Pythia-12B-deduped
+    n_layers: 49
+    n_params: 12.0e9
+    device: cuda
+    family: pythia
+    checkpoints:
+      type: steps
+      steps:
+        - 0
+        - 128
+        - 512
+        - 1000
+        - 2000
+        - 4000
+        - 8000
+        - 16000
+        - 32000
+        - 64000
+        - 128000
+        - 143000
+
+  # ---- OLMo-2 1B ----
+  - model_id: allenai/OLMo-2-0425-1B
+    label: OLMo2-1B
+    n_layers: 17
+    n_params: 1.0e9
+    device: cuda
+    family: olmo2
+    checkpoints:
+      type: revisions
+      revisions:
+        - stage1-step0-tokens0B
+        - stage1-step300-tokens1B
+        - stage1-step10000-tokens21B
+        - stage1-step20000-tokens42B
+        - stage1-step40000-tokens84B
+        - stage1-step80000-tokens168B
+        - stage1-step200000-tokens420B
+        - stage1-step400000-tokens839B
+        - stage1-step1000000-tokens2098B
+        - stage1-step1907359-tokens4001B
+
+  # ---- OLMo-2 7B ----
+  - model_id: allenai/OLMo-2-1124-7B
+    label: OLMo2-7B
+    n_layers: 33
+    n_params: 7.0e9
+    device: cuda
+    family: olmo2
+    checkpoints:
+      type: revisions
+      revisions:
+        - stage1-step150-tokens1B
+        - stage1-step600-tokens3B
+        - stage1-step1000-tokens5B
+        - stage1-step3000-tokens13B
+        - stage1-step7000-tokens30B
+        - stage1-step19000-tokens80B
+        - stage1-step51000-tokens214B
+        - stage1-step133000-tokens558B
+        - stage1-step352000-tokens1477B
+        - stage1-step928646-tokens3896B
+
+
+# ---------------------------------------------------------------------------
+# Encoding / regression hyper-parameters
+# ---------------------------------------------------------------------------
+encoding:
+  feature_mode: huggingface
+  hf_extraction_mode: lbg_fulltext
+  hf_lbg_story_text_zip: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/lbg_story_text/lpp_en_text.zip
+  hf_lbg_stride_delta: 64
+  hf_lbg_max_length: null
+  hf_tokenizer_no_revision: true
+
+  hrf_model: glover
+  trim_trs_start: 10
+  trim_trs_end: 10
+  smoothing_fwhm: null
+  high_pass_hz: null
+
+  strict_lbg_parity: true
+  min_word_duration_sec: 0.0
+
+  ridge_alphas:
+    - 1000.0
+    - 2154.43
+    - 4641.59
+    - 10000.0
+    - 21544.35
+    - 46415.89
+    - 100000.0
+    - 215443.47
+
+  max_voxels: null
+  reliable_voxel_fraction: 0.25
+  reliable_voxel_scores_path: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/average_subject/isc/isc_10trials_en.gz
+  mask_from_runs: 3
+  picture_nuisance_regressors: false
+  random_state: 0
+  regression_device: cuda
+  n_layer_workers: 8
+  ridge_n_jobs: 1
+  layer_n_jobs: 1
+  brain_mask_path: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/masks/mask_lpp_en.nii.gz
+
+
+# ---------------------------------------------------------------------------
+# Analysis toggles
+# ---------------------------------------------------------------------------
+analysis:
+  per_layer: true
+  lateralization: true
+  roi_masks_dir: ${BENCHMARK_ROOT}/data/lpp_fmri_extra/average_subject/roi_masks
+  harvard_oxford_parcels: true
+
+
+# ---------------------------------------------------------------------------
+# Caching
+# ---------------------------------------------------------------------------
+cache:
+  features_dir: .cache/lpp_features
+  embeddings_dir: .cache/embeddings
+
+
+# ---------------------------------------------------------------------------
+# Output
+# ---------------------------------------------------------------------------
+output:
+  save_dir: outputs/lpp/embedding_sweep
+  incremental_save: true
+  plots: true
+  save_corr_maps: false
+  save_granular_outputs: true
+  save_voxel_scores: true

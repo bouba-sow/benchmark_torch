@@ -153,16 +153,14 @@ def _load_family(sweep_dir: Path, family: str, meta: dict[str, dict]) -> pd.Data
 
 
 def _peak_summary_row(model_id: str, model_label: str, family: str, n_params: float, df: pd.DataFrame) -> dict:
-    # Broderick's LME fits per-subject then aggregates per layer (unlike
-    # Fedorenko2016/Nieuwland's single pooled model per layer) — so there's
-    # no per-row "error"/"converged" boolean, only per-layer subject counts
-    # (n_subjects / n_converged / n_slope_dropped).
+    # One pooled (all-subjects) fit per layer -- same convergence-flag shape
+    # as Fedorenko2016/Nieuwland's single pooled model per layer.
     n_total = len(df)
-    ok = df.copy()
-    n_subjects_total = int(ok["n_subjects"].sum()) if "n_subjects" in ok else 0
-    n_converged_total = int(ok["n_converged"].sum()) if "n_converged" in ok else 0
-    n_slope_dropped = int(ok["n_slope_dropped"].sum()) if "n_slope_dropped" in ok else 0
-    n_not_converged = n_subjects_total - n_converged_total
+    crashed = df["error"].notna()
+    n_crashed = int(crashed.sum())
+    ok = df.loc[~crashed].copy()
+    n_converged = int(ok["converged"].fillna(False).astype(bool).sum()) if "converged" in ok else 0
+    n_slope_dropped = int(ok["slope_dropped"].fillna(False).astype(bool).sum()) if "slope_dropped" in ok else 0
 
     row: dict = {
         "model_id": model_id,
@@ -171,10 +169,10 @@ def _peak_summary_row(model_id: str, model_label: str, family: str, n_params: fl
         "n_params": n_params,
         "n_params_b": n_params / 1e9 if np.isfinite(n_params) else np.nan,
         "n_layers_total": n_total,
-        "n_subjects_total": n_subjects_total,
-        "n_subjects_not_converged": n_not_converged,
+        "n_layers_crashed": n_crashed,
+        "n_layers_converged": n_converged,
         "n_layers_slope_dropped": n_slope_dropped,
-        "crash_rate": n_not_converged / n_subjects_total if n_subjects_total else np.nan,
+        "crash_rate": n_crashed / n_total if n_total else np.nan,
     }
     last_layer_idx = int(ok["layer"].max()) if "layer" in ok and not ok.empty else None
     for metric, _ in LME_METRICS:
@@ -404,9 +402,9 @@ def summarize_family(sweep_dir: Path, family: str, out_root: Path, meta: dict[st
     plot_layer_profiles(df, out_root / "layer_profiles", family)
     plot_scaling(summary, out_root / "scaling", family=family)
 
-    n_not_converged_total = int(summary["n_subjects_not_converged"].sum())
-    if n_not_converged_total:
-        print(f"[{family}] {n_not_converged_total} non-converged subject fit(s) across {len(summary)} model(s) — see crash_rate in peak_summary.csv")
+    n_crashed_total = int(summary["n_layers_crashed"].sum())
+    if n_crashed_total:
+        print(f"[{family}] {n_crashed_total} crashed/unconverged layer fit(s) across {len(summary)} model(s) — see crash_rate in peak_summary.csv")
     print(f"[{family}] wrote LME layer summaries to {out_dir}")
     return df, summary
 

@@ -94,8 +94,8 @@ logger = logging.getLogger(__name__)
 _REQUIRED_COLS = {"subject", "roi", "sentence_id", "mean_wlen", "mean_freq", "surprisal", "y"}
 
 
-def tuckute_lme_formulas() -> tuple[str, str]:
-    """Baseline/full formulas for the pooled Tuckute fMRI LME (one LM layer).
+def tuckute_lme_formulas(*, per_roi: bool = False) -> tuple[str, str]:
+    """Baseline/full formulas for pooled or one-ROI Tuckute fits.
 
     ``y`` is the per-(subject, roi, sentence) BOLD value; ``surprisal_z`` is
     that layer's last-word logit-lens surprisal for the sentence.
@@ -103,12 +103,12 @@ def tuckute_lme_formulas() -> tuple[str, str]:
     nuisances = "mean_wlen_z + mean_freq_z"
     re_subject_base = f"(1 + {nuisances} | subject)"
     re_subject_full = f"(1 + {nuisances} + surprisal_z | subject)"
-    re_roi = "(1 | roi)"
+    re_roi = "" if per_roi else " + (1 | roi)"
     re_sentence_base = "(1 | sentence_id)"
     re_sentence_full = "(1 + surprisal_z | sentence_id)"
 
-    baseline = f"y ~ {nuisances} + {re_subject_base} + {re_roi} + {re_sentence_base}"
-    full = f"y ~ {nuisances} + surprisal_z + {re_subject_full} + {re_roi} + {re_sentence_full}"
+    baseline = f"y ~ {nuisances} + {re_subject_base}{re_roi} + {re_sentence_base}"
+    full = f"y ~ {nuisances} + surprisal_z + {re_subject_full}{re_roi} + {re_sentence_full}"
     return baseline, full
 
 
@@ -145,6 +145,7 @@ def fit_tuckute_lme_one_layer(
     random_state: int = 0,
     verbose: bool = False,
     allow_slope_fallback: bool = True,
+    per_roi: bool = False,
 ) -> LmeFitResult:
     """Fit the pooled Tuckute fMRI LME for one LM layer.
 
@@ -171,7 +172,7 @@ def fit_tuckute_lme_one_layer(
         data, train_frac=train_frac, random_state=random_state,
     )
 
-    baseline_formula, full_formula = tuckute_lme_formulas()
+    baseline_formula, full_formula = tuckute_lme_formulas(per_roi=per_roi)
     outcome = "y"
     beta_term = "surprisal_z"
 
@@ -210,7 +211,8 @@ def fit_tuckute_lme_one_layer(
             )
             full_formula_step2 = (
                 f"y ~ {nuisances} + surprisal_z + "
-                f"(1 + {nuisances} + surprisal_z | subject) + (1 | roi) + (1 | sentence_id)"
+                f"(1 + {nuisances} + surprisal_z | subject)"
+                f"{' + (1 | roi)' if not per_roi else ''} + (1 | sentence_id)"
             )
             full_model = _fit(full_formula_step2)
             converged = _converged(full_model)
@@ -232,11 +234,13 @@ def fit_tuckute_lme_one_layer(
                         "roi, and sentence_id)."
                     )
                     baseline_formula = (
-                        f"y ~ {nuisances} + (1 | subject) + (1 | roi) + (1 | sentence_id)"
+                        f"y ~ {nuisances} + (1 | subject)"
+                        f"{' + (1 | roi)' if not per_roi else ''} + (1 | sentence_id)"
                     )
                     full_formula = (
                         f"y ~ {nuisances} + surprisal_z + "
-                        f"(1 | subject) + (1 | roi) + (1 | sentence_id)"
+                        f"(1 | subject)"
+                        f"{' + (1 | roi)' if not per_roi else ''} + (1 | sentence_id)"
                     )
                     baseline_model = _fit(baseline_formula)
                     base_ok = _converged(baseline_model)

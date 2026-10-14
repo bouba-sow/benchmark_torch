@@ -8,8 +8,12 @@
 # configs/surprisal/behavioral/ucl_reading.yaml (scalar surprisal -> RT via LME).
 #
 # UCL Reading has only one measure (self-paced RT) — no SP/FP/GP split like
-# Provo/MECo eye-tracking. Fit independently per subject (see
-# neuroai.benchmarks.ucl_embed module docstring): 117 subjects, 361 sentences.
+# Provo/MECo eye-tracking. Grand-average-subject-only by design (matches the
+# report's documented metric, same convention as geco/meco/provo/onestop/
+# zuco_reading) — average_only=true below skips the (deprecated) per-subject
+# fitting branch entirely: 117 subjects, 361 sentences, each subject needing
+# its own SVD-based ridge fit is far too slow to be worth it when the report
+# only ever reads the grand-average result.
 #
 # NOTE on caching: embeddings are cached per (model, revision, story_id) —
 # story_id here is the UCL sentence number (1-361).
@@ -53,6 +57,10 @@ regression:
   scale: true
   random_state: 0
   print_chosen_ridge_alpha: true
+
+average_across_subjects: true
+average_only: true
+average_ridge_device: cuda
 
 cache:
   features_dir: ${UCL_READING_EMBED_CACHE_DIR}

@@ -314,7 +314,7 @@ class GecoEmbedBenchmarkConfig:
     # thousands-of-dims embeddings. GECO family SLURM jobs already reserve a
     # GPU (for host-RAM headroom, see job_geco_jz_common.sh), so "cuda" here
     # is free — it uses hardware that would otherwise sit idle.
-    average_ridge_device: str = "cpu"
+    average_ridge_device: str = "cuda"  # himalaya GPU ridge everywhere (2026-10-14)
 
 
 @dataclass

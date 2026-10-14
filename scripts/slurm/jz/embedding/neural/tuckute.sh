@@ -5,6 +5,8 @@
 # Required env: TUCKUTE_FAMILY (registry family), SLURM_ARRAY_TASK_ID.
 # Optional env: OUT_DIR, SUMMARY_ONLY=1 (run tuckute_jz_run_summary instead).
 
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 tuckute_jz_prepare() {
   : "${TUCKUTE_FAMILY:?Set TUCKUTE_FAMILY (registry family, e.g. gpt2)}"
   cd "$BENCHMARK_ROOT" || return 1

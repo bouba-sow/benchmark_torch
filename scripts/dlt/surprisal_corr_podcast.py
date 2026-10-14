@@ -44,7 +44,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 from scipy.stats import pearsonr
 
-from neuroai.analysis.benchmark_common import OUTPUTS_JEANZAY, REPO_ROOT
+from neuroai.analysis.benchmark_common import EXCLUDED_MODEL_IDS, OUTPUTS_JEANZAY, REPO_ROOT
 from scripts.summarize.benchmark import (
     _iter_model_score_files, _model_id_from_dir, _read_csv_safe, lookup_model_meta,
 )
@@ -79,6 +79,8 @@ def _lags_in_window(scores: pd.DataFrame) -> list[int]:
 def _process_one_model(family: str, model_dir: Path, dlt_key: pd.DataFrame) -> list[dict] | None:
     try:
         model_id = _model_id_from_dir(model_dir)
+        if model_id in EXCLUDED_MODEL_IDS:  # broken upstream checkpoints, out of benchmark scope
+            return None
         scores_path = model_dir / SCORES_FILENAME
         scores = _read_csv_safe(scores_path)
         if scores is None or scores.empty:

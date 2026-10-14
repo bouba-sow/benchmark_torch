@@ -1,32 +1,34 @@
-"""Broderick 2018 EEG encoding benchmark — LME fit PER SUBJECT, averaged
-across subjects, region-averaged, per LM layer.
+"""Broderick 2018 EEG encoding benchmark — LME fit POOLED across all
+subjects, one model per LM layer, region-averaged.
 
-An earlier version of this pipeline pooled all 19 subjects into ONE mixed
-model per layer, with ``subject`` as a random effect carrying a 4-term
-correlated slope. Region-averaging (collapsing 128 BioSemi channels into 4
-anatomical groups via ``channel_region``) had already cut the pooled table
-from ~28M to ~870K rows, but in production this STILL failed to complete
-even a single layer fit within a 1-4h walltime — and ZuCo's pooled LME hit
-the identical wall at ~5M rows (~6x more data), which is the key
-diagnostic: the bottleneck is the covariance-search dimensionality from the
-rich correlated ``subject`` slope, not data volume (see
-``neuroai/regressors/broderick_lme.py`` module docstring). LPP's pooled
-LME, which has no ``subject`` random effect at all (average-subject BOLD),
-fits fast at comparable-to-larger scale — the direct evidence for that
-diagnosis.
+Two earlier versions of this pipeline were tried and abandoned:
+1. Pooled all 19 subjects into ONE mixed model per layer, with ``subject``
+   as a random effect carrying a 4-term correlated slope. Region-averaging
+   (collapsing 128 BioSemi channels into 4 anatomical groups via
+   ``channel_region``) had already cut the pooled table from ~28M to ~870K
+   rows, but in production this STILL failed to complete even a single
+   layer fit within a 1-4h walltime — the bottleneck was the
+   covariance-search dimensionality from the rich correlated ``subject``
+   slope, not data volume (see ``neuroai/regressors/broderick_lme.py``
+   module docstring).
+2. Fit one LME PER SUBJECT instead (``subject`` never a grouping factor),
+   then averaged the per-subject estimates across subjects downstream.
+   This avoided the wall, but was never trusted for the report: with no
+   single model per layer there was no natural place to attach a
+   convergence check, and the per-subject-then-averaged numbers silently
+   mixed in blown-up, non-significant fits.
 
-This version applies the fix directly: fit ONE LME PER SUBJECT (so
-``subject`` is never a grouping factor at all), keeping only ``region`` as
-a random effect with its slope on ``surprisal_z``, then AVERAGE the
-resulting per-subject estimates across subjects — exactly the two-stage
-(per-subject fit -> across-subject average) pattern this codebase's own
-per-subject ridge/TRF encoder (``benchmarks/broderick.py``) already uses,
-just with an LME instead of ridge as the per-subject model. Region-
-averaging is unchanged, just now applied per-subject rather than pooled.
+This version pools again, but with ``subject`` as an INTERCEPT-ONLY random
+effect (no slope) crossed with ``region`` (also a genuinely crossed factor
+here — same 4 labels for every subject) — a completely different
+covariance-search cost than version 1's correlated slope:
 
-    baseline: eeg ~ wlen_z + freq_z + (1 | region)
+    baseline: eeg ~ wlen_z + freq_z + (1 | subject) + (1 | region)
     full:     eeg ~ wlen_z + freq_z + surprisal_z + prev_surprisal_z +
-                     (1 + surprisal_z | region)
+                     (1 | subject) + (1 + surprisal_z | region)
+
+This restores ONE fit per layer, so ``converged`` is a real per-layer flag
+again (no averaging across per-subject outcomes needed).
 
 Pipeline (per model checkpoint)
 --------------------------------
@@ -40,21 +42,17 @@ Pipeline (per model checkpoint)
    available run, extract word-locked epochs, baseline-correct, reduce to
    one scalar per (word, channel) via the target window, then average over
    the channels in each of the 4 ``channel_region`` groups — one row per
-   (region, word) for THIS subject only.
-4. Write each subject's table (parquet) and its surprisal/prev-surprisal
-   slice (npy) to disk, then fit one LME per (subject, layer) via a
-   process pool. Each fit is now small (one subject's own rows, one
-   random-effect grouping factor) and cheap.
-5. Append each (subject, layer) result to a detailed CSV the moment it
-   completes (crash-safe restart). After the pool finishes, recompute the
-   across-subject average per layer into a summary CSV.
+   (region, word) for THIS subject, tagged with a ``subject`` column.
+4. Concatenate every subject's table into ONE shared table (parquet) with
+   its shared surprisal/prev-surprisal slice (npy), then fit one POOLED
+   LME per layer via a process pool.
+5. Append each layer's result to the by-layer CSV the moment it completes
+   (crash-safe restart, keyed by layer alone).
 
 Output
 ------
-``broderick_lme_by_subject_layer.csv`` — one row per (subject, layer),
-written incrementally.
-``broderick_lme_by_layer.csv`` — one row per layer, averaged across
-subjects — the primary result table (rebuilt in full each ``run()`` call).
+``broderick_lme_by_layer.csv`` — one row per layer, from the pooled fit —
+the primary result table, written incrementally.
 """
 
 from __future__ import annotations
@@ -79,27 +77,26 @@ from ..datasets.podcast import extract_word_epochs
 from ..sweep import csv_file_lock
 from .base import ModelConfig
 
+
+def _pw_dir(out_dir):
+    """Per-word prediction directory: mirrors ``out_dir`` under $SCRATCH (word_predictions_root)
+    so large per-word CSVs never land on $WORK (2026-10-12)."""
+    from .base import word_predictions_root
+
+    d = word_predictions_root(out_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
 logger = logging.getLogger(__name__)
 
-_SUBJECT_ROW_COLUMNS = (
-    "subject", "layer", "beta", "se", "t_stat", "p_value", "loglik", "aic", "bic",
+_LAYER_ROW_COLUMNS = (
+    "layer", "beta", "se", "t_stat", "p_value", "loglik", "aic", "bic",
     "baseline_loglik", "delta_loglik_train", "delta_loglik_test",
     "baseline_loglik_test", "loglik_test", "lrt_p_value",
     "test_pearsonr_full_model", "test_spearmanr_full_model",
     "test_pearsonr_baseline_lme", "test_spearmanr_baseline_lme",
     "test_delta_pearsonr", "test_delta_spearmanr", "converged",
-    "slope_dropped", "n_obs", "n_obs_test", "error", "fit_wall_time_s",
-)
-
-# Numeric columns averaged across subjects for the summary table.
-_AVERAGE_METRIC_COLUMNS = (
-    "beta", "se", "t_stat", "p_value", "loglik", "aic", "bic",
-    "baseline_loglik", "delta_loglik_train", "delta_loglik_test",
-    "baseline_loglik_test", "loglik_test", "lrt_p_value",
-    "test_pearsonr_full_model", "test_spearmanr_full_model",
-    "test_pearsonr_baseline_lme", "test_spearmanr_baseline_lme",
-    "test_delta_pearsonr", "test_delta_spearmanr",
-    "n_obs", "n_obs_test", "fit_wall_time_s",
+    "slope_dropped", "n_subjects", "n_obs", "n_obs_test", "error", "fit_wall_time_s",
 )
 
 
@@ -149,13 +146,18 @@ class BroderickLmeConfig:
     # Barr et al. (2013)-style simplification ladder if the full model fails
     # to converge — see fit_broderick_lme_one_layer's docstring for the
     # 2-step fallback order (region correlation -> region slope dropped).
-    # Only one random-effect group left now that subject is fit separately.
+    # subject is intercept-only throughout, nothing to simplify there.
     allow_slope_fallback: bool = True
     # Which layers to fit: 1 = all layers; N>1 = every Nth layer.
     layer_stride: int = 1
-    # Process-pool size for fitting (subject, layer) pairs concurrently —
-    # each worker is a separate process with its own embedded R/pymer4
-    # interpreter.
+    # Fit only the final layer (overrides layer_stride).
+    last_layer_only: bool = False
+    # Process-pool size for fitting layers concurrently (one pooled,
+    # all-subjects fit per layer) — each worker is a separate process with
+    # its own embedded R/pymer4 interpreter. Each fit is now much heavier
+    # (~870K pooled rows vs. a few thousand per-subject rows), so this may
+    # need to be lower than the old per-(subject,layer) default depending on
+    # available CPU/RAM — test empirically.
     n_workers: int = 10
     # CPU sweep runs are the LME-only half of a two-stage pipeline — a cache
     # miss there should fail fast rather than silently loading a model.
@@ -180,12 +182,12 @@ class BroderickLmeBenchmarkConfig:
 # Worker (module-level for spawn-based multiprocessing pickling)
 # ---------------------------------------------------------------------------
 
-def _fit_one_subject_layer_worker(
+def _fit_one_layer_worker(
     base_parquet_path: str,
     surprisal_npy_path: str,
     prev_surprisal_npy_path: str,
-    subject: str,
     layer_idx: int,
+    n_subjects: int,
     *,
     train_frac: float,
     random_state: int,
@@ -193,15 +195,15 @@ def _fit_one_subject_layer_worker(
     allow_slope_fallback: bool,
     save_word_predictions: bool = False,
 ) -> dict[str, tp.Any]:
-    """Runs in its own spawned process: load one subject's shared table, fit
-    one (subject, layer) pair."""
+    """Runs in its own spawned process: load the shared all-subjects table,
+    fit ONE pooled LME for this layer."""
     import numpy as _np
     import pandas as _pd
 
     from ..regressors.broderick_lme import fit_broderick_lme_one_layer
 
     t0 = time.time()
-    row: dict[str, tp.Any] = {"subject": subject, "layer": layer_idx}
+    row: dict[str, tp.Any] = {"layer": layer_idx, "n_subjects": n_subjects}
     per_word_out: pd.DataFrame | None = None
     try:
         base_df = _pd.read_parquet(base_parquet_path)
@@ -221,7 +223,6 @@ def _fit_one_subject_layer_worker(
         if fit.per_word is not None and not fit.per_word.empty:
             per_word_out = fit.per_word.copy()
             per_word_out.insert(0, "layer", layer_idx)
-            per_word_out.insert(0, "subject", subject)
         row.update({
             "beta": fit.beta,
             "se": fit.se,
@@ -249,7 +250,7 @@ def _fit_one_subject_layer_worker(
             "error": None,
         })
     except Exception as exc:  # noqa: BLE001 — one bad fit must not kill the pool
-        logger.error("[%s] Layer %d failed", subject, layer_idx, exc_info=True)
+        logger.error("Layer %d failed", layer_idx, exc_info=True)
         row["error"] = str(exc)
     row["fit_wall_time_s"] = time.time() - t0
     return {"row": row, "per_word": per_word_out}
@@ -274,7 +275,7 @@ def _build_segment_groups(words_df: pd.DataFrame) -> list[tuple[int, list[str], 
 # ---------------------------------------------------------------------------
 
 class BroderickLmeBenchmark:
-    """Broderick EEG LME fit per subject, averaged across subjects, region-averaged."""
+    """Broderick EEG LME fit pooled across all subjects, one model per layer, region-averaged."""
 
     def __init__(self, cfg: BroderickLmeBenchmarkConfig) -> None:
         self.cfg = cfg
@@ -299,7 +300,6 @@ class BroderickLmeBenchmark:
 
         out_dir = Path(self.cfg.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
-        subject_csv = out_dir / "broderick_lme_by_subject_layer.csv"
         summary_csv = out_dir / "broderick_lme_by_layer.csv"
 
         words_df = load_all_words(dcfg.bids_root, n_runs=dcfg.n_runs)
@@ -327,146 +327,138 @@ class BroderickLmeBenchmark:
         keep_word_idx = set(words_df.loc[item_finite, "word_idx"].astype(int).tolist())
         word_idx_to_pos = {int(w): i for i, w in enumerate(words_df["word_idx"].astype(int).tolist())}
 
-        done_pairs: set[tuple[str, int]] = set()
-        if subject_csv.exists():
+        done_layers: set[int] = set()
+        if summary_csv.exists():
             try:
-                existing = pd.read_csv(subject_csv)
+                existing = pd.read_csv(summary_csv)
+                if set(_LAYER_ROW_COLUMNS) - set(existing.columns):
+                    raise ValueError(
+                        f"{summary_csv} has a different schema (missing columns) — "
+                        "likely a leftover from an older fitting scheme."
+                    )
                 good = existing.loc[existing["error"].isna()]
-                done_pairs = set(zip(good["subject"], good["layer"]))
+                done_layers = set(int(li) for li in good["layer"])
                 n_failed = int(existing["error"].notna().sum())
-                if done_pairs:
-                    logger.info("Skipping %d already-fit (subject, layer) pair(s)", len(done_pairs))
+                if done_layers:
+                    logger.info("Skipping %d already-fit layer(s)", len(done_layers))
                 if n_failed:
                     logger.warning(
-                        "%d previously-crashed (subject, layer) row(s) found in %s — will retry",
-                        n_failed, subject_csv,
+                        "%d previously-crashed layer row(s) found in %s — will retry",
+                        n_failed, summary_csv,
                     )
-                    good.reindex(columns=_SUBJECT_ROW_COLUMNS).to_csv(subject_csv, index=False)
-            except Exception:
-                logger.warning("Could not read existing subject-level CSV; re-fitting all pairs.")
+                    good.reindex(columns=_LAYER_ROW_COLUMNS).to_csv(summary_csv, index=False)
+            except Exception as exc:
+                # Rename the unreadable/wrong-schema file out of the way rather
+                # than leaving it in place: the append loop below decides
+                # whether to (re-)write a header purely from
+                # ``summary_csv.exists()``, so leaving a stale file there
+                # would silently produce a mixed-schema CSV (old header,
+                # new-schema rows appended underneath).
+                bad_path = summary_csv.with_suffix(".stale.csv")
+                logger.warning(
+                    "Could not use existing by-layer CSV (%s) — re-fitting all "
+                    "layers; moved the old file to %s.", exc, bad_path,
+                )
+                summary_csv.replace(bad_path)
 
-        layer_indices = list(range(0, n_layers, max(1, lcfg.layer_stride)))
+        candidate_layers = [n_layers - 1] if lcfg.last_layer_only else range(0, n_layers, max(1, lcfg.layer_stride))
+        layer_indices = [li for li in candidate_layers if li not in done_layers]
 
-        # Build every subject's region table up front and collect the full
-        # flattened (subject, layer) task grid — one shared process pool
-        # below, rather than spawning a new pool per subject.
-        tasks: list[tuple[str, int, Path, Path, Path]] = []
+        # Build every subject's region table, tag it with a ``subject``
+        # column, and concatenate into ONE shared pooled table — one process
+        # pool below fits one layer at a time on the full pooled data,
+        # rather than the old per-subject file-per-worker split.
+        subj_tables: list[pd.DataFrame] = []
         for subject in subjects:
-            pending = [li for li in layer_indices if (subject, li) not in done_pairs]
-            if not pending:
-                continue
-
             subj_df = self._build_subject_region_table(subject, ds, words_df, keep_word_idx)
             if subj_df is None or subj_df.empty:
                 logger.warning("[%s | %s] no valid rows — skipping", model_name, subject)
                 continue
+            subj_df["subject"] = subject
+            subj_tables.append(subj_df)
 
-            row_pos = subj_df["word_idx"].map(word_idx_to_pos).to_numpy(dtype=np.int64)
-            surprisal_by_row = surprisal_items[row_pos]
-            prev_surprisal_by_row = prev_surprisal_items[row_pos]
-            subj_df["wlen"] = wlen_freq[row_pos, 0]
-            subj_df["freq"] = wlen_freq[row_pos, 1]
+        if not subj_tables or not layer_indices:
+            logger.warning("[%s] no data or no pending layers — nothing to fit.", model_name)
+            return pd.DataFrame()
 
-            logger.info(
-                "[%s | %s] table: %d rows (%d regions), %d layers pending",
-                model_name, subject, len(subj_df), subj_df["region"].nunique(), len(pending),
-            )
+        pooled_df = pd.concat(subj_tables, ignore_index=True)
+        del subj_tables
+        n_subjects = pooled_df["subject"].nunique()
 
-            safe_subj = str(subject).replace("/", "_")
-            base_parquet_path = out_dir / f"broderick_lme_table_{safe_subj}.parquet"
-            surprisal_npy_path = out_dir / f"broderick_lme_surprisal_{safe_subj}.npy"
-            prev_surprisal_npy_path = out_dir / f"broderick_lme_prev_surprisal_{safe_subj}.npy"
-            subj_df.to_parquet(base_parquet_path, index=False)
-            np.save(surprisal_npy_path, surprisal_by_row.astype(np.float32))
-            np.save(prev_surprisal_npy_path, prev_surprisal_by_row.astype(np.float32))
-            del subj_df, surprisal_by_row, prev_surprisal_by_row
-
-            for li in pending:
-                tasks.append((subject, li, base_parquet_path, surprisal_npy_path, prev_surprisal_npy_path))
+        row_pos = pooled_df["word_idx"].map(word_idx_to_pos).to_numpy(dtype=np.int64)
+        surprisal_by_row = surprisal_items[row_pos]
+        prev_surprisal_by_row = prev_surprisal_items[row_pos]
+        pooled_df["wlen"] = wlen_freq[row_pos, 0]
+        pooled_df["freq"] = wlen_freq[row_pos, 1]
 
         logger.info(
-            "[%s] Fitting %d (subject, layer) pair(s) with %d worker processes",
-            model_name, len(tasks), lcfg.n_workers,
+            "[%s] pooled table: %d rows (%d subjects, %d regions), %d layer(s) pending",
+            model_name, len(pooled_df), n_subjects, pooled_df["region"].nunique(), len(layer_indices),
+        )
+
+        base_parquet_path = out_dir / "broderick_lme_table.parquet"
+        surprisal_npy_path = out_dir / "broderick_lme_surprisal.npy"
+        prev_surprisal_npy_path = out_dir / "broderick_lme_prev_surprisal.npy"
+        pooled_df.to_parquet(base_parquet_path, index=False)
+        np.save(surprisal_npy_path, surprisal_by_row.astype(np.float32))
+        np.save(prev_surprisal_npy_path, prev_surprisal_by_row.astype(np.float32))
+        del pooled_df, surprisal_by_row, prev_surprisal_by_row
+
+        logger.info(
+            "[%s] Fitting %d layer(s) with %d worker processes",
+            model_name, len(layer_indices), lcfg.n_workers,
         )
 
         import multiprocessing as mp
         ctx = mp.get_context("spawn")
 
-        per_word_csv = out_dir / "broderick_lme_per_word.csv"
+        per_word_csv = _pw_dir(out_dir) / "broderick_lme_per_word.csv"
         rows_out: list[dict] = []
-        if tasks:
-            # max_tasks_per_child=1: recycle each worker after ONE fit —
-            # lme4/rpy2's embedded R interpreter leaks memory across
-            # repeated fits within a long-lived process.
-            with ProcessPoolExecutor(
-                max_workers=lcfg.n_workers, mp_context=ctx, max_tasks_per_child=1,
-            ) as pool:
-                futures = {
-                    pool.submit(
-                        _fit_one_subject_layer_worker,
-                        str(base_p), str(surp_p), str(prev_p), subject, li,
-                        train_frac=lcfg.train_frac,
-                        random_state=lcfg.split_random_state,
-                        verbose=lcfg.verbose,
-                        allow_slope_fallback=lcfg.allow_slope_fallback,
-                        save_word_predictions=lcfg.save_word_predictions,
-                    ): (subject, li)
-                    for (subject, li, base_p, surp_p, prev_p) in tasks
-                }
-                for fut in as_completed(futures):
-                    subject, li = futures[fut]
-                    try:
-                        result = fut.result()
-                        row, per_word = result["row"], result["per_word"]
-                    except Exception as exc:
-                        logger.error("[%s] Layer %d worker crashed: %s", subject, li, exc, exc_info=True)
-                        row, per_word = {"subject": subject, "layer": li, "error": str(exc)}, None
-                    rows_out.append(row)
-                    pd.DataFrame([row]).reindex(columns=_SUBJECT_ROW_COLUMNS).to_csv(
-                        subject_csv, mode="a", header=not subject_csv.exists(), index=False,
-                    )
-                    if per_word is not None:
-                        with csv_file_lock(per_word_csv):
-                            per_word.to_csv(
-                                per_word_csv, mode="a", header=not per_word_csv.exists(), index=False,
-                            )
-                    logger.info(
-                        "  [%s | layer %d] done in %.1fs — delta_loglik_test=%s converged=%s%s",
-                        subject, li, row.get("fit_wall_time_s", float("nan")),
-                        f"{row['delta_loglik_test']:.2f}" if row.get("delta_loglik_test") is not None else "NA",
-                        row.get("converged"),
-                        " (slope dropped)" if row.get("slope_dropped") else "",
-                    )
+        # max_tasks_per_child=1: recycle each worker after ONE fit —
+        # lme4/rpy2's embedded R interpreter leaks memory across repeated
+        # fits within a long-lived process.
+        with ProcessPoolExecutor(
+            max_workers=lcfg.n_workers, mp_context=ctx, max_tasks_per_child=1,
+        ) as pool:
+            futures = {
+                pool.submit(
+                    _fit_one_layer_worker,
+                    str(base_parquet_path), str(surprisal_npy_path), str(prev_surprisal_npy_path),
+                    li, n_subjects,
+                    train_frac=lcfg.train_frac,
+                    random_state=lcfg.split_random_state,
+                    verbose=lcfg.verbose,
+                    allow_slope_fallback=lcfg.allow_slope_fallback,
+                    save_word_predictions=lcfg.save_word_predictions,
+                ): li
+                for li in layer_indices
+            }
+            for fut in as_completed(futures):
+                li = futures[fut]
+                try:
+                    result = fut.result()
+                    row, per_word = result["row"], result["per_word"]
+                except Exception as exc:
+                    logger.error("Layer %d worker crashed: %s", li, exc, exc_info=True)
+                    row, per_word = {"layer": li, "n_subjects": n_subjects, "error": str(exc)}, None
+                rows_out.append(row)
+                pd.DataFrame([row]).reindex(columns=_LAYER_ROW_COLUMNS).to_csv(
+                    summary_csv, mode="a", header=not summary_csv.exists(), index=False,
+                )
+                if per_word is not None:
+                    with csv_file_lock(per_word_csv):
+                        per_word.to_csv(
+                            per_word_csv, mode="a", header=not per_word_csv.exists(), index=False,
+                        )
+                logger.info(
+                    "  [layer %d] done in %.1fs — delta_loglik_test=%s converged=%s%s",
+                    li, row.get("fit_wall_time_s", float("nan")),
+                    f"{row['delta_loglik_test']:.2f}" if row.get("delta_loglik_test") is not None else "NA",
+                    row.get("converged"),
+                    " (slope dropped)" if row.get("slope_dropped") else "",
+                )
 
-        self._write_averaged_summary(subject_csv, summary_csv)
         return pd.DataFrame(rows_out)
-
-    # ------------------------------------------------------------------
-    # Across-subject averaging
-    # ------------------------------------------------------------------
-
-    def _write_averaged_summary(self, subject_csv: Path, summary_csv: Path) -> None:
-        """Average per-subject layer fits into one row per layer."""
-        if not subject_csv.exists():
-            return
-        df = pd.read_csv(subject_csv)
-        ok = df.loc[df["error"].isna()].copy()
-        if ok.empty:
-            logger.warning("No successful subject-level fits to average — skipping summary.")
-            return
-
-        rows: list[dict] = []
-        for layer, g in ok.groupby("layer"):
-            row: dict[str, tp.Any] = {"layer": layer}
-            for col in _AVERAGE_METRIC_COLUMNS:
-                row[col] = float(g[col].mean()) if col in g else float("nan")
-            row["n_subjects"] = int(len(g))
-            row["n_converged"] = int(g["converged"].fillna(False).astype(bool).sum())
-            row["n_slope_dropped"] = int(g["slope_dropped"].fillna(False).astype(bool).sum())
-            rows.append(row)
-
-        pd.DataFrame(rows).sort_values("layer").to_csv(summary_csv, index=False)
-        logger.info("Wrote averaged summary (%d layer rows) to %s", len(rows), summary_csv)
 
     # ------------------------------------------------------------------
     # Region-averaged EEG table (region x word) for ONE subject

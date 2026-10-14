@@ -1,0 +1,17 @@
+track,domain,group,n_models,median
+embedding,beh,LLM,59,0.49206229630476145
+embedding,neu,LLM,59,0.23218598239642815
+embedding,beh,Memory-Constrained,24,0.5041128597109554
+embedding,neu,Memory-Constrained,24,0.18455161368026196
+embedding,beh,BabyLM,11,0.535478655189231
+embedding,neu,BabyLM,11,0.2020964861445853
+embedding,beh,Constrained-BabyLM,24,0.49218851228807536
+embedding,neu,Constrained-BabyLM,24,0.15324978740806092
+surprisal,beh,LLM,59,0.16089867865776208
+surprisal,neu,LLM,59,0.14324216547969731
+surprisal,beh,Memory-Constrained,24,0.1255950898731069
+surprisal,neu,Memory-Constrained,24,0.055362947016916485
+surprisal,beh,BabyLM,11,0.15921308647936344
+surprisal,neu,BabyLM,11,0.03026672513604374
+surprisal,beh,Constrained-BabyLM,24,0.09381486832129812
+surprisal,neu,Constrained-BabyLM,24,0.028658266647950133

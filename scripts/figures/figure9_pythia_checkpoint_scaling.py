@@ -165,7 +165,7 @@ PERPLEXITY_PATHS: dict[str, str] = {
     "meco": "outputs_jeanzay/meco/perplexity/meco_perplexity_summary.csv",
     "provo": "outputs_jeanzay/provo/perplexity/provo_perplexity_summary.csv",
     "ucl_reading": "outputs_jeanzay/ucl_reading/perplexity/ucl_reading_perplexity_summary.csv",
-    "zuco_reading": "outputs_jeanzay/zuco_reading/perplexity/zuco_reading_perplexity_summary.csv",
+    "zuco_reading": "outputs_jeanzay/zuco_reading/perplexity/zuco_reading_nr_perplexity_summary.csv",
     # N400 EEG datasets -- computed via
     # scripts/perplexity/pythia_checkpoints_n400.py (same summary-csv
     # convention, so _load_perplexity below needs no N400-specific branch).

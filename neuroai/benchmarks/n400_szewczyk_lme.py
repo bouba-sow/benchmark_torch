@@ -96,6 +96,11 @@ class SzewczykLmeDataConfig:
     # extraction and LME fitting must run as separate jobs: a GPU job
     # populates this cache, then the CPU-only LME job reads from it.
     feature_cache_dir: str | None = None
+    # Restrict the pooled table to ONE sub-experiment (the tsv's ``dataset`` column, e.g.
+    # "Szewczyk & Federmeier (2022)"); None = pool all five (the original behaviour). The
+    # surprisal items/cache still cover every item (the cache is keyed by model only, so
+    # filtering items before extraction would misalign it) -- only the TRIAL ROWS are filtered.
+    sub_experiment: str | None = None
 
 
 @dataclass
@@ -123,6 +128,13 @@ class SzewczykLmeConfig:
     # Save held-out per-trial predictions alongside the usual per-layer
     # summary — needed for post-hoc per-word difficulty splits. On by default.
     save_word_predictions: bool = True
+    # Write the pooled surprisal table/array (what scripts/analysis/
+    # surprisal_rsa.py actually reads), then return immediately -- skip the
+    # entire per-layer LME regression loop. RSA only needs the cached
+    # surprisal values, not the benchmark's own statistical fit; the LME
+    # loop is by far the most expensive part of this pipeline and is pure
+    # overhead when only backfilling the RSA-facing cache.
+    surprisal_only: bool = False
 
 
 @dataclass
@@ -263,6 +275,11 @@ class SzewczykLmeBenchmark:
             )
         keep_item_ids = set(items.loc[item_finite, "item_id"].tolist())
         row_mask = df_merged["item_id"].isin(keep_item_ids) & df_merged["n400"].notna()
+        if dcfg.sub_experiment:
+            known = sorted(df_merged["dataset"].unique())
+            if dcfg.sub_experiment not in known:
+                raise ValueError(f"sub_experiment {dcfg.sub_experiment!r} not in {known}")
+            row_mask &= df_merged["dataset"] == dcfg.sub_experiment
         df_merged = df_merged.loc[row_mask].reset_index(drop=True)
         row_item_idx = df_merged["item_id"].values.astype(np.int64)
 
@@ -290,6 +307,13 @@ class SzewczykLmeBenchmark:
         base_df.to_parquet(base_parquet_path, index=False)
         np.save(surprisal_npy_path, surprisal_by_row.astype(np.float32))
         del base_df, surprisal_by_row
+
+        if self.cfg.lme.surprisal_only:
+            logger.info(
+                "surprisal_only: wrote %s and %s, skipping the LME regression loop.",
+                base_parquet_path, surprisal_npy_path,
+            )
+            return pd.DataFrame()
 
         if self.cfg.lme.layers is not None:
             layer_indices = [li for li in self.cfg.lme.layers if 0 <= li < n_layers]

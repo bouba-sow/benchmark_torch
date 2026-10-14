@@ -42,6 +42,7 @@ from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import RobustScaler
 
 from .base import word_predictions_dir
+from ..features.llm import embedding_layer_selection  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class NieuwlandErpConfig:
     regression_device: str = "cpu"
     n_layer_workers: int = 36
     # Output
-    out_dir: str | Path = "outputs_torch/nieuwland_encoding"
+    out_dir: str | Path = "outputs_jeanzay/nieuwland_encoding"
     n_params: float = 0.0      # informational only (filled by sweep script)
     # Save each channel's best-layer out-of-fold predicted item-mean ERP (from
     # the item-mean regression path, ~80 items) alongside the actual ERP —
@@ -310,7 +311,9 @@ def _feature_cache_path(
     mode = str(layer_mode)
     key = hashlib.md5(f"{model_name}_{rev}_{mode}_{items_hash}".encode()).hexdigest()[:12]
     safe = model_name.replace("/", "_")
-    return cache_dir / f"{safe}_{rev}_{mode}_{key}.npz"
+    from ..features.llm import embedding_cache_tag
+
+    return cache_dir / f"{safe}_{rev}_{mode}_{key}{embedding_cache_tag(model_name)}.npz"
 
 
 def _items_hash(contexts: list[str], nouns: list[str]) -> str:
@@ -318,6 +321,7 @@ def _items_hash(contexts: list[str], nouns: list[str]) -> str:
     return hashlib.md5(key.encode()).hexdigest()[:10]
 
 
+@embedding_layer_selection
 def extract_sentence_features(
     contexts: list[str],
     nouns: list[str],
@@ -908,13 +912,15 @@ class NieuwlandErpEncoder:
                         _b = _gb()
                         n_inner = max(2, min(3, len(Xtr) // 5))
                         hm = _HimRCV(alphas=alphas, cv=n_inner)
+                        # himalaya fits no intercept: centre X and Y on the training fold
+                        _xm, _ym = Xtr.mean(axis=0), Ytr.mean(axis=0)
                         with warnings.catch_warnings():
                             warnings.filterwarnings(
                                 "ignore", message="Solving ridge is slower",
                                 category=UserWarning,
                             )
-                            hm.fit(_b.asarray(Xtr), _b.asarray(Ytr))
-                        oof_s[te_idx] = _b.to_numpy(hm.predict(_b.asarray(Xte)))
+                            hm.fit(_b.asarray(Xtr - _xm), _b.asarray(Ytr - _ym))
+                        oof_s[te_idx] = _b.to_numpy(hm.predict(_b.asarray(Xte - _xm))) + _ym
                         best_a = _b.to_numpy(hm.best_alphas_)
                         fold_alphas.append(float(np.median(best_a)))
                         unique_a, counts_a = np.unique(best_a, return_counts=True)
@@ -1211,13 +1217,15 @@ class NieuwlandErpEncoder:
                     _b = _gb()
                     n_inner = max(2, min(5, len(Xtr) // 5))
                     hm = _HimRCV(alphas=alphas, cv=n_inner)
+                    # himalaya fits no intercept: centre X and Y on the training fold
+                    _xm, _ym = Xtr.mean(axis=0), Ytr.mean(axis=0)
                     with warnings.catch_warnings():
                         warnings.filterwarnings(
                             "ignore", message="Solving ridge is slower",
                             category=UserWarning,
                         )
-                        hm.fit(_b.asarray(Xtr), _b.asarray(Ytr))
-                    oof[te_idx] = _b.to_numpy(hm.predict(_b.asarray(Xte)))
+                        hm.fit(_b.asarray(Xtr - _xm), _b.asarray(Ytr - _ym))
+                    oof[te_idx] = _b.to_numpy(hm.predict(_b.asarray(Xte - _xm))) + _ym
                 else:
                     from sklearn.linear_model import RidgeCV as _SkRCV
                     n_inner = max(2, min(5, len(Xtr) // 5))

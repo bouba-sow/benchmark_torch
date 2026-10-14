@@ -38,6 +38,7 @@ Output: reports/paper/surprisal_hard_dlt_pareto.pdf
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -51,7 +52,9 @@ import pandas as pd
 from matplotlib.lines import Line2D
 
 from neuroai.analysis.benchmark_common import EXCLUDED_MODEL_IDS, GROUP_COLORS, GROUP_DISPLAY, GROUP_ORDER, REPO_ROOT
-from neuroai.analysis.dlt_difficulty import LOGLIK_CACHE_FILES, load_behavioral_dll, load_podcast_dll
+from neuroai.analysis.dlt_difficulty import (
+    LOGLIK_CACHE_FILES, load_behavioral_dll, load_behavioral_dll_bincal, load_podcast_dll, load_podcast_dll_bincal,
+)
 from neuroai.analysis.paper_style import log_size_map, use_paper_style
 from scripts.summarize.report import _log_range, _pareto_front
 
@@ -60,14 +63,21 @@ DLT_THRESHOLD = 2.0
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--bin-ceiling", action="store_true",
+                    help="divide the hard-word bin by the split-half ceiling computed on that bin's own words "
+                         "(output surprisal_hard_dlt_pareto_binceiling.pdf) instead of the all-words ceiling")
+    bin_ceiling = ap.parse_args().bin_ceiling
+    load_behav, load_neural = ((load_behavioral_dll_bincal, load_podcast_dll_bincal) if bin_ceiling
+                               else (load_behavioral_dll, load_podcast_dll))
     use_paper_style()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    behav = load_behavioral_dll("hard", DLT_THRESHOLD)
+    behav = load_behav("hard", DLT_THRESHOLD)
     behav = behav[~behav["model_id"].isin(EXCLUDED_MODEL_IDS)]
     print(f"[behavioral, DLL] {behav['model_id'].nunique()} models, "
           f"mean score/ceiling={behav['behav'].mean():.4f}")
-    neural = load_podcast_dll("hard", DLT_THRESHOLD)
+    neural = load_neural("hard", DLT_THRESHOLD)
     neural = neural[~neural["model_id"].isin(EXCLUDED_MODEL_IDS)]
     print(f"[neural, DLL, podcast_ieeg only] {neural['model_id'].nunique()} models, "
           f"mean score/ceiling={neural['neural'].mean():.4f}")
@@ -136,7 +146,7 @@ def main() -> None:
 
     ax.grid(True, alpha=0.2)
     fig.tight_layout()
-    out = OUT_DIR / "surprisal_hard_dlt_pareto.pdf"
+    out = OUT_DIR / ("surprisal_hard_dlt_pareto_binceiling.pdf" if bin_ceiling else "surprisal_hard_dlt_pareto.pdf")
     fig.savefig(out, dpi=600)
     plt.close(fig)
     print(f"wrote {out}")

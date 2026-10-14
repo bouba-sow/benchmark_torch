@@ -1,0 +1,38 @@
+\begin{table}[p]
+\centering\small
+\caption{Descriptive Pearson correlations across 118 models: RSA with $\log_{10}$ parameter count (size), the same correlation within constraint groups (partial correlation controlling for group membership, so that it does not merely reflect that the smallest models are the constrained ones), and RSA with the corresponding direct-prediction score (agreement: embedding RSA with encoding $r$, surprisal RSA with surprisal $\Delta\ell$). Emb.\ denotes embeddings; Sur.\ denotes surprisal. No model-family adjustment or significance test is applied.}
+\label{tab:rsa-summary}
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{2}{c}{Size} & \multicolumn{2}{c}{Size within group} & \multicolumn{2}{c}{Agreement}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Dataset / measure & Emb. & Sur. & Emb. & Sur. & Emb. & Sur.\\
+\midrule
+Pereira / fMRI & 0.698 & 0.177 & 0.460 & 0.056 & 0.420 & 0.019 \\
+Tuckute B / fMRI & 0.437 & 0.603 & 0.165 & 0.302 & 0.820 & 0.564 \\
+Broderick / EEG & 0.606 & -0.070 & 0.371 & 0.267 & 0.733 & -0.119 \\
+MEG-MASC / MEG & -0.558 & 0.550 & -0.444 & 0.305 & 0.275 & 0.138 \\
+Nieuwland / N400 & 0.717 & 0.729 & 0.526 & 0.629 & 0.532 & 0.749 \\
+Federmeier et al. (2007) / N400 & 0.884 & 0.795 & 0.762 & 0.558 & 0.929 & 0.751 \\
+Hubbard et al. (2019) / N400 & 0.729 & 0.739 & 0.545 & 0.569 & 0.823 & 0.517 \\
+Podcast / ECoG & 0.475 & 0.131 & 0.365 & -0.127 & 0.769 & 0.442 \\
+\midrule
+Provo / FP & -0.494 & -0.397 & -0.183 & -0.311 & 0.678 & 0.354 \\
+Provo / GP & -0.259 & -0.527 & -0.020 & -0.294 & 0.663 & 0.017 \\
+Provo / SP & -0.498 & -0.037 & -0.192 & -0.113 & 0.649 & 0.243 \\
+MECO English / FP & -0.597 & -0.339 & -0.256 & -0.214 & 0.154 & 0.584 \\
+MECO English / GP & -0.394 & -0.381 & -0.044 & -0.266 & 0.087 & -0.194 \\
+MECO English / SP & -0.582 & -0.058 & -0.228 & -0.067 & 0.117 & 0.227 \\
+GECO / FP & -0.366 & -0.397 & -0.082 & -0.240 & 0.023 & -0.272 \\
+GECO / GP & -0.133 & -0.669 & 0.018 & -0.438 & -0.359 & -0.304 \\
+OneStop / FP & -0.519 & 0.186 & -0.234 & 0.135 & -0.342 & 0.284 \\
+OneStop / GP & 0.153 & -0.813 & 0.107 & -0.654 & 0.031 & -0.206 \\
+OneStop / SP & -0.457 & 0.562 & -0.142 & 0.336 & -0.412 & 0.751 \\
+Natural Stories / SPR & 0.101 & 0.192 & 0.121 & 0.202 & 0.388 & 0.132 \\
+UCL Reading / SPR & -0.043 & 0.507 & 0.088 & 0.418 & 0.577 & 0.715 \\
+ZuCo / NR & -0.623 & 0.043 & -0.337 & 0.024 & -0.325 & 0.248 \\
+ZuCo / SR & -0.245 & 0.458 & -0.003 & 0.335 & -0.219 & 0.399 \\
+ZuCo / TSR & -0.643 & 0.545 & -0.360 & 0.378 & -0.007 & 0.694 \\
+\bottomrule
+\end{tabular}
+\end{table}

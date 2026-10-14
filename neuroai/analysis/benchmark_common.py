@@ -125,24 +125,62 @@ def sum_dll_across_units(records: list[tuple[float, float]], z_thresh: float = 8
     return float(df["delta_loglik_test"].sum()), float(df["n_obs_test"].sum())
 
 
-def filter_degenerate_dll_rows(df: pd.DataFrame, col: str = "delta_loglik_test", z_thresh: float = 8.0) -> pd.DataFrame:
-    """Drop rows of ``df`` whose ``col`` value is a robust-outlier (median/MAD
-    z-score > z_thresh in absolute value) relative to the OTHER rows of the
-    same table. No-op if there are too few rows (<4) or MAD is degenerate
-    (can't distinguish a real effect from noise off so little data)."""
+def flag_degenerate_dll_rows(df: pd.DataFrame, col: str = "delta_loglik_test", z_thresh: float = 8.0) -> pd.Series:
+    """AUDIT ONLY. Boolean mask (True = suspicious) of rows of ``df`` whose ``col`` value is a
+    robust outlier (median/MAD z-score > z_thresh) relative to the OTHER rows of the same table.
+    Nothing is dropped by this: flagged rows are candidates to investigate or rerun."""
+    flags = pd.Series(False, index=df.index)
     if col not in df.columns or len(df) < 4:
-        return df
+        return flags
     vals = pd.to_numeric(df[col], errors="coerce")
     valid = vals.dropna()
     if len(valid) < 4:
-        return df
+        return flags
     med = valid.median()
     mad = (valid - med).abs().median()
     if mad == 0 or pd.isna(mad):
-        return df
+        return flags
     z = (vals - med).abs() / (1.4826 * mad)
-    keep = z.isna() | (z <= z_thresh)
-    return df[keep]
+    return (z > z_thresh).fillna(False)
+
+
+def filter_degenerate_dll_rows(df: pd.DataFrame, col: str = "delta_loglik_test", z_thresh: float = 8.0) -> pd.DataFrame:
+    """No-op, kept so existing call sites keep working. Results are NOT filtered (decision
+    2026-10-01): a suspicious fit is investigated or rerun, never silently dropped. Use
+    :func:`flag_degenerate_dll_rows` to list candidates."""
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Layer-selection rule for every "best layer" surprisal number (decision 2026-10-01).
+#
+# OLD rule: the layer (or lag / fROI-layer row) with the max HELD-OUT delta_loglik_test, scored on that
+# same held-out set -- the winner's-curse rule: on small test sets (Tuckute, Nieuwland, Pereira, the
+# single Szewczyk studies) it inflated the headline by 2-15x (mean over models) and reshuffled the model
+# ranking (scripts/analysis/train_vs_test_layer_selection.py).
+# NEW rule: pick the row with the max TRAINING delta_loglik_train, then report delta_loglik_test /
+# n_obs_test at that row. Needs no refit: both columns are stored in every per-layer results file.
+# Set LAYER_SELECTION = "test" to reproduce the old numbers.
+# ---------------------------------------------------------------------------
+LAYER_SELECTION = "train"
+_WARNED_NO_TRAIN = {"done": False}
+
+
+def select_best_row(valid: pd.DataFrame) -> pd.Series:
+    """The row reported as a model's best layer / lag / fROI-layer. ``valid`` already holds only rows with a
+    finite ``delta_loglik_test`` and ``n_obs_test > 0``. Under ``LAYER_SELECTION == "train"`` the row with the
+    max ``delta_loglik_train`` wins (rows without a finite train value cannot be selected); if no row has a
+    train value the old test-based rule is used instead (warned once)."""
+    if LAYER_SELECTION == "train" and "delta_loglik_train" in valid.columns:
+        tr = pd.to_numeric(valid["delta_loglik_train"], errors="coerce")
+        if tr.notna().any():
+            return valid.loc[tr.idxmax()]
+    if LAYER_SELECTION == "train" and not _WARNED_NO_TRAIN["done"]:
+        _WARNED_NO_TRAIN["done"] = True
+        import warnings
+        warnings.warn("select_best_row: no delta_loglik_train available -> falling back to test-based selection",
+                      stacklevel=2)
+    return valid.loc[valid["delta_loglik_test"].idxmax()]
 
 # ---------------------------------------------------------------------------
 # Group assignment (fixed, ad hoc — do not derive from elsewhere in the repo)
@@ -151,6 +189,10 @@ def filter_degenerate_dll_rows(df: pd.DataFrame, col: str = "delta_loglik_test",
 LLM_FAMILIES: tuple[str, ...] = (
     "gpt2", "gptneo", "opt", "pythia", "pythia_checkpoints", "olmo2",
     "qwen3", "llama32", "mistral",
+    # mamba/mamba2 are Standard LLMs again (2026-10-07; they were briefly grouped as Memory-Constrained, 2026-09-20 to 2026-10-07)
+    "mamba", "mamba2",
+    # rwkv4 joins them (2026-10-07): like Mamba, a fixed-size recurrent state at web/Pile scale, no human-motivated memory constraint
+    "rwkv4",
 )
 # Memory-Constrained: architectures with an explicitly limited working-memory /
 # context mechanism. Not a single paper/author — alibi, stickbreaking, and
@@ -170,11 +212,16 @@ LLM_FAMILIES: tuple[str, ...] = (
 MEMORY_CONSTRAINED_FAMILIES: tuple[str, ...] = (
     "alibi", "stickbreaking", "forgetting", "cbr_rnn",
     "hard_2gram", "hard_3gram", "hard_5gram",
-    "bloom", "rwkv4", "fox", "molm",
-    # mamba/mamba2 moved here from LLM_FAMILIES 2026-09-20 (pending supervisor
-    # confirmation): bounded state-space/recurrent state, same rationale as
-    # rwkv4/cbr_rnn -- keeps all fixed-size-state architectures in one group.
-    "mamba", "mamba2",
+    "bloom", "fox", "molm",
+)
+# The "fox" registry family (Lin et al. 2025 release, zhixuan-lin/*) holds two FoX models and their two MATCHED BASELINES. The
+# baselines carry NO memory constraint -- verified 2026-10-12 from the cached config.json: transformer-llama-760m is a plain
+# TransformerForCausalLM (RoPE), transformer-pro-760m is a ForgettingTransformerForCausalLM with fgate_type="none" (RoPE, output
+# gate, k/v shift, no forget gate), whereas fox-llama/fox-pro have fgate_type="full". They are therefore Standard LLMs (a
+# 760M, 48B-token matched pair for the FoX models); family_group() checks this list before the family rule.
+UNCONSTRAINED_BASELINE_MODEL_IDS: tuple[str, ...] = (
+    "zhixuan-lin/transformer-llama-760m-longcrawl64-48b",
+    "zhixuan-lin/transformer-pro-760m-longcrawl64-48b",
 )
 BABYLM_FAMILIES: tuple[str, ...] = ("babylm", "babylm_gpt2_checkpoints")
 
@@ -242,7 +289,8 @@ REPORT_TO_CEILING: dict[str, tuple[str, tuple[str, ...] | None]] = {
     "lpp_fmri":            ("lpp", None),
     "podcast_ieeg":        ("podcast", None),
     "nieuwland_eeg":       ("nieuwland", None),
-    "szewczyk_eeg":        ("szewczyk", None),
+    "szewczyk_f2007_eeg":  ("szewczyk_f2007", None),
+    "szewczyk_h2019_eeg":  ("szewczyk_h2019", None),
     # noise_ceilings_summary.csv's "broderick" row (nc_slug != report slug,
     # like pereira_fmri above) -- added 2026-09-18 alongside re-enabling
     # broderick_eeg in DATASETS.
@@ -320,11 +368,14 @@ DLL_CEILING_TAGS: dict[str, str] = {
     "onestop_sp":                    "onestop_sp_oos",
     "lpp_fmri__surprisal":           "lpp_fmri_persubject_oos",
     "ns_fmri__surprisal":            "ns_fmri_fmri_oos",
-    "podcast_ieeg__surprisal":       "podcast_ecog_oos",
+    "podcast_ieeg__surprisal":       "podcast_region_lags_oos",   # per-region LME, mean over 0-600 ms lags (2026-10-08); was podcast_ecog_oos
     "fedorenko2016_ecog__surprisal": "fedorenko2016_ecog_oos",
     "tuckute_fmri__surprisal":       "tuckute_fmri_oos",
     "nieuwland_eeg__surprisal":      "nieuwland_paper_n400_oos_nieuwland_paper",
-    "szewczyk_eeg__surprisal":       "szewczyk_n400_oos_nieuwland_paper",
+    "szewczyk_f2007_eeg__surprisal":  "szewczyk_f2007_oos",
+    "szewczyk_h2019_eeg__surprisal":  "szewczyk_h2019_oos",
+    "broderick_eeg__surprisal":      "broderick_oos",
+    "megmasc_meg__surprisal":        "megmasc",
 }
 
 _DLL_CEILING_CACHE: dict[str, float | None] = {}
@@ -467,6 +518,8 @@ NORM_YLABEL = "score / noise ceiling"
 
 
 def family_group(family: str, model_id: str = "") -> str:
+    if model_id in UNCONSTRAINED_BASELINE_MODEL_IDS:
+        return "LLM"
     if family in LLM_FAMILIES:
         return "LLM"
     if family in MEMORY_CONSTRAINED_FAMILIES:
@@ -542,7 +595,20 @@ EXCLUDED_MODEL_IDS: frozenset[str] = frozenset({
 # including it double-counts every Pythia model in the LLM group.
 EXCLUDED_FAMILY_DIRS: frozenset[str] = frozenset({
     "pythia_checkpoints",
+    "babylm_gpt2_checkpoints",
 })
+
+
+def filter_registry_models(frame: pd.DataFrame) -> pd.DataFrame:
+    """Keep exact benchmark targets, excluding historical checkpoint families."""
+    from neuroai.models.registry import LPP_FAMILY_NAMES, flatten_family_tasks
+    expected = {(family, task.model_id, task.revision)
+                for family in LPP_FAMILY_NAMES if family not in EXCLUDED_FAMILY_DIRS
+                for task in flatten_family_tasks(family)}
+    if frame.empty:
+        return frame.copy()
+    keys = frame[["family", "model_id", "revision"]].astype(str)
+    return frame.loc[[key in expected for key in keys.itertuples(index=False, name=None)]].copy()
 
 
 def model_dir_to_model_id(model_dir: str) -> str:
@@ -1399,7 +1465,8 @@ DATASETS: list[DatasetInfo] = [
     DatasetInfo("onestop_sp", "OneStop (SP)", "Behavioral", "Eye-tracking, 33 news articles x 2 difficulty levels (scan-path RT)", "360", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal"),
     DatasetInfo("podcast_ieeg", "Podcast iEEG", "iEEG", "Podcast audio (French)", "9 (285 elec.)", "Electrode-level ridge r (Spearman)", True, True, True),
     DatasetInfo("nieuwland_eeg", "Nieuwland N400 EEG", "EEG (N400)", "Sentence completion", "291", "Amplitude regression (Spearman r)", True, True, False),
-    DatasetInfo("szewczyk_eeg", "Szewczyk & Federmeier N400 EEG", "EEG (N400)", "Sentence reading (cloze manipulation)", "138", "Amplitude regression (Spearman r)", True, False, False),
+    DatasetInfo("szewczyk_f2007_eeg", "Federmeier et al. (2007) N400 EEG", "EEG (N400)", "Sentence reading (cloze manipulation)", "32", "Amplitude regression (Spearman r)", True, False, False),
+    DatasetInfo("szewczyk_h2019_eeg", "Hubbard et al. (2019) N400 EEG", "EEG (N400)", "Sentence reading (cloze manipulation)", "32", "Amplitude regression (Spearman r)", True, False, False),
     # broderick_eeg ENABLED 2026-09-18 (embedding/checkpoint track only) --
     # per explicit request, despite its surprisal/LME track staying excluded
     # (non-convergent by-layer fits, no `converged` flag yet -- see
@@ -1452,15 +1519,24 @@ DATASETS: list[DatasetInfo] = [
     # the SAME method as behavioral-surprisal, so the surprisal track is fair;
     # native metric = held-out delta Pearson r, ceiling-normalised like every
     # other cell in the report; legacy delta log-likelihood kept as score_legacy).
-    DatasetInfo("podcast_ieeg__surprisal", "Podcast iEEG (surprisal)", "iEEG", "Podcast audio (French)", "9 (285 elec.)", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling; peak lag, last layer)", True, False, False, feature_mode="surprisal", base_slug="podcast_ieeg", layer_sel="last"),
+    DatasetInfo("podcast_ieeg__surprisal", "Podcast iEEG (surprisal)", "iEEG", "Podcast audio (French)", "9 (285 elec.)", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling; per-region LME, mean over 0-600 ms lags, last layer)", True, False, False, feature_mode="surprisal", base_slug="podcast_ieeg", layer_sel="last"),
     DatasetInfo("ns_fmri__surprisal", "Natural Stories fMRI (surprisal)", "fMRI", "8 stories (Shain et al.)", "43", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="ns_fmri"),
     DatasetInfo("lpp_fmri__surprisal", "Le Petit Prince fMRI (surprisal)", "fMRI", "Audio book (~200 min, 9 sections)", "~50 EN", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="lpp_fmri"),
     DatasetInfo("nieuwland_eeg__surprisal", "Nieuwland N400 EEG (surprisal)", "EEG (N400)", "Sentence completion", "291", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="nieuwland_eeg"),
-    DatasetInfo("szewczyk_eeg__surprisal", "Szewczyk & Federmeier N400 EEG (surprisal)", "EEG (N400)", "Sentence reading (cloze manipulation)", "138", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="szewczyk_eeg"),
+    DatasetInfo("szewczyk_f2007_eeg__surprisal", "Federmeier et al. (2007) N400 EEG (surprisal)", "EEG (N400)", "Sentence reading (cloze manipulation)", "32", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="szewczyk_f2007_eeg"),
+    DatasetInfo("szewczyk_h2019_eeg__surprisal", "Hubbard et al. (2019) N400 EEG (surprisal)", "EEG (N400)", "Sentence reading (cloze manipulation)", "32", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="szewczyk_h2019_eeg"),
     DatasetInfo("fedorenko2016_ecog__surprisal", "Fedorenko2016 ECoG (surprisal)", "ECoG", "8 sentence sets (word-by-word)", "5", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="fedorenko2016_ecog"),
     DatasetInfo("tuckute_fmri__surprisal", "Tuckute fMRI (surprisal)", "fMRI", "2,000 isolated 6-word sentences", "10", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="tuckute_fmri"),
-    # NOTE: broderick_eeg__surprisal is intentionally NOT registered (non-convergent
-    # by-layer fits) -- see the note in summarize/benchmark.py.
+    # broderick_eeg__surprisal ENABLED 2026-09-28: the pooled-LME rewrite
+    # (crossed (1|subject)+(1+surprisal_z|region), see
+    # neuroai/regressors/broderick_lme.py) converges 100% across the full
+    # registry (1979/1979 layer-fits, zero fallback) -- the earlier
+    # per-subject-then-averaged approach's missing convergence flag is now
+    # a real per-layer column.
+    DatasetInfo("broderick_eeg__surprisal", "Broderick EEG (surprisal)", "EEG", "20 audiobook segments (~196s each, 128-ch BioSemi)", "19", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="broderick_eeg"),
+    # megmasc_meg__surprisal ENABLED 2026-09-28: sweep was already complete
+    # (118 models) but the composite was never registered/wired to a loader.
+    DatasetInfo("megmasc_meg__surprisal", "MEG-MASC (surprisal)", "MEG", "4 naturalistic English stories (KIT/Yokogawa, 208 channels)", "11", "Normalized ΔLL (held-out Δ log-likelihood / noise ceiling, best layer)", True, False, False, feature_mode="surprisal", base_slug="megmasc_meg"),
 ]
 
 DATASETS_BY_SLUG: dict[str, DatasetInfo] = {d.slug: d for d in DATASETS}
@@ -1482,7 +1558,8 @@ DATASET_FAMILY: dict[str, str] = {
     "podcast_ieeg": "ECoG",
     "fedorenko2016_ecog": "ECoG",
     "nieuwland_eeg": "N400/ERP",
-    "szewczyk_eeg": "N400/ERP",
+    "szewczyk_f2007_eeg": "N400/ERP",
+    "szewczyk_h2019_eeg": "N400/ERP",
     "naturalstories_spr": "SPR",
     "ucl_reading": "SPR",
     "geco": "Eye-tracking",
@@ -1546,9 +1623,12 @@ DATASET_METHODS: dict[str, DatasetMethods] = {
     "nieuwland_eeg": DatasetMethods(
         "−0.2 → 0.8 s", "(−0.2, 0)", "32 Hz", "Pearson r",
         "N400 = mean 200–500 ms; per-channel ρ → mean over channels & subjects"),
-    "szewczyk_eeg": DatasetMethods(
+    "szewczyk_f2007_eeg": DatasetMethods(
         "N400 window only (300–500 ms)", "—", "—", "Pearson r",
-        "precomputed mean over 4 centro-parietal ROI clusters, one scalar per trial; ρ per subject → mean over subjects"),
+        "item-mean N400 (mean over subjects per item), one study of the Szewczyk & Federmeier collection; out-of-fold ρ vs item means"),
+    "szewczyk_h2019_eeg": DatasetMethods(
+        "N400 window only (300–500 ms)", "—", "—", "Pearson r",
+        "item-mean N400 (mean over subjects per item), one study of the Szewczyk & Federmeier collection; out-of-fold ρ vs item means"),
     "naturalstories_spr": DatasetMethods(
         "word reading time", "—", "—", "Δ Pearson r (held-out)",
         "held-out Δr of LME(RT ~ surprisal) over baseline LME, ceiling-normalised"),
@@ -1590,7 +1670,8 @@ MODALITY_BUCKET: dict[str, str] = {
     "podcast_ieeg": "iEEG / ECoG",
     "fedorenko2016_ecog": "iEEG / ECoG",
     "nieuwland_eeg": "EEG",
-    "szewczyk_eeg": "EEG",
+    "szewczyk_f2007_eeg": "EEG",
+    "szewczyk_h2019_eeg": "EEG",
     "broderick_eeg": "EEG",
     "pereira_fmri": "fMRI",
     "megmasc_meg": "MEG",

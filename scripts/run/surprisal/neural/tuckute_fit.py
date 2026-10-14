@@ -115,11 +115,12 @@ def _build_benchmark_config(
         verbose=bool(lme.get("verbose", False)),
         allow_slope_fallback=bool(lme.get("allow_slope_fallback", True)),
         layer_stride=layer_stride,
-        last_layer_only=last_layer_only,
+        last_layer_only=last_layer_only or bool(lme.get("last_layer_only", False)),
         n_workers=n_workers,
         require_cached_surprisal=bool(
             lme.get("require_cached_surprisal", data_cfg.device == "cpu")
         ),
+        roi_wise=bool(lme.get("roi_wise", False)),
     )
     return TuckuteLmeBenchmarkConfig(
         data=data_cfg,

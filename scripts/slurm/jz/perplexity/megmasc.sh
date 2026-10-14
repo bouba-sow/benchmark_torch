@@ -16,8 +16,7 @@ set -euo pipefail
 : "${WORK:?Set WORK (e.g. export WORK=/lustre/fswork/projects/rech/ldh/una68ug)}"
 export BENCHMARK_ROOT="${BENCHMARK_ROOT:-$WORK/benchmark}"
 source "${BENCHMARK_ROOT}/scripts/slurm/jz/perplexity/_common.sh"
-DATA_ROOT="${MEGMASC_BIDS_ROOT:-$BENCHMARK_ROOT/data/gwilliams}"
+DATA_ROOT="${MEGMASC_BIDS_ROOT:-${SCRATCH:-$BENCHMARK_ROOT}/data/gwilliams}"
 OUT_DIR="${OUT_DIR:-$BENCHMARK_ROOT/outputs_jeanzay/megmasc/perplexity}"
-export PPL_NO_CBR=1   # perplexity/megmasc.py has no CBR-RNN path
 ppl_setup
 ppl_run perplexity/megmasc.py --bids_root "$DATA_ROOT"

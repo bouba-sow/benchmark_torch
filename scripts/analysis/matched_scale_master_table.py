@@ -94,10 +94,23 @@ _PROVO_BABYLM_OOS_ROOT = "provo/surprisal_sweep_checkpoints/fp"
 # not literally N400, but identical treatment (no ceiling script has been
 # written for it yet; main-model sweep data IS present under
 # megmasc/surprisal_sweep/<family>/<model>/megmasc_lme_by_layer.csv).
-N400_DATASETS = ("nieuwland", "megmasc")
+# Neural datasets that are NOT in DLL_DATASET_SPECS but ARE part of the benchmark (2026-10-01: all 18
+# datasets enter the matched-scale analysis): slug -> (sweep root under outputs_jeanzay, per-model by-layer file,
+# report slug whose DLL ceiling to use via benchmark_common.dll_ceiling_for). Main models only, one row each.
+_EXTRA_DATASETS: dict[str, tuple[str, str, str]] = {
+    "nieuwland":      ("nieuwland/surprisal_sweep",      "nieuwland_lme_by_layer.csv", "nieuwland_eeg"),
+    "megmasc":        ("megmasc/surprisal_sweep",        "megmasc_lme_by_layer.csv",   "megmasc_meg"),
+    "broderick":      ("broderick/surprisal_sweep",      "broderick_lme_by_layer.csv", "broderick_eeg"),
+    "szewczyk_f2007": ("szewczyk_f2007/surprisal_sweep", "szewczyk_lme_by_layer.csv",  "szewczyk_f2007_eeg"),
+    "szewczyk_h2019": ("szewczyk_h2019/surprisal_sweep", "szewczyk_lme_by_layer.csv",  "szewczyk_h2019_eeg"),
+}
+N400_DATASETS = tuple(_EXTRA_DATASETS)
 
 
 def _ceiling(slug: str) -> float | None:
+    if slug in _EXTRA_DATASETS:
+        from neuroai.analysis.benchmark_common import dll_ceiling_for
+        return dll_ceiling_for(_EXTRA_DATASETS[slug][2] + "__surprisal")
     spec = DLL_DATASET_SPECS.get(slug)
     if spec is None:
         return None
@@ -116,8 +129,9 @@ def _dataset_root_and_pattern(slug: str) -> tuple[str, str, str, str | None] | N
     spec = DLL_DATASET_SPECS.get(slug)
     if spec is not None:
         return spec["root"], "glob", spec["pattern"], spec.get("group_col")
-    if slug in N400_DATASETS:
-        return f"{slug}_lme_sweep", "name", f"{slug}_lme_by_layer.csv", None
+    if slug in _EXTRA_DATASETS:
+        root, fname, _ = _EXTRA_DATASETS[slug]
+        return root, "name", fname, None
     return None
 
 
@@ -318,6 +332,22 @@ _EXTRA_PERPLEXITY_PATHS: dict[str, str] = {
     "provo_sp": "outputs_jeanzay/provo/perplexity/provo_perplexity_summary.csv",
     "zuco_reading_sr": "outputs_jeanzay/zuco_reading/perplexity/zuco_reading_sr_perplexity_summary.csv",
     "zuco_reading_tsr": "outputs_jeanzay/zuco_reading/perplexity/zuco_reading_tsr_perplexity_summary.csv",
+    # 2026-10-01: ns_fmri now has a perplexity table computed on ITS OWN corpus (the 8 scanned stories;
+    # scripts/perplexity/ns_fmri.py), and the two Szewczyk studies on their own stimulus sentences.
+    "ns_fmri": "outputs_jeanzay/ns_fmri/perplexity/ns_fmri_perplexity_summary.csv",
+    "nieuwland": "outputs_jeanzay/nieuwland/perplexity/nieuwland_perplexity_summary.csv",
+    "megmasc": "outputs_jeanzay/megmasc/perplexity/megmasc_perplexity_summary.csv",
+    "broderick": "outputs_jeanzay/broderick/perplexity/broderick_perplexity_summary.csv",
+    "szewczyk_f2007": "outputs_jeanzay/szewczyk_f2007/perplexity/szewczyk_f2007_perplexity_summary.csv",
+    "szewczyk_h2019": "outputs_jeanzay/szewczyk_h2019/perplexity/szewczyk_h2019_perplexity_summary.csv",
+    # 2026-10-13 (v2 rerun): per-word logit perplexity for every model now sits in each dataset's own
+    # perplexity table, so these take precedence over the older per-model sources below (the embedding-
+    # sweep perplexities used the model's own loss, per token). Podcast is derived from the v2 surprisal
+    # caches (reports/benchmark_audit_20261012/claude/build_ppl_summaries.py).
+    "fedorenko2016_ecog": "outputs_jeanzay/fedorenko2016/perplexity/fedorenko2016_perplexity_summary.csv",
+    "tuckute_fmri": "outputs_jeanzay/tuckute/perplexity/tuckute_perplexity_summary.csv",
+    "podcast_ieeg": "outputs_jeanzay/podcast/perplexity/podcast_perplexity_summary.csv",
+    "lpp_fmri": "outputs_jeanzay/lpp/perplexity/lpp_perplexity_summary.csv",
 }
 
 # The three neural datasets whose standalone *_perplexity_summary.csv only
@@ -430,6 +460,9 @@ def _perplexity_lookup(slug: str) -> pd.DataFrame:
     """(model_id, revision) -> perplexity for one dataset. Uses the best
     per-model source for that dataset, then fills any remaining gaps from a
     standalone summary CSV where one is configured (fedorenko2016 / tuckute)."""
+    if slug in _EXTRA_PERPLEXITY_PATHS:
+        primary = _read_ppl_summary_csv(_EXTRA_PERPLEXITY_PATHS[slug], slug)
+        return primary
     if slug == "fedorenko2016_ecog":
         primary = _perplexity_from_fedorenko_sweep()
     elif slug in _PPL_JSON_GLOBS:

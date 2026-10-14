@@ -1,0 +1,34 @@
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\caption{Robustness of the constraint contrasts. Cells are coefficients (SE) from separate refits. S0 has a dataset-unit random intercept only and treats rows as otherwise independent; S2 is the preferred specification of Table~\ref{tab:main-regression}. Lineage bootstrap: S0 refit with model lineages resampled within constraint groups (999 resamples; SE is the bootstrap SD, $p$ two-sided). No $\dagger$ units: S2 without the four units whose likelihood references are flagged in Table~\ref{tab:dll-ceilings} (surprisal only). Leave one unit out: range of S2 estimates over refits that each omit one dataset unit, with the number reaching $p<.05$. Refits with winsorized scores, without the GPT-BERT models, or with depth as a covariate change no conclusion (Section~\ref{app:robustness}).}
+\label{tab:robustness}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllll}
+\toprule
+Term & S0 & S2 (Table 2) & Lineage bootstrap & No $\dagger$ units & Leave one unit out \\
+\midrule
+\multicolumn{6}{l}{\textit{Embedding, behavioral}} \\
+Memory only & $.016\ (.002)^{***}$ & $.013\ (.008)$ & $.016\ (.008)$ & -- & $.012$ to $.015$ (0/16) \\
+Data only & $.039\ (.003)^{***}$ & $.033\ (.012)^{**}$ & $.039\ (.013)^{*}$ & -- & $.031$ to $.035$ (16/16) \\
+Memory $\times$ data & $-.043\ (.004)^{***}$ & $-.040\ (.012)^{**}$ & $-.043\ (.013)^{*}$ & -- & $-.042$ to $-.039$ (16/16) \\
+Both constraints & $.013\ (.003)^{***}$ & $.006\ (.009)$ & $.013\ (.010)$ & -- & $.004$ to $.007$ (0/16) \\
+\multicolumn{6}{l}{\textit{Embedding, neural}} \\
+Memory only & $-.030\ (.007)^{***}$ & $-.031\ (.010)^{**}$ & $-.030\ (.015)^{***}$ & -- & $-.035$ to $-.024$ (11/11) \\
+Data only & $-.004\ (.009)$ & $-.006\ (.013)$ & $-.004\ (.010)$ & -- & $-.011$ to $-.001$ (0/11) \\
+Memory $\times$ data & $.006\ (.011)$ & $.022\ (.014)$ & $.006\ (.014)$ & -- & $.013$ to $.027$ (0/11) \\
+Both constraints & $-.028\ (.008)^{***}$ & $-.016\ (.011)$ & $-.028\ (.012)^{**}$ & -- & $-.024$ to $-.006$ (1/11) \\
+\multicolumn{6}{l}{\textit{Surprisal, behavioral}} \\
+Memory only & $.006\ (.005)$ & $-.001\ (.008)$ & $.006\ (.012)$ & $-.002\ (.006)$ & $-.005$ to $.001$ (0/16) \\
+Data only & $.032\ (.007)^{***}$ & $.022\ (.011)$ & $.032\ (.006)^{***}$ & $.008\ (.008)$ & $.008$ to $.028$ (4/16) \\
+Memory $\times$ data & $-.038\ (.008)^{***}$ & $-.026\ (.012)^{*}$ & $-.038\ (.009)^{***}$ & $-.013\ (.009)$ & $-.032$ to $-.013$ (14/16) \\
+Both constraints & $.000\ (.006)$ & $-.005\ (.009)$ & $.000\ (.013)$ & $-.006\ (.006)$ & $-.009$ to $-.002$ (0/16) \\
+\multicolumn{6}{l}{\textit{Surprisal, neural}} \\
+Memory only & $-.161\ (.082)^{*}$ & $-.092\ (.065)$ & $-.161\ (.096)^{**}$ & $-.019\ (.018)$ & $-.104$ to $-.052$ (0/11) \\
+Data only & $-.339\ (.104)^{**}$ & $-.367\ (.084)^{***}$ & $-.339\ (.103)^{***}$ & $-.030\ (.024)$ & $-.407$ to $-.122$ (11/11) \\
+Memory $\times$ data & $.292\ (.125)^{*}$ & $.384\ (.092)^{***}$ & $.292\ (.109)^{***}$ & $.039\ (.026)$ & $.150$ to $.425$ (11/11) \\
+Both constraints & $-.208\ (.099)^{*}$ & $-.075\ (.072)$ & $-.208\ (.089)^{***}$ & $-.011\ (.020)$ & $-.086$ to $-.035$ (0/11) \\
+\bottomrule
+\end{tabular}}
+\end{table}

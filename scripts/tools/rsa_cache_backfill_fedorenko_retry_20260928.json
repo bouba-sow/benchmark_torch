@@ -1,0 +1,77 @@
+{
+  "n_groups": 6,
+  "groups": [
+    [
+      {
+        "family": "babylm",
+        "array_index": 7,
+        "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-masked-focus",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-100m-gpt-bert-masked-focus",
+        "missing_datasets": [
+          "fedorenko2016"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "babylm",
+        "array_index": 8,
+        "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-causal-focus",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-10m-gpt-bert-causal-focus",
+        "missing_datasets": [
+          "fedorenko2016"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "babylm",
+        "array_index": 9,
+        "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-mixed",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-10m-gpt-bert-mixed",
+        "missing_datasets": [
+          "fedorenko2016"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "babylm",
+        "array_index": 10,
+        "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-masked-focus",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-10m-gpt-bert-masked-focus",
+        "missing_datasets": [
+          "fedorenko2016"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "babylm",
+        "array_index": 5,
+        "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-causal-focus",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-100m-gpt-bert-causal-focus",
+        "missing_datasets": [
+          "fedorenko2016"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "babylm",
+        "array_index": 6,
+        "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-mixed",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-100m-gpt-bert-mixed",
+        "missing_datasets": [
+          "fedorenko2016"
+        ]
+      }
+    ]
+  ]
+}

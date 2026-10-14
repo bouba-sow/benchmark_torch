@@ -52,6 +52,7 @@ a ``pereira_embed_by_layer_group_mean.csv`` with the across-subject means.
 from __future__ import annotations
 
 import logging
+import os
 import time
 import typing as tp
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -353,6 +354,21 @@ class PereiraEmbedBenchmark:
         if is_cbr_rnn:
             from ..features.cbr_rnn import contextual_word_embeddings_cbr_rnn
 
+            cache_path = None
+            if dcfg.feature_cache_dir:
+                safe = mcfg.model_name.replace("/", "_")
+                rev = (mcfg.model_revision or "main").replace("/", "_").replace("-", "_")
+                cache_path = Path(dcfg.feature_cache_dir) / f"{safe}__{rev}__sentence_mean_cbrrnn.npz"
+                if cache_path.is_file():
+                    with np.load(cache_path) as cached:
+                        features = cached["features"]
+                        if not np.array_equal(cached["item_ids"].astype(str), np.asarray(item_ids).astype(str)):
+                            raise ValueError(f"Pereira CBR-RNN cache item order mismatch: {cache_path}")
+                        if features.ndim != 3 or features.shape[:2] != (len(sentences), 1) or not np.isfinite(features).all():
+                            raise ValueError(f"Invalid Pereira CBR-RNN cache: {cache_path}")
+                        return features
+            if self.cfg.embed.require_cached_hidden_states:
+                raise FileNotFoundError(f"Missing Pereira CBR-RNN embedding cache: {cache_path}")
             pooled_rows = []
             for words in sentence_words:
                 word_vecs = contextual_word_embeddings_cbr_rnn(
@@ -360,6 +376,12 @@ class PereiraEmbedBenchmark:
                 )  # (n_words, d_hid)
                 pooled_rows.append(word_vecs.mean(axis=0, keepdims=True))  # (1, d_hid)
             pooled = np.stack(pooled_rows, axis=0).astype(np.float32)  # (n_sentences, 1, d_hid)
+            if cache_path is not None:
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+                temporary = cache_path.with_name(f"{cache_path.name}.{os.getpid()}.tmp")
+                with temporary.open("wb") as handle:
+                    np.savez_compressed(handle, features=pooled, item_ids=np.asarray(item_ids).astype(str))
+                os.replace(temporary, cache_path)
             return pooled
 
         from ..features.hidden_states import mean_pooled_hidden_states_all_layers

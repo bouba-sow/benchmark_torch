@@ -605,7 +605,7 @@ def print_summary_table(df: pd.DataFrame) -> None:
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--sweep_dir", default="outputs_jeanzay/broderick_checkpoint_sweep",
+    p.add_argument("--sweep_dir", default="outputs_jeanzay/broderick/embedding_sweep",
                    help="Root directory of the Broderick checkpoint sweep outputs")
     p.add_argument("--out_dir", default="outputs/broderick/summary",
                    help="Where to write summary CSV and plots")

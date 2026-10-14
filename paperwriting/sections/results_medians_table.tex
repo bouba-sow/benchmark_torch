@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Unadjusted group medians of the composite scores (median across models within a group of each model's BehavScore or BrainScore; last layer, ceiling-normalized). $N$ is the number of models with at least one finite score. These raw differences confound the constraints with size and perplexity; Table~\ref{tab:main-regression} adjusts for both.}
+\label{tab:medians}
+\begin{tabular}{lrrrrr}
+\toprule
+& & \multicolumn{2}{c}{Embeddings} & \multicolumn{2}{c}{Surprisal}\\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Group & $N$ & BehavScore & BrainScore & BehavScore & BrainScore\\
+\midrule
+Standard LLMs & 59 & 0.492 & 0.232 & 0.161 & 0.143\\
+Memory-Constrained & 24 & 0.504 & 0.185 & 0.126 & 0.055\\
+BabyLM & 11 & 0.535 & 0.202 & 0.159 & 0.030\\
+Constrained-BabyLM & 24 & 0.492 & 0.153 & 0.094 & 0.029\\
+\bottomrule
+\end{tabular}
+\end{table}

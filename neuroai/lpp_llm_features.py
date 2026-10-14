@@ -38,6 +38,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from .features.llm import embedding_layer_selection  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +63,44 @@ CHINESE_PUNCT = ["，", "《", "》", "。", "：", "“", "”", "；", "？", 
 # fallback once the normal forward search has already exhausted every
 # candidate in range, so it can't preempt a legitimate match elsewhere.
 LBG_PHANTOM_CONTRACTION_EXPANSIONS = frozenset({
-    "not", "nt",              # n't
-    "would", "will",          # 'd / 'll
-    "have", "has", "had",     # 've / 's / 'd
-    "am", "is", "are",        # 'm / 's / 're
+    "not", "nt", "t",         # n't -- LPP's word column spells this
+                              # phantom as the expanded "not", the abbreviated
+                              # "nt", OR the bare trailing letter "t"
+                              # (106 "t"/lemma="not" rows in the EN word
+                              # table) depending on which UD split rule fired
+                              # for that particular contraction; all three
+                              # spellings need to hit this fallback.
+    "would", "will", "d", "ll",   # 'd / 'll, with the same bare-letter
+                              # spellings ("d": would/had, "ll": will) as
+                              # word-column alternatives to the full lemma.
+    "have", "has", "had", "ve",   # 've / 's / 'd, "ve" being the bare
+                              # spelling for "have" (22 rows).
+    "am", "is", "are", "m", "re",  # 'm / 's / 're, "m"/"re" bare spellings
+                              # for am/are.
+    "s",                      # 's, annotated with the LPP word-table's bare
+                              # "s" spelling rather than the expanded "is"/
+                              # "has" (lemma carries the expansion; e.g.
+                              # section 1 word 238 "it's" -> word="s",
+                              # lemma="is") -- same UD contraction-split
+                              # phantom as "is"/"has" above, just under a
+                              # different literal spelling. Confirmed via
+                              # the LPP EN word table: ~200 "s"/lemma="is"
+                              # rows across all 9 sections.
+    "clock",                  # "o'clock" -- LPP's word column splits this
+                              # (a single BPE token in most tokenizers, e.g.
+                              # BLOOM's " o'clock") into "o" + "clock" rows.
+                              # Not an aux-contraction like the rest of this
+                              # set, but the same "no independent surface
+                              # token" situation: "clock" merges entirely
+                              # into the "o'clock" token that "o" itself
+                              # already anchors, so it needs the same narrow-
+                              # window-then-alias fallback rather than
+                              # do_word_match's loose substring rule wandering
+                              # forward onto an unrelated later "clock" token
+                              # (confirmed on LPP EN section 7: "four o'clock"
+                              # at word 941 was matching a "three o'clock"
+                              # several words later instead, corrupting
+                              # downstream alignment through word 944).
 })
 
 
@@ -162,7 +197,11 @@ def simplify_word(word: str, lang: str) -> str:
     return word
 
 
+_APOSTROPHES = ("'", "’")
+
+
 def do_word_match(word_in_list: str, word_in_text: str, lang: str) -> bool:
+    raw_text_stripped = str(word_in_text).strip()
     word_in_list = simplify_word(word_in_list, lang)
     word_in_text = simplify_word(word_in_text, lang)
     if len(word_in_text) > 0 and word_in_list.startswith(word_in_text):
@@ -173,6 +212,31 @@ def do_word_match(word_in_list: str, word_in_text: str, lang: str) -> bool:
     if len(word_in_text) > min_len and word_in_text in word_in_list:
         return True
     if word_in_list == "one" and word_in_text == "1":
+        return True
+    if (
+        len(word_in_list) == 1
+        and word_in_text.startswith(word_in_list)
+        and len(raw_text_stripped) > 1
+        and raw_text_stripped[1] in _APOSTROPHES
+        and raw_text_stripped[0].lower() == word_in_list
+    ):
+        # A single-character word (e.g. the pronoun "I", or the "o" of
+        # "o'clock") merges with a following contraction/clitic into one BPE
+        # token in some tokenizers (BLOOM: " I've"/" I'm"/" I'd"/" I'll"/
+        # "o'clock" are each a single token, simplify_word stripping the
+        # apostrophe -> "ive"/"im"/"id"/"ill"/"oclock"). word_in_list has
+        # length 1, so the general `word_in_list in word_in_text` substring
+        # rule above never fires for it (min_len=1 for non-CN languages
+        # requires length > 1) -- without this, matching silently skips the
+        # merged token and keeps searching forward for a standalone token
+        # starting with the same letter, landing on some unrelated later
+        # occurrence and corrupting all downstream alignment (confirmed on
+        # LPP EN: section 1 word 366 "I" in "I've", section 7 word 940 "o" in
+        # "o'clock"). Requiring the apostrophe to sit immediately after the
+        # single letter in the RAW (unsimplified) token text keeps this
+        # narrow -- it only fires for genuine letter+clitic merges, not
+        # arbitrary short-word substring collisions (the class of bug fixed
+        # separately for phantom-contraction candidates below).
         return True
     if word_in_list == "did" and word_in_text == "didn":
         return True
@@ -509,9 +573,13 @@ def _get_cached_causal_lm(
         return _hf_slot_tokenizer, _hf_slot_model
     clear_hf_model_cache()
     import torch
-    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, set_seed
+    from transformers import AutoConfig, AutoModelForCausalLM, set_seed
 
-    from neuroai.features.llm import _apply_device_map_if_needed, _resolve_causal_lm_class
+    from neuroai.features.llm import (
+        _apply_device_map_if_needed,
+        _load_hf_tokenizer,
+        _resolve_causal_lm_class,
+    )
 
     # See neuroai.features.llm._get_cached_causal_lm's identical guard: gpt-bert's
     # custom DWA-accumulator code crashes in bf16, so this is auto-detected
@@ -525,7 +593,14 @@ def _get_cached_causal_lm(
     if trust_remote_code:
         model_rev_fp = {**model_rev_fp, "trust_remote_code": True}
         tok_rev_fp = {**tok_rev_fp, "trust_remote_code": True}
-    tokenizer = AutoTokenizer.from_pretrained(model_name, **tok_rev_fp)
+    # Route through llm.py's _load_hf_tokenizer rather than a bare
+    # AutoTokenizer.from_pretrained: zhixuan-lin/{fox,transformer}-* ship an
+    # unregistered tokenizer_class ("JSONGPT2Tokenizer") that only resolves
+    # after importing forgetting_transformer.tokenizer as a side effect (see
+    # that function's docstring) -- calling AutoTokenizer directly here raised
+    # "Couldn't instantiate the backend tokenizer" for every fox/transformer
+    # model despite _load_fox_direct already handling the *model* load below.
+    tokenizer = _load_hf_tokenizer(model_name, tok_rev_fp, trust_remote_code=trust_remote_code)
     # Hidden states are requested in forward(), not here — passing
     # output_hidden_states to from_pretrained breaks GPT-NeoX when we inject a
     # custom config for sharded Pythia-2.8B weights (transformers_weights index).
@@ -539,7 +614,15 @@ def _get_cached_causal_lm(
     # "Unrecognized configuration class ... for this kind of AutoModel".
     # Same fix as neuroai.features.llm._get_cached_causal_lm: resolve the
     # concrete class from the model_type up front.
-    model_cls = _resolve_causal_lm_class(model_name, model_rev_fp, trust_remote_code=trust_remote_code)
+    from neuroai.features.llm import (
+        _FORGETTING_DIRECT_PREFIX,
+        _FOX_DIRECT_PREFIX,
+        _MOLM_DIRECT_PREFIX,
+        _load_forgetting_direct,
+        _load_fox_direct,
+        _load_moduleformer_direct,
+    )
+
     if untrained:
         import torch
 
@@ -549,8 +632,40 @@ def _get_cached_causal_lm(
         _dtype = model_kw.get(
             "torch_dtype", torch.bfloat16 if device.startswith("cuda") else torch.float32,
         )
+        model_cls = _resolve_causal_lm_class(model_name, model_rev_fp, trust_remote_code=trust_remote_code)
         model = model_cls.from_config(config, torch_dtype=_dtype)
+    elif model_name.startswith(_MOLM_DIRECT_PREFIX):
+        # ibm/MoLM-* ("moduleformer" architecture) isn't a registered
+        # AutoConfig model_type -- bypass AutoModelForCausalLM/AutoConfig
+        # entirely, same as neuroai.features.llm._get_cached_causal_lm (see
+        # _load_moduleformer_direct's docstring there for the full rationale).
+        # Largest checkpoint is ~8B params total, always fits on one GPU, so
+        # no device_map sharding needed here either.
+        use_device_map = False
+        model = _load_moduleformer_direct(model_name, model_rev_fp)
+        _dtype = model_kw.get("torch_dtype", torch.bfloat16)
+        model = model.to(dtype=_dtype).to(device)
+    elif model_name.startswith(_FORGETTING_DIRECT_PREFIX):
+        # Lanni-ni/forgetting_* ship trust_remote_code that is not in the offline HF cache (and is buggy);
+        # load via the vendored forgetting_transformer classes, same as neuroai.features.llm. Small (27-45M).
+        use_device_map = False
+        model = _load_forgetting_direct(model_name, model_rev_fp)
+        _dtype = model_kw.get("torch_dtype", torch.bfloat16)
+        model = model.to(dtype=_dtype).to(device)
+    elif model_name.startswith(_FOX_DIRECT_PREFIX):
+        # zhixuan-lin/{fox,transformer}-* aren't registered AutoConfig
+        # model_types either (see _load_fox_direct's docstring) -- the
+        # tokenizer fix above (_load_hf_tokenizer) only covers the
+        # tokenizer; the *model* load must bypass AutoModelForCausalLM the
+        # same way MoLM does just above, or from_pretrained's internal
+        # AutoConfig.from_pretrained raises "Transformers does not
+        # recognize this architecture" before ever reaching the weights.
+        use_device_map = False
+        model = _load_fox_direct(model_name, model_rev_fp)
+        _dtype = model_kw.get("torch_dtype", torch.bfloat16)
+        model = model.to(dtype=_dtype).to(device)
     else:
+        model_cls = _resolve_causal_lm_class(model_name, model_rev_fp, trust_remote_code=trust_remote_code)
         use_device_map = _apply_device_map_if_needed(model_kw, device, n_params=n_params)
         model = model_cls.from_pretrained(model_name, **model_kw)
     model.eval()
@@ -565,6 +680,12 @@ def _get_cached_causal_lm(
         model_name, rev_key, device, tokenizer_no_revision, use_device_map,
     )
     return tokenizer, model
+
+
+def _is_fla_model(model_name: str) -> bool:
+    """forgetting-transformer / FoX checkpoints run FLA kernels that mishandle padded inputs."""
+    from neuroai.features.llm import _FORGETTING_DIRECT_PREFIX, _FOX_DIRECT_PREFIX
+    return model_name.startswith((_FORGETTING_DIRECT_PREFIX, _FOX_DIRECT_PREFIX))
 
 
 def _forward_all_hidden_states(
@@ -639,6 +760,9 @@ def _forward_all_hidden_states(
 # Cache helpers
 # ---------------------------------------------------------------------------
 
+from .features.llm import embedding_cache_tag  # noqa: E402
+
+
 def _feature_cache_path(
     cache_dir: Path | str,
     model_name: str,
@@ -661,7 +785,7 @@ def _feature_cache_path(
         f"__sec{section:02d}"
         f"__ctx{context_words}"
         f"__maxlen{max_length}"
-        f"__{layer_tag}.npz"
+        f"__{layer_tag}{embedding_cache_tag(model_name)}.npz"
     )
     return Path(cache_dir) / filename
 
@@ -685,7 +809,7 @@ def _lbg_feature_cache_path(
         f"__sec{section:02d}"
         f"__lbg_ml{maxlen}"
         f"__stride{stride}"
-        f"__{layer_tag}.npz"
+        f"__{layer_tag}{embedding_cache_tag(model_name)}.npz"
     )
     return Path(cache_dir) / filename
 
@@ -702,8 +826,14 @@ def _load_cached_features(cache_path: Path) -> np.ndarray | None:
 def _save_cached_features(cache_path: Path, features: np.ndarray) -> None:
     cache_path = Path(cache_path).resolve()
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    # Atomic on lustre: parallel step jobs share one cache_dir.
-    tmp = cache_path.with_suffix(cache_path.suffix + ".tmp")
+    # Atomic on lustre: parallel step jobs share one cache_dir. The temp name
+    # must still end in ".npz" -- np.savez_compressed silently appends ".npz"
+    # to any path that doesn't already end with it (e.g. a ".npz.tmp" name),
+    # which previously produced a stray ".npz.tmp.npz" file that the
+    # subsequent replace() could never find (FileNotFoundError).
+    import os
+    import uuid
+    tmp = cache_path.with_name(f"{cache_path.stem}.tmp{os.getpid()}{uuid.uuid4().hex[:8]}.npz")
     np.savez_compressed(str(tmp), features=features)
     tmp.replace(cache_path)
 
@@ -721,6 +851,7 @@ def _chunks(n: int, size: int) -> tp.Iterator[tuple[int, int]]:
 # Main extraction function
 # ---------------------------------------------------------------------------
 
+@embedding_layer_selection
 def contextual_word_embeddings_hf(
     words: list[str],
     model_name: str,
@@ -911,6 +1042,7 @@ def contextual_word_embeddings_hf(
     return emb
 
 
+@embedding_layer_selection
 def contextual_word_embeddings_hf_lbg(
     words_df: pd.DataFrame,
     model_name: str,
@@ -942,8 +1074,6 @@ def contextual_word_embeddings_hf_lbg(
 
     Requires a **Fast** tokenizer (``return_offsets_mapping``).
     """
-    from transformers import AutoConfig
-
     lg = lang.lower()
 
     rev = revision if revision not in (None, "", "main") else None
@@ -951,8 +1081,30 @@ def contextual_word_embeddings_hf_lbg(
     cf_kw = {"revision": rev} if rev is not None else {}
     if trust_remote_code:
         cf_kw["trust_remote_code"] = True
-    lm_cfg = AutoConfig.from_pretrained(model_name, **cf_kw)
-    maxlen_pre = getattr(lm_cfg, "max_position_embeddings", None)
+    # ibm/MoLM-* ("moduleformer") and zhixuan-lin/{fox,transformer}-*
+    # ("forgetting_transformer-project_fox" / "transformer-project_fox")
+    # aren't registered AutoConfig model_types -- AutoConfig.from_pretrained
+    # raises before ever reaching the config, even though only a single field
+    # (the position-embedding limit) is needed here. Read config.json
+    # directly instead, same source _load_moduleformer_direct/_load_fox_direct
+    # use for the real model load (see their docstrings in
+    # neuroai/features/llm.py for the full rationale) -- trust_remote_code
+    # alone does not help either family (see _load_fox_direct's docstring).
+    from .features.llm import _MOLM_DIRECT_PREFIX, _FOX_DIRECT_PREFIX
+    if model_name.startswith(_MOLM_DIRECT_PREFIX) or model_name.startswith(_FOX_DIRECT_PREFIX):
+        import json as _json
+        from huggingface_hub import hf_hub_download as _hf_hub_download
+        _cfg_path = _hf_hub_download(model_name, "config.json", revision=rev)
+        with open(_cfg_path) as _f:
+            _raw_cfg = _json.load(_f)
+        maxlen_pre = (
+            _raw_cfg.get("block_size") or _raw_cfg.get("n_positions")
+            or _raw_cfg.get("max_position_embeddings")
+        )
+    else:
+        from transformers import AutoConfig
+        lm_cfg = AutoConfig.from_pretrained(model_name, **cf_kw)
+        maxlen_pre = getattr(lm_cfg, "max_position_embeddings", None)
     maxlen0 = int(hf_lbg_max_length or maxlen_pre or 2048)
     stride0 = maxlen0 - hf_lbg_stride_delta
     cache_path: Path | None = None
@@ -1079,9 +1231,35 @@ def contextual_word_embeddings_hf_lbg(
         # allowed to wander the full window -- which then corrupts every
         # subsequent word's alignment. A real match is never far; a phantom
         # should fail fast and get aliased rather than risk a wrong match.
-        max_try = 3 if w_key in LBG_PHANTOM_CONTRACTION_EXPANSIONS else 20
-        while n_try < max_try and not do_word_match(
-            w_key, fulltext_run[i_start:i_stop], lg
+        is_phantom_candidate = w_key in LBG_PHANTOM_CONTRACTION_EXPANSIONS
+        max_try = 3 if is_phantom_candidate else 20
+
+        def _candidate_matches(text_span: str) -> bool:
+            if is_phantom_candidate:
+                # Phantom-expansion candidates (bare UD-split fragments like
+                # "nt"/"t"/"d"/"ll"/"ve"/"m"/"re"/"s", and ambiguous full
+                # spellings like "not"/"would"/"have"/"is") have no
+                # independent surface token in the overwhelming common case
+                # -- do_word_match's loose substring rule ("word_in_list in
+                # word_in_text" or vice versa) can accidentally match a short
+                # fragment against an unrelated token that merely CONTAINS
+                # those letters (e.g. "nt" is a literal substring of "want",
+                # "an" is a literal substring of "elephant") while scanning
+                # the narrow post-failure window. That's worse than failing
+                # fast: it silently anchors the phantom word onto the WRONG
+                # token, consumes it, and corrupts every later word's search
+                # start position (confirmed on LPP EN section 1: "nt" at
+                # word 885 matching "want" cascaded into a real alignment
+                # failure 6 words later at word 891 "boa"). Requiring exact
+                # equality here still matches the rare case where the
+                # annotation's phantom spelling genuinely has its own
+                # standalone token (e.g. "not" as a real, unmerged word),
+                # while refusing coincidental substring hits.
+                return simplify_word(w_key, lg) == simplify_word(text_span, lg)
+            return do_word_match(w_key, text_span, lg)
+
+        while n_try < max_try and not _candidate_matches(
+            fulltext_run[i_start:i_stop]
         ):
             idx_token += 1
             if idx_token == seq_len:
@@ -1110,6 +1288,24 @@ def contextual_word_embeddings_hf_lbg(
                 if alias_token == seq_len:
                     alias_batch += 1
                     alias_token = _batch_start_token(alias_batch)
+                # If the very next real word already anchors at this
+                # candidate slot -- e.g. BLOOM merges "it"+"'s" into a
+                # single " It's" token immediately followed by " true", with
+                # no spare token in between at all -- grabbing prev_token+1
+                # here would steal that word's only anchor, leaving it
+                # unfindable by the time its own turn comes (search only
+                # moves forward). Share the preceding word's own token
+                # instead: the empty span this creates for the *preceding*
+                # word is handled by a single-token fallback in the pooling
+                # loop below, and the real next word keeps its anchor.
+                if idx_word + 1 < len(word_list):
+                    _next_key = simplify_word(word_list[idx_word + 1], lg)
+                    _ns = int(om[alias_batch, alias_token, 0].item())
+                    _ne = int(om[alias_batch, alias_token, 1].item())
+                    if _next_key not in LBG_PHANTOM_CONTRACTION_EXPANSIONS and do_word_match(
+                        _next_key, fulltext_run[_ns:_ne], lg
+                    ):
+                        alias_batch, alias_token = prev_batch, prev_token
                 logger.warning(
                     "l-bg tokenizer alignment: word %d ('%s', model=%s, "
                     "section=%s) has no independent surface token (UD "
@@ -1144,13 +1340,20 @@ def contextual_word_embeddings_hf_lbg(
     for k in range(int(nb)):
         ids_k = overflow_enc["input_ids"][k : k + 1].to(device)
         am_k = overflow_enc["attention_mask"][k : k + 1].to(device)
+        n_real = int(am_k.sum())
+        full_len = int(ids_k.shape[1])
+        # FLA kernels (forgetting / FoX) corrupt hidden states when the window is padded; forward only the real
+        # tokens and pad the hidden states back (right padding only, so token positions are unchanged).
+        trim = (_is_fla_model(model_name) and n_real < full_len and bool(am_k[0, :n_real].all()))
         with torch.no_grad():
             hs, _ = _forward_all_hidden_states(
                 model,
-                ids_k,
-                am_k,
+                ids_k[:, :n_real] if trim else ids_k,
+                am_k[:, :n_real] if trim else am_k,
                 model_name=model_name,
             )
+        if trim:
+            hs = tuple(torch.nn.functional.pad(h, (0, 0, 0, full_len - n_real)) for h in hs)
         hidden_states_batches.append(
             [hs[j][0].detach().float().cpu().numpy() for j in range(len(hs))]
         )
@@ -1199,7 +1402,13 @@ def contextual_word_embeddings_hf_lbg(
             return hidden_states_batches[b][li_][t].astype(np.float32, copy=False)
 
         if idx_batch_a == idx_batch_b:
-            for i in range(idx_tok_a, idx_tok_b):
+            # A phantom-alias collision (see LBG_PHANTOM_CONTRACTION_EXPANSIONS
+            # aliasing above) can leave a word sharing its token index with
+            # its own predecessor, making this span empty -- fall back to
+            # that single shared token rather than crashing on an empty
+            # np.stack.
+            hi = idx_tok_b if idx_tok_b > idx_tok_a else idx_tok_a + 1
+            for i in range(idx_tok_a, hi):
                 for li2 in range(n_layers_tpl):
                     emb_layers[li2].append(_pull(idx_batch_a, i, li2))
         else:

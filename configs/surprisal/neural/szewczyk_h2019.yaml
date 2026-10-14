@@ -1,0 +1,68 @@
+# ============================================================================
+# Szewczyk & Federmeier N400 — Pooled LME per LM layer (logit-lens surprisal)
+# ============================================================================
+#
+# n400 ~ bline_z + freq_z + pos_start_z + old20_z + concr_z + surprisal_z +
+#         (1 + bline_z + pos_start_z || subject) + (1 + bline_z || chunk)
+# vs. the same formula without surprisal_z, fit ONCE PER LM LAYER, pooling
+# all 5 sub-experiments / 138 subjects together. Exact formula from
+# data/n400_paper_formula/osfstorage/calculate_fits/calculate_aics_szewczyk.R -- see
+# neuroai/regressors/n400_pooled_lme.py's
+# _n400_ceiling_formulas_szewczyk_paper for the full rationale (including the
+# one deviation: pooled across sub-experiments instead of 5 separate fits).
+#
+# This dataset's N400 is already pre-averaged over 4 centro-parietal ROI
+# clusters into ONE scalar per trial -- no electrode term (unlike per-electrode
+# long tables).
+#
+# TWO-STAGE PIPELINE (same split as Podcast's pooled LME): on Jean
+# Zay, R (pymer4/lme4, needed for the LME fit) is only available on CPU
+# partitions, not GPU. So:
+#   1. GPU stage — extract + cache per-layer logit-lens surprisal for the
+#      ~1,330 unique (context, critical-word) trial items:
+#        .venv/bin/python scripts/run/surprisal/neural/szewczyk_extract.py \
+#          --config configs/surprisal/neural/szewczyk.yaml \
+#          --model_name openai-community/gpt2 --device cuda
+#   2. CPU stage — fit one LME per layer, reading surprisal from that cache
+#      (N layers fit concurrently via a spawned process pool — NOT one SLURM
+#      job per layer):
+#        .venv/bin/python scripts/run/surprisal/neural/szewczyk_fit.py \
+#          --config configs/surprisal/neural/szewczyk.yaml \
+#          --model_name openai-community/gpt2 --n_workers 10
+# ============================================================================
+
+dataset:
+  # OSF replication-package trial table -- carries n400, bline, logfreq,
+  # pos_start, old20, concr natively (unlike neuroai.datasets.szewczyk's own
+  # .rds loader, which lacks these paper covariates entirely).
+  data_path: ${BENCHMARK_ROOT}/data/n400_paper_formula/osfstorage/datasets/szewczyk_2022.tsv
+  sub_experiment: "Hubbard et al. (2019)"
+  max_length: null
+  tokenizer_no_revision: true
+  trust_remote_code: false
+  # Device for the (cheap, ~1,330-item) surprisal extraction forward passes.
+  # The CPU-only LME stage overrides this to "cpu" regardless (see
+  # run/surprisal/neural/szewczyk_fit.py) — it only matters for the GPU extraction
+  # stage / direct single-job runs.
+  device: cpu
+
+lme:
+  train_frac: 0.75
+  split_random_state: 0
+  verbose: false
+  # Barr et al. (2013)-style simplification ladder if the full model (with
+  # the uncorrelated random slopes on subject/item) fails to converge: drop
+  # the slopes entirely (intercept-only). Applied identically to every layer
+  # so comparisons stay valid.
+  allow_slope_fallback: true
+  layer_stride: 1
+  save_word_predictions: true
+
+output:
+  save_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/szewczyk_h2019/surprisal_sweep
+
+cache:
+  # Must already contain this model's logit-lens trial surprisal cache
+  # (populated by run/surprisal/neural/szewczyk_extract.py) before running the
+  # CPU-only LME sweep.
+  features_dir: ${SZEWCZYK_LME_FEATURE_CACHE_DIR}

@@ -1,14 +1,13 @@
 {\setlength{\tabcolsep}{3pt}
-\begin{longtable}{@{}p{1.38cm}p{5.22cm}cccc@{}}
-\caption{All models evaluated in this benchmark, grouped by family within the three model classes of Section~3.2 (rules separate each fine-grained family). Parameter and layer counts follow the originating release (or the loaded config for the memory-constrained and BabyLM checkpoints; see \texttt{neuroai/models/registry.py}). Training-token/word counts are reported only where documented with confidence by the originating source; a blank cell means this was not reliably available rather than zero. For Pythia and OLMo-2, the listed repository is evaluated both at its final (\texttt{main}) checkpoint and at multiple intermediate training steps (Section~3.2).}
-\label{tab:models} \\
+\begin{longtable}{@{}p{1.38cm}p{4.9cm}ccc>{\raggedright\arraybackslash}p{2.3cm}@{}}
+\caption{All 118 models evaluated in this benchmark, grouped by family within the model groups of Section~\ref{sec:design-models} (rules separate each fine-grained family). Memory-Constrained models trained on BabyLM-scale data (marked by \texttt{babylm} in the repository name) form the Constrained-BabyLM group; all other models listed under Memory-Constrained are trained on web-scale text. The two ``FoX-release baseline'' rows are the matched baselines released with FoX, with ordinary attention and no forget gate (the Pro variant keeps the output gate and key/value shift of FoX-Pro); they carry no memory constraint and are therefore counted as Standard LLMs. Parameter and layer counts follow the originating release (or the loaded config for the memory-constrained and BabyLM checkpoints; see \texttt{neuroai/models/registry.py}). Training-token/word counts are reported only where documented with confidence by the originating source; a blank cell means this was not reliably available rather than zero.} \label{tab:models} \\
 \toprule
-\textbf{Family} & \textbf{HuggingFace model ID} & \textbf{\#Params} & \textbf{\#Layers} & \textbf{Tr. tokens} & \textbf{Ref.} \\
+\textbf{Family} & \textbf{HuggingFace model ID} & \textbf{\#Params} & \textbf{\#Layers} & \shortstack{\textbf{Tr.}\\\textbf{tokens}} & \textbf{Ref.} \\
 \midrule
 \endfirsthead
 \multicolumn{6}{c}{\tablename\ \thetable{} -- continued} \\
 \toprule
-\textbf{Family} & \textbf{HuggingFace model ID} & \textbf{\#Params} & \textbf{\#Layers} & \textbf{Tr. tokens} & \textbf{Ref.} \\
+\textbf{Family} & \textbf{HuggingFace model ID} & \textbf{\#Params} & \textbf{\#Layers} & \shortstack{\textbf{Tr.}\\\textbf{tokens}} & \textbf{Ref.} \\
 \midrule
 \endhead
 \midrule \multicolumn{6}{r}{\textit{continued on next page}} \\
@@ -78,6 +77,16 @@
 \scriptsize Ministral & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{mistralai/Ministral-3-8B-Base-2512}} & \scriptsize 8B & \scriptsize 37 & \scriptsize  & \scriptsize  \\
 \scriptsize Ministral & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{mistralai/Ministral-3-14B-Base-2512}} & \scriptsize 14B & \scriptsize 41 & \scriptsize  & \scriptsize  \\
 \midrule
+\scriptsize RWKV-4 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{RWKV/rwkv-4-169m-pile}} & \scriptsize 169M & \scriptsize 13 & \scriptsize  & \scriptsize \citep{peng2023rwkv} \\
+\scriptsize RWKV-4 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{RWKV/rwkv-4-430m-pile}} & \scriptsize 430M & \scriptsize 25 & \scriptsize  & \scriptsize \citep{peng2023rwkv} \\
+\scriptsize RWKV-4 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{RWKV/rwkv-4-1b5-pile}} & \scriptsize 1.5B & \scriptsize 25 & \scriptsize  & \scriptsize \citep{peng2023rwkv} \\
+\scriptsize RWKV-4 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{RWKV/rwkv-4-3b-pile}} & \scriptsize 3B & \scriptsize 33 & \scriptsize  & \scriptsize \citep{peng2023rwkv} \\
+\scriptsize RWKV-4 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{RWKV/rwkv-4-7b-pile}} & \scriptsize 7B & \scriptsize 33 & \scriptsize  & \scriptsize \citep{peng2023rwkv} \\
+\scriptsize RWKV-4 & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{RWKV/rwkv-4-14b-pile}} & \scriptsize 14B & \scriptsize 41 & \scriptsize  & \scriptsize \citep{peng2023rwkv} \\
+\midrule
+\scriptsize FoX-release baseline & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{zhixuan-lin/transformer-llama-760m-longcrawl64-48b}} & \scriptsize 760M & \scriptsize 25 & \scriptsize 48B & \scriptsize \citep{lin2025forgetting} \\
+\scriptsize FoX-release baseline & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{zhixuan-lin/transformer-pro-760m-longcrawl64-48b}} & \scriptsize 760M & \scriptsize 25 & \scriptsize 48B & \scriptsize \citep{lin2025forgetting} \\
+\midrule
 \multicolumn{6}{l}{\textbf{Memory-Constrained}} \\
 \midrule
 \scriptsize CBR-RNN & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{cclark/cbr-rnn}} & \scriptsize 17.4M & \scriptsize 1 & \scriptsize  & \scriptsize \citep{timkey2023limited} \\
@@ -124,6 +133,19 @@
 \scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_babylm\_10m\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize $\sim$10M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
 \scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_babylm\_100m\_2layer}} & \scriptsize 15M & \scriptsize 2 & \scriptsize $\sim$100M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
 \scriptsize Hard 5-gram & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{Lanni-ni/hard\_5gram\_babylm\_100m\_4layer}} & \scriptsize 28.8M & \scriptsize 4 & \scriptsize $\sim$100M w. & \scriptsize \citep{bu2026staticlinearattentionconstraints} \\
+\midrule
+\scriptsize BLOOM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{bigscience/bloom-560m}} & \scriptsize 560M & \scriptsize 25 & \scriptsize  & \scriptsize \citep{workshop2022bloom} \\
+\scriptsize BLOOM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{bigscience/bloom-1b1}} & \scriptsize 1.1B & \scriptsize 25 & \scriptsize  & \scriptsize \citep{workshop2022bloom} \\
+\scriptsize BLOOM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{bigscience/bloom-1b7}} & \scriptsize 1.7B & \scriptsize 25 & \scriptsize  & \scriptsize \citep{workshop2022bloom} \\
+\scriptsize BLOOM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{bigscience/bloom-3b}} & \scriptsize 3B & \scriptsize 31 & \scriptsize  & \scriptsize \citep{workshop2022bloom} \\
+\scriptsize BLOOM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{bigscience/bloom-7b1}} & \scriptsize 7.1B & \scriptsize 31 & \scriptsize  & \scriptsize \citep{workshop2022bloom} \\
+\midrule
+\scriptsize FoX (Forgetting Transf.) & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{zhixuan-lin/fox-llama-760m-longcrawl64-48b}} & \scriptsize 760M & \scriptsize 25 & \scriptsize 48B & \scriptsize \citep{lin2025forgetting} \\
+\scriptsize FoX (Forgetting Transf.) & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{zhixuan-lin/fox-pro-760m-longcrawl64-48b}} & \scriptsize 760M & \scriptsize 25 & \scriptsize 48B & \scriptsize \citep{lin2025forgetting} \\
+\midrule
+\scriptsize MoLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{ibm/MoLM-350M-4B}} & \scriptsize 350M & \scriptsize 25 & \scriptsize  & \scriptsize \citep{shen2023moduleformer} \\
+\scriptsize MoLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{ibm/MoLM-700M-4B}} & \scriptsize 700M & \scriptsize 25 & \scriptsize  & \scriptsize \citep{shen2023moduleformer} \\
+\scriptsize MoLM & \textcolor{blue}{\ttfamily\fontsize{7.0}{8.4}\selectfont\seqsplit{ibm/MoLM-700M-8B}} & \scriptsize 700M & \scriptsize 49 & \scriptsize  & \scriptsize \citep{shen2023moduleformer} \\
 \midrule
 \multicolumn{6}{l}{\textbf{BabyLMs}} \\
 \midrule

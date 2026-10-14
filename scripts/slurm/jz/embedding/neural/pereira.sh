@@ -5,6 +5,8 @@
 #
 # Required env: PEREIRA_FAMILY (registry family), SLURM_ARRAY_TASK_ID.
 
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 pereira_embed_jz_run_array_task() {
   : "${PEREIRA_FAMILY:?Set PEREIRA_FAMILY (registry family, e.g. gpt2)}"
   cd "$BENCHMARK_ROOT" || return 1

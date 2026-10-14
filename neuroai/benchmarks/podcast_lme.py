@@ -98,6 +98,7 @@ class PodcastLmeDataConfig:
     baseline: tuple[float, float] | None = None
     baseline_mode: str = "logratio"
     electrode_selection_dir: str | None = None
+    roi_map_path: str | None = None
     # Per-subject epoch cache (preprocessed ECoG: IQR-clipped, baseline-
     # corrected if enabled, cropped to [tmin, tmax), resampled). Model-
     # independent — every model in a sweep needs the exact same epochs, only
@@ -153,6 +154,8 @@ class PodcastLmeConfig:
     # to skip if disk usage is a concern (a full lag grid's worth of held-out
     # predictions is large: millions of rows across all lags).
     save_word_predictions: bool = True
+    # Separate ROI experiment: fit independently for each mapped left-hemisphere parcel.
+    roi_wise: bool = False
 
 
 @dataclass
@@ -276,6 +279,7 @@ def _fit_one_lag_worker(
     verbose: bool,
     allow_slope_fallback: bool,
     predictions_dir: str | None = None,
+    region: str | None = None,
 ) -> dict[str, tp.Any]:
     """Runs in its own spawned process: load the shared table, fit one lag."""
     import numpy as _np
@@ -286,9 +290,18 @@ def _fit_one_lag_worker(
 
     t0 = time.time()
     row: dict[str, tp.Any] = {"lag": lag_idx, "lag_time_s": lag_time_s}
+    if region is not None:
+        row["region"] = region
     try:
         base_df = _pd.read_parquet(base_parquet_path)
         y_all = _np.load(y_npy_path, mmap_mode="r")
+        if region is not None:
+            roi_mask = base_df["region"].astype(str) == region
+            row_indices = _np.flatnonzero(roi_mask.to_numpy())
+            base_df = base_df.loc[roi_mask].copy()
+            if base_df.empty:
+                raise ValueError(f"No observations for region {region!r}")
+            y_all = y_all[row_indices]
         y_col = _np.asarray(y_all[:, lag_idx], dtype=_np.float64)
         # Predictors (surprisal/wlen/freq) are already finiteness-filtered
         # once, before the per-lag loop (lag-invariant) — but y is genuinely
@@ -349,7 +362,7 @@ def _fit_one_lag_worker(
             "error": None,
         })
     except Exception as exc:  # noqa: BLE001 — one bad lag must not kill the pool
-        logger.error("Lag %d failed", lag_idx, exc_info=True)
+        logger.error("Region %s lag %d failed", region, lag_idx, exc_info=True)
         row["error"] = str(exc)
     row["fit_wall_time_s"] = time.time() - t0
     return row
@@ -461,6 +474,42 @@ class PodcastLmeBenchmark:
             "surprisal": np.concatenate(surp_parts),
         })
         y_all = np.concatenate(y_parts, axis=0).astype(np.float32)  # (n_rows, n_times)
+        region_names: list[str] = []
+        if self.cfg.lme.roi_wise:
+            if not dcfg.roi_map_path:
+                raise ValueError("Podcast ROI-wise LME requires data.roi_map_path")
+            roi_map = pd.read_csv(dcfg.roi_map_path)
+            required_map_cols = {"subject", "channel", "region", "hemisphere", "assigned"}
+            missing_map = required_map_cols - set(roi_map.columns)
+            if missing_map:
+                raise ValueError(f"Podcast ROI map missing columns: {sorted(missing_map)}")
+            roi_map = roi_map.loc[
+                roi_map["assigned"].astype(bool)
+                & (roi_map["hemisphere"].astype(str) == "L")
+                & roi_map["region"].astype(str).isin(
+                    ("IFGorb", "IFG", "MFG", "AntTemp", "PostTemp")
+                ),
+                ["subject", "channel", "region"],
+            ].copy()
+            roi_map["subject"] = roi_map["subject"].astype(str)
+            roi_map["channel"] = roi_map["channel"].astype(str)
+            if roi_map.duplicated(["subject", "channel"]).any():
+                raise ValueError("Podcast ROI map has duplicate (subject, channel) assignments")
+            base_df["_source_row"] = np.arange(len(base_df), dtype=np.int64)
+            mapped = base_df.merge(
+                roi_map.rename(columns={"channel": "electrode"}),
+                on=["subject", "electrode"], how="inner", sort=False,
+            ).sort_values("_source_row")
+            mapped_rows = mapped["_source_row"].to_numpy(dtype=np.int64)
+            y_all = y_all[mapped_rows]
+            base_df = mapped.drop(columns="_source_row").reset_index(drop=True)
+            region_names = sorted(base_df["region"].astype(str).unique().tolist())
+            if not region_names:
+                raise RuntimeError("Podcast ROI map produced no left-hemisphere parcel observations")
+            logger.info(
+                "Podcast ROI filtering retained %d rows across parcels: %s",
+                len(base_df), ", ".join(region_names),
+            )
         logger.info(
             "Pooled table: %d rows (%d subject×electrode groups), %d lags",
             len(base_df), base_df.groupby(["subject", "electrode"]).ngroups, n_times,
@@ -504,8 +553,8 @@ class PodcastLmeBenchmark:
             len(lag_indices), self.cfg.lme.lag_stride, self.cfg.lme.n_workers,
         )
 
-        out_csv = out_dir / "podcast_lme_by_lag.csv"
-        out_columns = list(_LAG_ROW_COLUMNS) + [
+        out_csv = out_dir / ("podcast_lme_by_roi.csv" if self.cfg.lme.roi_wise else "podcast_lme_by_lag.csv")
+        out_columns = (["region"] if self.cfg.lme.roi_wise else []) + list(_LAG_ROW_COLUMNS) + [
             k for k in (extra_fields or {}) if k not in _LAG_ROW_COLUMNS
         ]
         done_lags: set[int] = set()
@@ -523,7 +572,10 @@ class PodcastLmeBenchmark:
                 # (e.g. a worker OOM-killed mid-fit) must be retried, not
                 # silently treated as complete.
                 good = same_rev.loc[same_rev["error"].isna()]
-                done_lags = set(good["lag"].tolist())
+                if self.cfg.lme.roi_wise:
+                    done_lags = set(zip(good["region"].astype(str), good["lag"].astype(int)))
+                else:
+                    done_lags = set(good["lag"].tolist())
                 n_failed = int(same_rev["error"].notna().sum())
                 if done_lags:
                     logger.info("Skipping %d already-fit lag(s) for revision=%s", len(done_lags), revision)
@@ -555,7 +607,9 @@ class PodcastLmeBenchmark:
             predictions_dir = out_dir / "predictions"
             predictions_dir.mkdir(parents=True, exist_ok=True)
 
-        pending = [li for li in lag_indices if li not in done_lags]
+        fit_regions = region_names if self.cfg.lme.roi_wise else [None]
+        tasks = [(region, li) for region in fit_regions for li in lag_indices
+                 if ((region, li) not in done_lags if self.cfg.lme.roi_wise else li not in done_lags)]
         rows: list[dict] = []
         # max_tasks_per_child: recycle each worker process after ONE lag fit.
         # lme4/rpy2's embedded R interpreter leaks memory across repeated
@@ -577,16 +631,19 @@ class PodcastLmeBenchmark:
                     verbose=self.cfg.lme.verbose,
                     allow_slope_fallback=self.cfg.lme.allow_slope_fallback,
                     predictions_dir=str(predictions_dir) if predictions_dir else None,
-                ): li
-                for li in pending
+                    region=region,
+                ): (region, li)
+                for region, li in tasks
             }
             for fut in as_completed(futures):
-                li = futures[fut]
+                region, li = futures[fut]
                 try:
                     row = fut.result()
                 except Exception as exc:
                     logger.error("Lag %d worker crashed: %s", li, exc, exc_info=True)
                     row = {"lag": li, "error": str(exc)}
+                if region is not None:
+                    row["region"] = region
                 row["revision"] = revision
                 if extra_fields:
                     row.update(extra_fields)
@@ -599,8 +656,8 @@ class PodcastLmeBenchmark:
                         out_csv, mode="a", header=not out_csv.exists(), index=False,
                     )
                 logger.info(
-                    "  [lag %d, t=%.3fs] done in %.1fs — delta_loglik_test=%s converged=%s%s",
-                    li, row.get("lag_time_s", float("nan")), row.get("fit_wall_time_s", float("nan")),
+                    "  [%s | lag %d, t=%.3fs] done in %.1fs — delta_loglik_test=%s converged=%s%s",
+                    region or "pooled", li, row.get("lag_time_s", float("nan")), row.get("fit_wall_time_s", float("nan")),
                     f"{row['delta_loglik_test']:.2f}" if row.get("delta_loglik_test") is not None else "NA",
                     row.get("converged"),
                     " (slope dropped)" if row.get("slope_dropped") else "",

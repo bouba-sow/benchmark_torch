@@ -1,40 +1,45 @@
-{\small
-\begin{longtable}{@{}lccccl@{}}
-\caption{Delta log-likelihood noise ceilings (BehavScore normalization), computed via the split-half item-mean-as-predictor procedure of Appendix~\ref{app:dll-ceiling}, following \citet{timkey2026dissociation}. Ceiling is per-observation $\Delta LL$; ``splits conv.'' reports how many of 10--30 random subject-half splits converged. All 23 dataset/measure entries used for BehavScore in this paper return a positive ceiling; several small-$N$ entries carry higher relative noise but no split failed to converge.}
-\label{tab:dll-ceilings} \\
+{\small\setlength{\tabcolsep}{4pt}
+\begin{longtable}{@{}lrrrrr@{}}
+\caption{Split-half likelihood references used in final-layer surprisal normalization, in $\Delta\ell$ per observation. SD is variability across splits or iterations, not a standard error; -- means the aggregate file supplies no such value. Splits reports successful/attempted draws where available. Above is the number of finite model scores exceeding the reference, and Maximum is the largest normalized score. A dagger flags split SD/reference $>.5$ or more than 10\% of models above one; this is a descriptive diagnostic, not an exclusion rule. Pereira split counts apply to each of its two ROIs; region-specific references are detailed in the text.}\label{tab:dll-ceilings} \\
 \toprule
-\textbf{Dataset} & \textbf{Ceiling} & \textbf{$\pm$SD} & \textbf{Rel.\ SD} & \textbf{Splits conv.} & \textbf{Note} \\
+Dataset / measure & Reference & SD & Splits & Above & Maximum \\
 \midrule
 \endfirsthead
 \multicolumn{6}{c}{\tablename\ \thetable{} -- continued} \\
 \toprule
-\textbf{Dataset} & \textbf{Ceiling} & \textbf{$\pm$SD} & \textbf{Rel.\ SD} & \textbf{Splits conv.} & \textbf{Note} \\
+Dataset / measure & Reference & SD & Splits & Above & Maximum \\
 \midrule
 \endhead
+\midrule\multicolumn{6}{r}{Continued on next page} \\
+\endfoot
 \bottomrule
 \endlastfoot
-Fedorenko2016 (ECoG) & 0.00832 & 0.00162 & 19\% & 10/10 & small $N$ (5 subj.) \\
-GECO (FP) & 0.00866 & 0.00036 & 4\% & 10/10 & small $N$ (14 subj.) \\
-GECO (GP) & 0.00416 & 0.00043 & 10\% & 15/15 & small $N$ (14 subj.) \\
-Le Petit Prince (fMRI) & 0.01015 & 0.00088 & 9\% & 15/15 & \\
-MECO (FP) & 0.02336 & 0.00368 & 16\% & 15/15 & \\
-MECO (GP) & 0.00797 & 0.00186 & 23\% & 15/15 & \\
-MECO (SP) & 0.03786 & 0.00256 & 7\% & 15/15 & \\
-Natural Stories (SPR) & 0.02381 & 0.00091 & 4\% & 15/15 & \\
-Natural Stories (fMRI) & 0.02966 & 0.00394 & 13\% & 15/15 & \\
-Nieuwland (N400) & 0.01250 & 0.00120 & 10\% & 30/30 & \\
-OneStop (FP) & 0.01286 & 0.00056 & 4\% & 15/15 & \\
-OneStop (GP) & 0.01429 & 0.00089 & 6\% & 15/15 & \\
-OneStop (SP) & 0.02359 & 0.00139 & 6\% & 15/15 & \\
-Pereira (fMRI) & 0.00288 & 0.00233 & 81\% & 15/15 & small $N$ ($\leq$10 subj.) \\
-Podcast (ECoG) & 0.00811 & 0.00101 & 12\% & 10/10 & small $N$ (9 subj.) \\
-Provo (FP) & 0.03354 & 0.00150 & 4\% & 15/15 & \\
-Provo (GP) & 0.03596 & 0.00160 & 4\% & 15/15 & \\
-Provo (SP) & 0.04573 & 0.00102 & 2\% & 15/15 & \\
-Tuckute (fMRI) & 0.00952 & 0.00132 & 14\% & 10/10 & \\
-UCL Reading (SPR) & 0.00236 & 0.00026 & 11\% & 15/15 & \\
-ZuCo Reading (NR) & 0.02782 & 0.00225 & 8\% & 10/10 & small $N$ (12 subj.) \\
-ZuCo Reading (SR) & 0.03143 & 0.00155 & 5\% & 15/15 & small $N$ (12 subj.) \\
-ZuCo Reading (TSR) & 0.01248 & 0.00239 & 19\% & 15/15 & small $N$ (12 subj.) \\
+GECO FP & $8.66\times10^{-3}$ & $3.59\times10^{-4}$ & 10/10 & 0/118 & 0.272 \\
+GECO GP & $4.16\times10^{-3}$ & $4.30\times10^{-4}$ & 15/15 & 0/118 & 0.183 \\
+MECO FP & $2.34\times10^{-2}$ & $3.68\times10^{-3}$ & 15/15 & 0/118 & 0.172 \\
+MECO GP & $7.97\times10^{-3}$ & $1.86\times10^{-3}$ & 15/15 & 0/118 & 0.089 \\
+MECO SP & $3.79\times10^{-2}$ & $2.56\times10^{-3}$ & 15/15 & 0/118 & 0.190 \\
+Natural Stories SPR & $2.38\times10^{-2}$ & $9.14\times10^{-4}$ & 15/15 & 0/118 & 0.395 \\
+OneStop FP & $1.29\times10^{-2}$ & $5.59\times10^{-4}$ & 15/15 & 0/118 & 0.379 \\
+OneStop GP & $1.43\times10^{-2}$ & $8.90\times10^{-4}$ & 15/15 & 0/118 & 0.091 \\
+OneStop SP & $2.36\times10^{-2}$ & $1.39\times10^{-3}$ & 15/15 & 0/118 & 0.373 \\
+Provo FP & $3.35\times10^{-2}$ & $1.50\times10^{-3}$ & 15/15 & 0/118 & 0.138 \\
+Provo GP & $3.60\times10^{-2}$ & $1.60\times10^{-3}$ & 15/15 & 0/118 & 0.064 \\
+Provo SP & $4.57\times10^{-2}$ & $1.02\times10^{-3}$ & 15/15 & 0/118 & 0.194 \\
+UCL SPR$\dagger$ & $2.36\times10^{-3}$ & $2.61\times10^{-4}$ & 15/15 & 51/118 & 1.503 \\
+ZuCo NR & $2.78\times10^{-2}$ & $2.25\times10^{-3}$ & 10/10 & 0/118 & 0.311 \\
+ZuCo SR & $3.14\times10^{-2}$ & $1.55\times10^{-3}$ & 15/15 & 0/118 & 0.454 \\
+ZuCo TSR & $1.25\times10^{-2}$ & $2.39\times10^{-3}$ & 15/15 & 0/118 & 0.629 \\
+Le Petit Prince fMRI & $1.01\times10^{-2}$ & $8.79\times10^{-4}$ & 15/15 & 0/118 & 0.057 \\
+Natural Stories fMRI & $2.97\times10^{-2}$ & $3.94\times10^{-3}$ & 15/15 & 0/118 & 0.134 \\
+Pereira fMRI & $2.37\times10^{-2}$ & -- & 29/30 & 0/118 & 0.640 \\
+Tuckute fMRI & $9.52\times10^{-3}$ & $1.32\times10^{-3}$ & 10/10 & 0/118 & 0.248 \\
+Fedorenko intracranial & $8.32\times10^{-3}$ & $1.62\times10^{-3}$ & 10/10 & 4/118 & 1.150 \\
+Podcast ECoG & $6.19\times10^{-3}$ & -- & -- & 0/118 & 0.118 \\
+Broderick EEG$\dagger$ & $1.00\times10^{-4}$ & $7.00\times10^{-5}$ & 60/60 & 42/118 & 2.293 \\
+MEG-MASC & $7.31\times10^{-4}$ & $1.78\times10^{-4}$ & 15/15 & 0/118 & 0.007 \\
+Nieuwland N400 & $1.25\times10^{-2}$ & $1.20\times10^{-3}$ & 30/30 & 0/118 & 0.342 \\
+Federmeier 2007 N400$\dagger$ & $2.61\times10^{-3}$ & $2.75\times10^{-3}$ & 15/15 & 67/118 & 6.976 \\
+Hubbard 2019 N400$\dagger$ & $2.22\times10^{-3}$ & $1.21\times10^{-3}$ & 15/15 & 49/118 & 2.607 \\
 \end{longtable}
 }

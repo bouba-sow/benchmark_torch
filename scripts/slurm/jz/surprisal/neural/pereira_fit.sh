@@ -61,6 +61,12 @@ CONFIG="${CONFIG:-configs/surprisal/neural/pereira.yaml}"
 SWEEP_ROOT="${PEREIRA_LME_SWEEP_ROOT:-$PWD/outputs_jeanzay/pereira/surprisal_sweep}"
 N_WORKERS="${N_WORKERS:-30}"
 LAYER_STRIDE="${LAYER_STRIDE:-1}"
+# LAST_LAYER_ONLY=1 fits only the final layer (the model's own logits).
+LAST_LAYER_ONLY="${LAST_LAYER_ONLY:-0}"
+LAST_LAYER_ONLY_ARGS=()
+if [[ "${LAST_LAYER_ONLY}" == "1" ]]; then
+  LAST_LAYER_ONLY_ARGS=(--last_layer_only)
+fi
 
 IDX="${SLURM_ARRAY_TASK_ID:-0}"
 
@@ -160,6 +166,7 @@ pereira_lme_jz_run_array_task() {
     --out_dir "${SWEEP_ROOT}" \
     --n_workers "${N_WORKERS}" \
     --layer_stride "${LAYER_STRIDE}" \
+    "${LAST_LAYER_ONLY_ARGS[@]}" \
     --device cpu \
     --feature_cache_dir "${PEREIRA_LME_FEATURE_CACHE_DIR}"
 

@@ -63,14 +63,17 @@ def main() -> None:
             continue
         best = df.loc[df["score"].idxmax()]
         frac = float(best["score"]) / ceiling
+        frac_last = float(df["score_last_norm"].max()) if "score_last_norm" in df.columns else float("nan")
         rows.append({"name": _display_name(info.name), "modality": info.modality,
-                     "ceiling": ceiling, "frac": frac})
+                     "ceiling": ceiling, "frac": frac, "frac_last": frac_last})
 
     # MEG-MASC: excluded from DATASETS (its DLL/surprisal-track ceiling isn't
     # settled yet, per neuroai/analysis/benchmark_common.py's DATASETS list note) but its
     # embedding-track correlation ceiling is fine -- same special-case
     # figures/figure3_family_scaling.py's _megmasc_family_df() uses.
     meg_df = _load_model_df("megmasc_meg")
+    if any(r["name"].startswith("MEG-MASC") for r in rows):
+        meg_df = None  # already a DATASETS entry (2026-10-12): do not add a duplicate row
     if meg_df is not None and not meg_df.empty and "score_last_norm" in meg_df.columns:
         meg_ceiling = ceiling_for("megmasc_meg")
         if meg_ceiling is not None and meg_ceiling > 0:
@@ -78,39 +81,41 @@ def main() -> None:
             if not meg_df.empty:
                 best = meg_df.loc[meg_df["score"].idxmax()]
                 rows.append({"name": "MEG-MASC (Gwilliams)", "modality": "MEG",
-                             "ceiling": meg_ceiling, "frac": float(best["score"]) / meg_ceiling})
+                             "ceiling": meg_ceiling, "frac": float(best["score"]) / meg_ceiling,
+                             "frac_last": float(meg_df["score_last_norm"].max())})
 
-    rows.sort(key=lambda r: r["frac"], reverse=True)
+    rows.sort(key=lambda r: r["frac_last"], reverse=True)
 
     lines = [
-        r"{\setlength{\tabcolsep}{5pt}",
-        r"\begin{longtable}{@{}lccc@{}}",
-        r"\caption{Split-half correlation noise ceilings (BrainScore normalization, "
+        r"{\small\setlength{\tabcolsep}{4pt}",
+        r"\begin{longtable}{@{}p{4.2cm}lccc@{}}",
+        r"\caption{Split-half correlation noise ceilings (embedding track, "
         r"$\sqrt{r_{\mathrm{SB}}}$, Appendix~\ref{app:corr-ceiling}) for every dataset "
         r"in the embedding/ridge track, and the fraction of that ceiling reached by "
-        r"the best model. Rows marked $\dagger$ have a ceiling below 0.01 -- an "
+        r"the best model, with the last layer (our primary rule) and with the best layer. "
+        r"These ceilings are used only to describe headroom; the regression uses robust scaling (Appendix~\ref{app:normalization}). Rows marked $\dagger$ have a ceiling below 0.01 -- an "
         r"absolute reliability so low that a high percent-of-ceiling figure reflects "
         r"very little recoverable signal in the human data itself, not a strong model "
         r"fit; we report these for completeness but do not treat them as headline "
         r"results.}",
         r"\label{tab:corr-ceilings} \\",
         r"\toprule",
-        r"\textbf{Dataset} & \textbf{Modality} & \textbf{Ceiling ($\sqrt{r_{\mathrm{SB}}}$)} & \textbf{Best model's \% of ceiling} \\",
+        r"\textbf{Dataset} & \textbf{Modality} & \shortstack{\textbf{Ceiling}\\\textbf{($\sqrt{r_{\mathrm{SB}}}$)}} & \shortstack{\textbf{Best model,}\\\textbf{last layer (\%)}} & \shortstack{\textbf{Best model,}\\\textbf{best layer (\%)}} \\",
         r"\midrule",
         r"\endfirsthead",
-        r"\multicolumn{4}{c}{\tablename\ \thetable{} -- continued} \\",
+        r"\multicolumn{5}{c}{\tablename\ \thetable{} -- continued} \\",
         r"\toprule",
-        r"\textbf{Dataset} & \textbf{Modality} & \textbf{Ceiling ($\sqrt{r_{\mathrm{SB}}}$)} & \textbf{Best model's \% of ceiling} \\",
+        r"\textbf{Dataset} & \textbf{Modality} & \shortstack{\textbf{Ceiling}\\\textbf{($\sqrt{r_{\mathrm{SB}}}$)}} & \shortstack{\textbf{Best model,}\\\textbf{last layer (\%)}} & \shortstack{\textbf{Best model,}\\\textbf{best layer (\%)}} \\",
         r"\midrule",
         r"\endhead",
-        r"\midrule \multicolumn{4}{r}{\textit{continued on next page}} \\",
+        r"\midrule \multicolumn{5}{r}{\textit{continued on next page}} \\",
         r"\endfoot",
         r"\bottomrule",
         r"\endlastfoot",
     ]
     for r in rows:
         dagger = r"$\dagger$" if r["ceiling"] < 0.01 else ""
-        lines.append(f"{r['name']}{dagger} & {r['modality']} & {r['ceiling']:.3f} & {r['frac']*100:.0f}\\% \\\\")
+        lines.append(f"{r['name']}{dagger} & {r['modality']} & {r['ceiling']:.3f} & {r['frac_last']*100:.0f}\\% & {r['frac']*100:.0f}\\% \\\\")
     lines.append(r"\end{longtable}")
     lines.append("}")
 

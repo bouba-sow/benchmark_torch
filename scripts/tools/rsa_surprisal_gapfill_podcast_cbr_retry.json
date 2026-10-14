@@ -1,0 +1,25 @@
+{
+  "n_groups": 1,
+  "groups": [
+    [
+      {
+        "family": "cbr_rnn",
+        "array_index": 0,
+        "model_id": "cclark/cbr-rnn",
+        "revision": "main",
+        "datasets": [
+          "podcast"
+        ]
+      },
+      {
+        "family": "cbr_rnn",
+        "array_index": 1,
+        "model_id": "cclark/cbr-rnn-m",
+        "revision": "main",
+        "datasets": [
+          "podcast"
+        ]
+      }
+    ]
+  ]
+}

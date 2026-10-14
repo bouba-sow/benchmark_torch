@@ -58,14 +58,7 @@ average_only: true
 min_subjects_per_item: 1        # available-case mean; GECO subjects read
                                # near-disjoint word sets, so a floor would
                                # empty the target — keep at 1.
-average_ridge_device: cpu      # switched back from cuda: opt-66b/opt-30b's
-                               # GPU streams contend with the huge resident
-                               # model for GPU memory/compute and give no
-                               # per-layer progress visibility -- CPU thread
-                               # pool across layers (n_jobs, sized to the
-                               # family sbatch script's cpus-per-task) is the
-                               # default path everywhere else and is fast
-                               # enough given real core-per-layer parallelism.
+average_ridge_device: cuda     # himalaya GPU ridge everywhere (2026-10-14; was cpu, single-core and too slow with last-layer-only fits)
 
 regression:
   n_splits: 5

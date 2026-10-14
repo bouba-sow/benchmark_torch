@@ -44,6 +44,9 @@ dataset:
   bids_root: ${BENCHMARK_ROOT}/data/nieuwland
   subjects: null
   included_in_paper_only: true
+  # Per-trial N400 from the paper (Nieuwland et al. 2018 replication package, uV) instead of
+  # re-epoching raw BIDS EEG (volts -> LME does not converge). Benchmark held-out n = 6438.
+  paper_n400_tsv: ${BENCHMARK_ROOT}/data/n400_paper_formula/osfstorage/datasets/nieuwland_2018.tsv
   # GLAS uses BioSemi-128 A1-H16 naming — incompatible with standard 10-20.
   exclude_labs: [glas]
   target_channels: [Cz, C3, C4, Pz, P3, P4]

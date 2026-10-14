@@ -278,7 +278,31 @@ def run_model_sweep(
         already_main = True if average_only else already_computed(existing, ckpt.revision)
         already_avg = True
         if average_scores_csv is not None:
-            already_avg = already_computed(load_existing_csv(average_scores_csv), ckpt.revision)
+            avg_existing = load_existing_csv(average_scores_csv)
+            already_avg = already_computed(avg_existing, ckpt.revision)
+            # already_computed only checks that >=1 row exists for this
+            # revision -- with on_average_chunk_done now writing rows
+            # incrementally per layer-chunk (see OnestopEmbedBenchmark.run),
+            # a crashed/timed-out run can leave a real but PARTIAL file (e.g.
+            # 16 of 41 layers) that would otherwise be silently treated as
+            # fully done. Require every layer 0..n_layers-1 to have a row.
+            if already_avg and "layer" in avg_existing.columns and "n_layers" in avg_existing.columns:
+                rev_rows = avg_existing[avg_existing["revision"] == ckpt.revision]
+                n_layers_expected = int(rev_rows["n_layers"].iloc[0]) if not rev_rows.empty else 0
+                got_layers = set(int(li) for li in rev_rows["layer"])
+                already_avg = got_layers == set(range(n_layers_expected))
+                if not already_avg:
+                    logger.warning(
+                        "[%s] %s averaged-branch file has %d/%d layers -- "
+                        "treating as incomplete, will refit.",
+                        model_id, ckpt.revision, len(got_layers), n_layers_expected,
+                    )
+                    # Purge this revision's partial rows now -- refitting
+                    # appends fresh rows via on_average_chunk_done, and
+                    # leaving the stale partial rows in place would mix old
+                    # and new layer rows (duplicates) in the same file.
+                    kept = avg_existing[avg_existing["revision"] != ckpt.revision]
+                    kept.to_csv(average_scores_csv, index=False)
         if already_main and already_avg:
             logger.info("[%s] %s already done — skipping", model_id, ckpt.revision)
             continue
@@ -319,10 +343,22 @@ def run_model_sweep(
             for row in subj_rows:
                 append_row(by_subject_csv, {**base, **row})
 
+        def _on_average_chunk_done(chunk_rows: list[dict], ckpt=ckpt) -> None:
+            # Averaged-branch analogue of _on_subject_done: persist each
+            # layer-chunk's rows immediately (before the next chunk's
+            # feature extraction starts) so a timeout on a slow/large model
+            # loses at most the in-progress chunk, not every layer fit so
+            # far for this checkpoint.
+            if average_scores_csv is None:
+                return
+            for row in _ckpt_rows(ckpt, pd.DataFrame(chunk_rows)):
+                append_row(average_scores_csv, row)
+
         try:
             result = OnestopEmbedBenchmark(bench_cfg).run(
                 existing_subject_rows=existing_subject_rows,
                 on_subject_done=_on_subject_done,
+                on_average_chunk_done=_on_average_chunk_done if not already_avg else None,
             )
             # Per-subject rows were already written incrementally above; only
             # the mean-across-subjects summary is written here.
@@ -333,9 +369,8 @@ def run_model_sweep(
                 rows.extend(new_rows)
                 existing = load_existing_csv(scores_csv)
 
-            if average_scores_csv is not None and not already_avg and result.average_summary_df is not None:
-                for row in _ckpt_rows(ckpt, result.average_summary_df):
-                    append_row(average_scores_csv, row)
+            # Averaged-branch rows were already written incrementally per
+            # chunk above via _on_average_chunk_done.
         except Exception:
             logger.error("[%s] OneStop embed failed at %s", model_id, ckpt.revision, exc_info=True)
         finally:
@@ -541,7 +576,7 @@ def main() -> None:
         default=os.environ.get("ONESTOP_PERPLEXITY_DIR", ""),
         help="Save each checkpoint's corpus perplexity here too. Default: skip — "
              "OneStop perplexity is already populated by the LME sweep at "
-             "outputs_torch/onestop/perplexity/. Pass a path to merge into it.",
+             "outputs_jeanzay/onestop/perplexity/. Pass a path to merge into it.",
     )
     args = p.parse_args()
     perplexity_dir = args.perplexity_dir or None

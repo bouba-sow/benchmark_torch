@@ -47,7 +47,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 
-from neuroai.analysis.benchmark_common import REPO_ROOT
+from neuroai.analysis.benchmark_common import REPO_ROOT, select_best_row
 from neuroai.analysis.paper_style import despine, use_paper_style
 
 OUT_PATH = REPO_ROOT / "reports" / "paper" / "babylm_checkpoint_scaling.pdf"
@@ -128,9 +128,9 @@ def _load_scores(rel_csv: str, agg: str) -> pd.DataFrame:
         if g.empty:
             continue
         if agg == "froi" and "froi" in g.columns:
-            best = g.loc[g.groupby("froi")["delta_loglik_test"].idxmax()]
+            best = pd.DataFrame([select_best_row(u) for _, u in g.groupby("froi")])   # per-fROI layer on TRAIN dLL
         else:
-            best = g.loc[[g["delta_loglik_test"].idxmax()]]
+            best = pd.DataFrame([select_best_row(g)])
         dll = float(best["delta_loglik_test"].sum())
         n = float(best["n_obs_test"].sum()) if "n_obs_test" in best.columns else np.nan
         rows.append({"revision": str(rev), "dll_total": dll, "n_obs": n,

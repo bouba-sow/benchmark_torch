@@ -22,6 +22,14 @@
 : "${MEGMASC_FAMILY:?Set MEGMASC_FAMILY before sourcing job_megmasc_jz_common.sh}"
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
+# Per-word OOF predictions (for DLT analyses) to $SCRATCH; off by default since 2026-10-13 (forces a
+# sequential per-subject path that timed out at 4 h for 7B models); SAVE_WORD_PREDICTIONS=1 enables
+# Leaving it off keeps the faster batched lag-matrix GPU ridge.
+export SAVE_WORD_PREDICTIONS="${SAVE_WORD_PREDICTIONS:-0}"
+MEGMASC_SAVE_WP_FLAG=(--no-save_word_predictions)
+[[ "${SAVE_WORD_PREDICTIONS}" == "1" ]] && MEGMASC_SAVE_WP_FLAG=(--save_word_predictions)
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -32,7 +40,7 @@ cd "$BENCHMARK_ROOT" || exit 1
 export PYTHONPATH="${BENCHMARK_ROOT}/forgetting-transformer/src:${BENCHMARK_ROOT}/stickbreaking-attention${PYTHONPATH:+:$PYTHONPATH}"  # constrained-arch Lanni-ni models
 
 if [[ -n "${SCRATCH:-}" ]]; then
-  source "${_COMMON_DIR}/jz_cache_env.sh"
+  source "${BENCHMARK_ROOT}/scripts/slurm/jz/jz_cache_env.sh"
 else
   export BENCHMARK_CACHE_ROOT="${BENCHMARK_CACHE_ROOT:-$BENCHMARK_ROOT/.cache}"
   export MEGMASC_FEATURE_CACHE_DIR="${MEGMASC_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/megmasc_features}"
@@ -177,7 +185,7 @@ megmasc_jz_run_array_task() {
     --n_jobs "${N_JOBS}" \
     --regression_device cuda \
     --n_subjects_batch 0 \
-    --no-save_word_predictions \
+    "${MEGMASC_SAVE_WP_FLAG[@]}" \
     --epoch_cache_dir "${MEGMASC_EPOCH_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/megmasc_epochs}" \
     --feature_cache_dir "${MEGMASC_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/megmasc_features}" \
     --skip_summary \

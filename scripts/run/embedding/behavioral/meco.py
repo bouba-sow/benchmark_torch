@@ -226,6 +226,7 @@ def _benchmark_config(
         average_across_subjects=bool(cfg.get("average_across_subjects", False)),
         min_subjects_per_item=int(cfg.get("min_subjects_per_item", 1)),
         average_only=bool(cfg.get("average_only", False)),
+        average_ridge_device=str(cfg.get("average_ridge_device", "cpu")),
     )
 
 
@@ -511,7 +512,7 @@ def main() -> None:
     p.add_argument("--dry_run", action="store_true")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("MECO_PERPLEXITY_DIR", "outputs_torch/meco/perplexity"),
+        default=os.environ.get("MECO_PERPLEXITY_DIR", "outputs_jeanzay/meco/perplexity"),
         help="Save each checkpoint's corpus perplexity here too (merges into the "
              "existing meco_perplexity_summary.csv tree). Set to '' to disable.",
     )
@@ -531,16 +532,30 @@ def main() -> None:
              "Per-subject CSV outputs are left empty/untouched. Can also be set "
              "via the config's top-level 'average_only: true'.",
     )
+    p.add_argument(
+        "--average_ridge_device", default=None, choices=("cpu", "cuda"),
+        help="Ridge fit device for the averaged-RT branch specifically "
+             "(default: cpu). 'cuda' uses himalaya's SVD-based GCV instead of "
+             "sklearn's nested-CV grid search. Can also be set via the "
+             "config's top-level 'average_ridge_device: cuda'.",
+    )
     args = p.parse_args()
     perplexity_dir = args.perplexity_dir or None
     output_family = args.output_family or args.family
 
     cfg = load_config(args.config)
+    # MECO embed is grand-average-subject-only by design (matches the report's
+    # documented metric). Default both flags ON so a bare/legacy config can
+    # never trigger a per-subject fit; an explicit 'average_only: false' still wins.
+    cfg.setdefault("average_across_subjects", True)
+    cfg.setdefault("average_only", True)
     if args.average_across_subjects:
         cfg["average_across_subjects"] = True
     if args.average_only:
         cfg["average_across_subjects"] = True
         cfg["average_only"] = True
+    if args.average_ridge_device:
+        cfg["average_ridge_device"] = args.average_ridge_device
     meco_measure = str(cfg.get("dataset", {}).get("measure", "fp")).lower()
     default_save_dir = f"outputs/meco/embedding_sweep/{meco_measure}"
     out_dir = Path(args.out_dir or cfg.get("output", {}).get("save_dir", default_save_dir))

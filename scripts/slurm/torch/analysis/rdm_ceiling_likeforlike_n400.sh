@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#SBATCH --account=torch_pr_287_general
+#SBATCH --partition=cs
+#SBATCH --cpus-per-task=8
+#SBATCH --hint=nomultithread
+#SBATCH --time=02:00:00
+#SBATCH --output=outputs_torch/logs/rdm_ceiling_lfl_%A_%a.out
+#SBATCH --error=outputs_torch/logs/rdm_ceiling_lfl_%A_%a.err
+set -euo pipefail
+cd /lustre/fswork/projects/rech/ldh/una68ug/benchmark
+export SCRATCH=${SCRATCH:-/lustre/fsn1/projects/rech/ldh/una68ug}
+export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONUNBUFFERED=1
+if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then SH="--shard ${SLURM_ARRAY_TASK_ID}/${SLURM_ARRAY_TASK_COUNT}"; else SH=""; fi
+.venv/bin/python scripts/analysis/rdm_ceiling_likeforlike_n400.py $SH "$@"

@@ -112,6 +112,16 @@ from ..features.word_frequency import compute_wlen_wordfreq_covariates
 from ..sweep import csv_file_lock
 from .base import ModelConfig
 
+
+def _pw_dir(out_dir):
+    """Per-word prediction directory: mirrors ``out_dir`` under $SCRATCH (word_predictions_root)
+    so large per-word CSVs never land on $WORK (2026-10-12)."""
+    from .base import word_predictions_root
+
+    d = word_predictions_root(out_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
 logger = logging.getLogger(__name__)
 
 _LAYER_ROW_COLUMNS = (
@@ -515,7 +525,7 @@ class NsFmriLmeBenchmark:
         import multiprocessing as mp
         ctx = mp.get_context("spawn")
 
-        per_word_csv = out_dir / f"ns_fmri_lme_per_word__{_rev_tag}.csv"
+        per_word_csv = _pw_dir(out_dir) / f"ns_fmri_lme_per_word__{_rev_tag}.csv"
         rows: list[dict] = []
         # max_tasks_per_child=1: recycle each worker after ONE fit — lme4/rpy2's
         # embedded R interpreter leaks memory across repeated fits in one

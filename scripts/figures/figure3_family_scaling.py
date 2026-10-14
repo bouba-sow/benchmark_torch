@@ -47,7 +47,7 @@ GROUP_COLOR = dict(GROUP_COLORS)
 GROUP_COLOR["Constrained-BabyLM"] = "#ff7f0e"  # orange, was purple (#9467bd)
 
 
-def _megmasc_family_df() -> pd.DataFrame:
+def _megmasc_family_df(slug: str = "megmasc_meg") -> pd.DataFrame:
     """MEG-MASC (Gwilliams), embedding track only -- direct pull, bypassing
     DATASETS/MODALITY_BUCKET (megmasc_meg is excluded from those, see
     neuroai/analysis/benchmark_common.py's DATASETS list note: its DLL/surprisal-track
@@ -56,7 +56,7 @@ def _megmasc_family_df() -> pd.DataFrame:
     already-computed test-retest reliability estimate) is fine -- so this
     one family/column is safe to include here per explicit request, even
     though the dataset stays out of every DLL-normalized comparison."""
-    df = _load_model_df("megmasc_meg")
+    df = _load_model_df(slug)  # "megmasc_meg__surprisal" for the surprisal page (DLL ceiling), "megmasc_meg" for embeddings
     if df is None or df.empty or "score_last_norm" not in df.columns:
         return pd.DataFrame()
     out = df[["model_id", "family", "group", "label", "n_params"]].copy()
@@ -114,13 +114,18 @@ def main() -> None:
     with PdfPages(out) as pdf:
         # Page 1: surprisal, DLL-ceiling-normalised score (score_last_norm),
         # the same convention as every other current paper figure.
+        # + MEG column (MEG-MASC): its surprisal-track score is normalised by its own DLL split-half ceiling
+        # (outputs/noise_ceilings/delta_loglik_ceiling_megmasc.json), like every other surprisal-track dataset.
         dfs_surprisal = {f: _family_model_df(f, "surprisal", "last") for f in DATASET_FAMILY_ORDER}
-        fig = plt.figure(figsize=(3.6 * n_fams, 4.6))
-        _draw_page(fig, dfs_surprisal, "Fraction of noise ceiling")
+        dfs_surprisal["MEG"] = _megmasc_family_df("megmasc_meg__surprisal")
+        # + EEG (Broderick), included for now although its DLL ceiling is under investigation (most models exceed it, see docs)
+        dfs_surprisal["EEG"] = _megmasc_family_df("broderick_eeg__surprisal")
+        fig = plt.figure(figsize=(3.6 * sum(not d.empty for d in dfs_surprisal.values()), 4.6))
+        _draw_page(fig, dfs_surprisal, "Fraction of noise ceiling", fam_order=list(DATASET_FAMILY_ORDER) + ["MEG"])
         fig.tight_layout(rect=(0, 0.05, 1, 1))
         pdf.savefig(fig, dpi=600)
         plt.close(fig)
-        print("wrote page: surprisal, last layer")
+        print("wrote page: surprisal, last layer (+MEG)")
 
         # Page 2: embedding, unchanged (full-model score / ceiling) -- plus
         # an extra MEG column (Gwilliams/megmasc_meg), per explicit request:
@@ -128,9 +133,10 @@ def main() -> None:
         # unsettled for this dataset, so it's safe here even though megmasc
         # stays excluded from every DLL-normalized comparison elsewhere.
         dfs_embed = {f: _family_model_df(f, "embedding", "last") for f in DATASET_FAMILY_ORDER}
+        dfs_embed["EEG"] = _megmasc_family_df("broderick_eeg")  # Broderick EEG (continuous); embedding track has a valid correlation ceiling
         dfs_embed["MEG"] = _megmasc_family_df()
         fam_order_embed = list(DATASET_FAMILY_ORDER) + ["MEG"]
-        fig = plt.figure(figsize=(3.6 * (n_fams + 1), 4.6))
+        fig = plt.figure(figsize=(3.6 * sum(not dfs_embed[f].empty for f in fam_order_embed if f in dfs_embed), 4.6))
         _draw_page(fig, dfs_embed, "Fraction of noise ceiling", fam_order=fam_order_embed)
         fig.tight_layout(rect=(0, 0.05, 1, 1))
         pdf.savefig(fig, dpi=600)

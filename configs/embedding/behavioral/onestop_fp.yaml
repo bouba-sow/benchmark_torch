@@ -42,7 +42,7 @@ dataset:
 # ---- grand-average-subject methodology ----
 average_across_subjects: true
 average_only: true
-average_ridge_device: cpu      # switched back from cuda: see configs/embedding/behavioral/geco_fp.yaml
+average_ridge_device: cuda     # himalaya GPU ridge everywhere (2026-10-14; was cpu, single-core and too slow with last-layer-only fits)
                                # Set 'cpu' for a local smoke test without himalaya.
 min_subjects_per_item: 5        # 120 subjects read shared passages, but skipping
                                # is common (esp. GP); drop words with <5

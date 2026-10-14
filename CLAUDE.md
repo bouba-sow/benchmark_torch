@@ -31,9 +31,11 @@ side effect of unrelated work.
   expensive results and raw data. Use synthetic fixtures or a temporary output root to test.
 * Restructuring is behavior-preserving: do not change formulas, filters, splits, layer
   conventions, ceilings or stimulus alignment while reorganizing.
-* Surprisal headline = held-out `delta_loglik_test / n_obs_test` at the best layer,
-  normalized by a delta-log-likelihood ceiling (older prose that says delta-Pearson-r is
-  stale). Across-dataset composites use the median.
+* Surprisal headline = held-out `delta_loglik_test / n_obs_test` at the layer with the best
+  TRAIN `delta_loglik_train` (since 2026-10-01; `benchmark_common.select_best_row` /
+  `LAYER_SELECTION`; the old rule picked the layer on the held-out set itself and inflated small
+  datasets 2-15x), normalized by a delta-log-likelihood ceiling (older prose that says
+  delta-Pearson-r is stale). Across-dataset composites use the median.
 * Sweep CSVs (`*_lme_by_layer.csv`) can mix 26- and 29-column rows; read them with
   `neuroai/analysis/benchmark_common.py::read_lme_by_layer_csv`, never plain `pd.read_csv`.
 * Noise-ceiling tables: reports read `outputs/noise_ceilings/noise_ceilings_summary.csv`

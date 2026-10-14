@@ -58,7 +58,7 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
     return yaml.safe_load(raw)
 
 
-_PERPLEXITY_DIR = Path("outputs_torch") / "nieuwland/perplexity"
+_PERPLEXITY_DIR = Path("outputs_jeanzay") / "nieuwland/perplexity"
 
 
 def _save_nieuwland_perplexity(
@@ -70,7 +70,7 @@ def _save_nieuwland_perplexity(
     out_path = out_dir / f"{revision.replace('/', '_')}_nieuwland_perplexity.json"
     out_path.write_text(json.dumps({
         "model_id": model_id, "revision": revision, "n_params": n_params,
-        "dataset": "nieuwland", "perplexity": perplexity,
+        "dataset": "nieuwland", "perplexity": perplexity, "perplexity_method": "logits_v2_per_word",
         "n_tokens": n_tokens, "max_length": max_length,
     }, indent=2))
     logger.info("Saved nieuwland perplexity %.4f for %s @ %s", perplexity, model_id, revision)
@@ -110,7 +110,7 @@ def _extract_perplexity(
         _PERPLEXITY_DIR / model_id.replace("/", "_")
         / f"{revision.replace('/', '_')}_nieuwland_perplexity.json"
     )
-    if out_path.is_file():
+    if out_path.is_file() and json.loads(out_path.read_text()).get("perplexity_method") == "logits_v2_per_word":
         logger.info("nieuwland perplexity already cached for %s @ %s — skipping", model_id, revision)
         return
     try:
@@ -150,7 +150,7 @@ def main() -> None:
                    help="Skip the post-extraction Nieuwland-corpus perplexity computation "
                         "(on by default -- reuses the already-loaded model)")
     p.add_argument("--collect_perplexity_summary", action="store_true",
-                   help="Rebuild outputs_torch/nieuwland/perplexity/nieuwland_perplexity_summary.csv "
+                   help="Rebuild outputs_jeanzay/nieuwland/perplexity/nieuwland_perplexity_summary.csv "
                         "from every *_nieuwland_perplexity.json on disk and exit.")
     args = p.parse_args()
 

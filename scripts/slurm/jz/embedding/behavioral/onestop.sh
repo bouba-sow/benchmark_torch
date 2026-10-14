@@ -45,6 +45,8 @@
 # would otherwise leak in and silently write output into the wrong directory.
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK

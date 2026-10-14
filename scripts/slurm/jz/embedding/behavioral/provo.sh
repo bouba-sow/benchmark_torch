@@ -27,6 +27,8 @@
 # would otherwise leak in and silently write output into the wrong directory.
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -136,6 +138,7 @@ provo_jz_run_array_task_gpu() {
   echo "PROVO_WORD_PREDICTIONS_ROOT=${PROVO_WORD_PREDICTIONS_ROOT:-unset (falls back to SWEEP_ROOT)}"
   echo "PROVO_AVERAGE_ACROSS_SUBJECTS=${PROVO_AVERAGE_ACROSS_SUBJECTS:-0}"
   echo "PROVO_AVERAGE_ONLY=${PROVO_AVERAGE_ONLY:-0}"
+  echo "PROVO_AVERAGE_RIDGE_DEVICE=${PROVO_AVERAGE_RIDGE_DEVICE:-cuda}"
 
   provo_jz_check_data || exit 1
   provo_jz_setup_env
@@ -150,6 +153,9 @@ provo_jz_run_array_task_gpu() {
     _avg_flag=(--average_only)
   elif [[ "${PROVO_AVERAGE_ACROSS_SUBJECTS:-0}" == "1" ]]; then
     _avg_flag=(--average_across_subjects)
+  fi
+  if [[ -n "${PROVO_AVERAGE_RIDGE_DEVICE:-}" ]]; then
+    _avg_flag+=(--average_ridge_device "${PROVO_AVERAGE_RIDGE_DEVICE}")
   fi
 
   "${PY[@]}" scripts/run/embedding/behavioral/provo.py \

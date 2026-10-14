@@ -1,0 +1,18 @@
+{
+  "models": [
+    {
+      "family": "cbr_rnn",
+      "array_index": 0,
+      "model_id": "cclark/cbr-rnn",
+      "revision": "main",
+      "safe": "cclark_cbr-rnn"
+    },
+    {
+      "family": "cbr_rnn",
+      "array_index": 1,
+      "model_id": "cclark/cbr-rnn-m",
+      "revision": "main",
+      "safe": "cclark_cbr-rnn-m"
+    }
+  ]
+}

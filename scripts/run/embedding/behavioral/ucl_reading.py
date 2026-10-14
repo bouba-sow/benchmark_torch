@@ -226,6 +226,7 @@ def _benchmark_config(
         average_across_subjects=bool(cfg.get("average_across_subjects", False)),
         min_subjects_per_item=int(cfg.get("min_subjects_per_item", 1)),
         average_only=bool(cfg.get("average_only", False)),
+        average_ridge_device=str(cfg.get("average_ridge_device", "cpu")),
     )
 
 
@@ -367,6 +368,52 @@ def run_model_sweep(
     return df
 
 
+def run_activations_only(
+    checkpoints: list[CheckpointItem],
+    *,
+    model_id: str,
+    n_params: float,
+    batch_size: int,
+    cfg: dict,
+    device: str,
+    feature_cache_dir: Path | None,
+    model_cfg: dict[str, Any] | None = None,
+) -> None:
+    """RSA cache backfill: populate the embedding cache without fitting any
+    ridge regression, skipping the scores-CSV already-done check entirely.
+
+    Mirrors nieuwland.py/broderick.py's run_activations_only — calls
+    UclReadingEmbedBenchmark.run_extract_only() per checkpoint, which loads
+    trials then extracts+caches per-word embeddings. No CSV writes.
+    """
+    if feature_cache_dir is None:
+        raise SystemExit(
+            "--activations_only requires a feature cache directory. "
+            "Set cache.features_dir in the config (UCL_READING_EMBED_CACHE_DIR)."
+        )
+    for ckpt in checkpoints:
+        logger.info("[%s] %s — activations-only extraction", model_id, ckpt.revision)
+        load_model_id = resolve_load_model_id(model_cfg, ckpt.revision) if model_cfg else model_id
+        bench_cfg = _benchmark_config(
+            cfg,
+            model_id=model_id,
+            load_model_id=load_model_id,
+            revision=ckpt.revision,
+            n_params=n_params,
+            batch_size=batch_size,
+            device=device,
+            feature_cache_dir=feature_cache_dir,
+            trust_remote_code=bool((model_cfg or {}).get("trust_remote_code", False)),
+        )
+        try:
+            UclReadingEmbedBenchmark(bench_cfg).run_extract_only()
+        except Exception:
+            logger.error("[%s] activations-only extraction failed at %s", model_id, ckpt.revision, exc_info=True)
+        finally:
+            clear_hf_model_cache()
+            free_gpu()
+
+
 def _plot_training_curve(df: pd.DataFrame, output_dir: Path, model_id: str) -> None:
     if "step" not in df.columns:
         return
@@ -505,7 +552,7 @@ def main() -> None:
     p.add_argument("--dry_run", action="store_true")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("UCL_READING_PERPLEXITY_DIR", "outputs_torch/ucl_reading/perplexity"),
+        default=os.environ.get("UCL_READING_PERPLEXITY_DIR", "outputs_jeanzay/ucl_reading/perplexity"),
         help="Save each checkpoint's corpus perplexity here too (merges into the "
              "existing ucl_reading_perplexity_summary.csv tree). Set to '' to disable.",
     )
@@ -526,16 +573,37 @@ def main() -> None:
              "(e.g. opt-66b). Can also be set via the config's top-level "
              "'average_only: true'.",
     )
+    p.add_argument(
+        "--average_ridge_device", default=None, choices=("cpu", "cuda"),
+        help="Ridge fit device for the averaged-RT branch specifically "
+             "(default: cpu). 'cuda' uses himalaya's SVD-based GCV instead of "
+             "sklearn's nested-CV grid search. Can also be set via the "
+             "config's top-level 'average_ridge_device: cuda'.",
+    )
+    p.add_argument(
+        "--activations_only", action="store_true",
+        help="RSA cache backfill: only extract+cache per-word embeddings for "
+             "this checkpoint, skip the ridge fit entirely and bypass the "
+             "already-done check. No CSV writes.",
+    )
     args = p.parse_args()
     perplexity_dir = args.perplexity_dir or None
     output_family = args.output_family or args.family
 
     cfg = load_config(args.config)
+    # UCL Reading embed is grand-average-subject-only by design (matches the
+    # report's documented metric). Default both flags ON so a bare/legacy
+    # config can never trigger a per-subject fit; an explicit
+    # 'average_only: false' still wins.
+    cfg.setdefault("average_across_subjects", True)
+    cfg.setdefault("average_only", True)
     if args.average_across_subjects:
         cfg["average_across_subjects"] = True
     if args.average_only:
         cfg["average_across_subjects"] = True
         cfg["average_only"] = True
+    if args.average_ridge_device:
+        cfg["average_ridge_device"] = args.average_ridge_device
     default_save_dir = "outputs/ucl_reading/embedding_sweep"
     out_dir = Path(args.out_dir or cfg.get("output", {}).get("save_dir", default_save_dir))
     average_out_dir = out_dir.with_name(out_dir.name + "_average") if cfg.get("average_across_subjects") else None
@@ -563,6 +631,18 @@ def main() -> None:
             checkpoints = _checkpoint_items_from_task(task)
             if args.dry_run:
                 print(f"task: {task}")
+                return
+            if args.activations_only:
+                run_activations_only(
+                    checkpoints,
+                    model_id=task.model_id,
+                    n_params=model_cfgs[0]["n_params"],
+                    batch_size=model_cfgs[0]["batch_size"],
+                    cfg=cfg,
+                    device=args.device,
+                    feature_cache_dir=feature_cache_dir,
+                    model_cfg=model_cfgs[0],
+                )
                 return
             run_model_sweep(
                 checkpoints,

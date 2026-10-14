@@ -75,6 +75,7 @@ from neuroai.benchmarks.n400_szewczyk import (
     SzewczykConfig,
     SzewczykEncoder,
     SzewczykResult,
+    _fit_cache_path,
     already_done,
     save_results,
 )
@@ -135,6 +136,7 @@ def _build_encoder_config(
     device: str,
     output_dir: Path,
     feature_cache_dir: Path | None,
+    fit_cache_dir: Path | None,
     n_gpu_workers: int,
     load_model_id: str | None = None,
     model_cfg: dict | None = None,
@@ -169,6 +171,7 @@ def _build_encoder_config(
         tokenizer_no_revision=bool(yaml_cfg.get("benchmark", {}).get("tokenizer_no_revision", True)),
         trust_remote_code=trust_remote_code,
         feature_cache_dir=str(feature_cache_dir) if feature_cache_dir else None,
+        fit_cache_dir=str(fit_cache_dir) if fit_cache_dir else None,
         n_splits=int(reg.get("n_splits", 10)),
         ridge_alphas=alphas,
         scale=bool(reg.get("scale", True)),
@@ -194,6 +197,7 @@ def run_model_sweep(
     output_dir: Path,
     device: str,
     feature_cache_dir: Path | None,
+    fit_cache_dir: Path | None,
     n_gpu_workers: int,
     no_plots: bool = False,
     model_cfg: dict | None = None,
@@ -226,6 +230,7 @@ def run_model_sweep(
             device=device,
             output_dir=output_dir,
             feature_cache_dir=feature_cache_dir,
+            fit_cache_dir=fit_cache_dir,
             n_gpu_workers=n_gpu_workers,
             model_cfg=model_cfg,
             regression_device=regression_device,
@@ -246,6 +251,8 @@ def run_model_sweep(
                 peak_layer, result.n_layers,
                 result.expected_spearmanr_best, result.unexpected_spearmanr_best,
             )
+            if fit_cache_dir is not None:
+                _fit_cache_path(fit_cache_dir, model_id, ckpt.revision).unlink(missing_ok=True)
         except Exception:
             logger.error("[%s] failed at %s", model_id, rev_key, exc_info=True)
             traceback.print_exc()
@@ -438,6 +445,9 @@ def main() -> None:
     p.add_argument("--n_gpu_workers", type=int, default=32,
                    help="Concurrent CUDA-stream workers for the flattened (subject, layer) ridge sweep")
     p.add_argument("--feature_cache_dir", default=None)
+    p.add_argument("--fit_cache_dir", default=None,
+                   help="Cache completed (subject, layer) ridge fits here (GPU path) so a "
+                        "SLURM-timeout mid-sweep resumes instead of redoing the whole sweep.")
     p.add_argument("--summary_only", action="store_true")
     p.add_argument("--skip_summary", action="store_true")
     p.add_argument("--no_plots", action="store_true")
@@ -459,6 +469,12 @@ def main() -> None:
         _p = os.path.expandvars(str(cache_cfg["features_dir"]))
         if "$" not in _p:
             feature_cache_dir = Path(_p)
+
+    fit_cache_dir: Path | None = (
+        Path(args.fit_cache_dir) if args.fit_cache_dir else None
+    )
+    if fit_cache_dir is not None:
+        fit_cache_dir.mkdir(parents=True, exist_ok=True)
 
     if args.summary_only:
         run_summary(out_root, family=args.family)
@@ -497,6 +513,7 @@ def main() -> None:
                 device=args.device,
                 regression_device=args.regression_device,
                 feature_cache_dir=feature_cache_dir,
+                fit_cache_dir=fit_cache_dir,
                 n_gpu_workers=args.n_gpu_workers,
                 no_plots=args.no_plots,
                 model_cfg=model_cfg,
@@ -534,6 +551,7 @@ def main() -> None:
                 device=args.device,
                 regression_device=args.regression_device,
                 feature_cache_dir=feature_cache_dir,
+                fit_cache_dir=fit_cache_dir,
                 n_gpu_workers=args.n_gpu_workers,
                 no_plots=args.no_plots,
                 model_cfg=model_cfg,
@@ -562,6 +580,7 @@ def main() -> None:
                 device=args.device,
                 regression_device=args.regression_device,
                 feature_cache_dir=feature_cache_dir,
+                fit_cache_dir=fit_cache_dir,
                 n_gpu_workers=args.n_gpu_workers,
                 no_plots=args.no_plots,
             )

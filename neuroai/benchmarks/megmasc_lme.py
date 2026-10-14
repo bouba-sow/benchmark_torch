@@ -47,6 +47,16 @@ from ..datasets.megmasc import (
 from ..regressors.megmasc_lme import DEFAULT_NUISANCES
 from ..sweep import csv_file_lock
 from .base import ModelConfig
+
+
+def _pw_dir(out_dir):
+    """Per-word prediction directory: mirrors ``out_dir`` under $SCRATCH (word_predictions_root)
+    so large per-word CSVs never land on $WORK (2026-10-12)."""
+    from .base import word_predictions_root
+
+    d = word_predictions_root(out_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 from .megmasc import (
     MegMascDataConfig as _EncDataConfig,
     _bandpass_eeg,
@@ -133,6 +143,7 @@ class MegMascLmeConfig:
     verbose: bool = False
     allow_slope_fallback: bool = True
     layer_stride: int = 1
+    last_layer_only: bool = False  # fit only the final layer (overrides layer_stride)
     n_workers: int = 10
     require_cached_surprisal: bool = False
     save_word_predictions: bool = True
@@ -415,10 +426,10 @@ class MegMascLmeBenchmark:
         out_dir = Path(self.cfg.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         layer_csv = out_dir / "megmasc_lme_by_layer.csv"
-        per_word_csv = out_dir / "megmasc_lme_per_word.csv"
+        per_word_csv = _pw_dir(out_dir) / "megmasc_lme_per_word.csv"
 
         n_layers = c["n_layers"]
-        layer_indices = list(range(0, n_layers, max(1, lcfg.layer_stride)))
+        layer_indices = [n_layers - 1] if lcfg.last_layer_only else list(range(0, n_layers, max(1, lcfg.layer_stride)))
         done_layers: set[int] = set()
         if layer_csv.exists():
             try:
@@ -577,7 +588,7 @@ class MegMascLmeBenchmark:
 
         import multiprocessing as mp
         ctx = mp.get_context("spawn")
-        per_word_csv = out_dir / "megmasc_lme_per_word.csv"
+        per_word_csv = _pw_dir(out_dir) / "megmasc_lme_per_word.csv"
         rows_out: list[dict] = []
         if tasks:
             with ProcessPoolExecutor(

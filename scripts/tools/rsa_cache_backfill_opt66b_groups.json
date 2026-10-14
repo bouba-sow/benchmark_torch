@@ -1,0 +1,20 @@
+{
+  "n_groups": 1,
+  "groups": [
+    [
+      {
+        "family": "opt",
+        "array_index": 7,
+        "model_id": "facebook/opt-66b",
+        "revision": "main",
+        "safe": "facebook_opt-66b",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "nieuwland",
+          "podcast"
+        ]
+      }
+    ]
+  ]
+}

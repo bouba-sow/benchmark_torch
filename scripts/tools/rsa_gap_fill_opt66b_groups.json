@@ -1,0 +1,12 @@
+{
+  "n_groups": 1,
+  "groups": [
+    [
+      {
+        "family": "opt",
+        "array_index": 7,
+        "model_id": "facebook/opt-66b"
+      }
+    ]
+  ]
+}

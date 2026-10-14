@@ -55,7 +55,7 @@ dataset:
   # fit_podcast_lme_one_lag (see regressors/podcast_lme.py docstring).
   baseline: null
   baseline_mode: logratio
-  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_torch/podcast/electrode_selection
+  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/podcast/electrode_selection
   max_length: null
   tokenizer_no_revision: true
   # wordfreq Zipf frequency — same source as the ridge unique-contribution check.

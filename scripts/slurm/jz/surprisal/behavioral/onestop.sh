@@ -25,6 +25,7 @@
 #                  stage (default 20) — pymer4/rpy2 embeds one R interpreter
 #                  per process, so layer-level parallelism must be process-based.
 #   LAYER_STRIDE — fit every Nth layer (default 1 = all layers)
+#   LAST_LAYER_ONLY — 1 = fit only the deepest layer (default 0)
 #   SAVE_WORD_PREDICTIONS — 1 (default) saves per-word predictions to
 #                  *_lme_per_word.csv; set to 0 to disable
 #
@@ -84,8 +85,13 @@ else
   SAVE_WORD_PREDICTIONS_FLAG=(--no-save_word_predictions)
 fi
 
-# NOTE: run/surprisal/behavioral/onestop_fit.py has no --last_layer_only flag (unlike Provo);
-# all layers (subject to --layer_stride) are always fit.
+# Fit only the deepest layer (skips --layer_stride entirely). Set LAST_LAYER_ONLY=1 to enable
+# (default 0 = every layer_stride'd layer, as for Provo/MECO).
+export LAST_LAYER_ONLY="${LAST_LAYER_ONLY:-0}"
+LAST_LAYER_ONLY_FLAG=()
+if [[ "${LAST_LAYER_ONLY}" == "1" ]]; then
+  LAST_LAYER_ONLY_FLAG=(--last_layer_only)
+fi
 
 if command -v uv >/dev/null 2>&1; then
   PY=(uv run --frozen --no-sync --no-dev python)
@@ -261,6 +267,7 @@ onestop_lme_jz_run_array_task_cpu() {
     --device cpu \
     --n_workers "${N_WORKERS}" \
     --layer_stride "${LAYER_STRIDE}" \
+    "${LAST_LAYER_ONLY_FLAG[@]}" \
     --out_dir "${SWEEP_ROOT}" \
     --skip_summary \
     --no_plots \

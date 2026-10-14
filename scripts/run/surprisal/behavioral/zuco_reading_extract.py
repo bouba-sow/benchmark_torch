@@ -135,7 +135,7 @@ def _save_perplexity(task, zuco_task: str, surp: np.ndarray, perplexity_dir: str
         "step": task.step,
         "tokens_seen": task.tokens_seen,
         "corpus": f"zuco_reading_{zuco_task.lower()}",
-        "perplexity": round(corpus_ppl, 4),
+        "perplexity": round(corpus_ppl, 4), "perplexity_method": "surprisal_v2_sum_per_word",
         "n_words": n_words,
     }
 
@@ -204,13 +204,13 @@ def prefetch_one(
         if task.registry_family == "cbr_rnn":
             from neuroai.features.cbr_rnn import batch_surprisal_cbr_rnn
 
-            batch_surprisal_cbr_rnn(
+            # keep the (n_words, 1) surprisal so the perplexity below is saved for CBR-RNN too
+            arr = batch_surprisal_cbr_rnn(
                 task.load_model_id,
                 contexts,
                 targets,
                 device=device,
             )
-            arr = None
         else:
             from neuroai.features.logit_lens import logit_lens_surprisal_trials
 

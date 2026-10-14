@@ -169,6 +169,12 @@ def _load_family(sweep_dir: Path, family: str, meta: dict[str, dict]) -> pd.Data
         if df.empty:
             continue
         model_id = model_dir.name.replace("_", "/", 1)
+        if model_id not in meta and model_dir.name not in meta:
+            # Stale sweep output from a renamed/removed registry entry (e.g. an
+            # excluded/superseded model variant) -- not a real registry model,
+            # skip rather than let it leak into the aggregate under a
+            # fallback model_id.
+            continue
         m = meta.get(model_id, meta.get(model_dir.name, {}))
         df.insert(0, "model_id", m.get("model_id", model_id))
         df.insert(1, "family", family)

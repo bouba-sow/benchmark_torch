@@ -85,7 +85,7 @@ run_dll() {
       "${PY[@]}" scripts/ceilings/dll_n400.py --dataset nieuwland_paper --re_structure nieuwland_paper \
         "${common[@]}" --n_workers "$nw" $([[ $INSAMPLE == 1 ]] && echo --in_sample) "${OUT_ARGS[@]}" ;;
     szewczyk)
-      "${PY[@]}" scripts/ceilings/dll_n400.py --dataset szewczyk --re_structure nieuwland_paper \
+      "${PY[@]}" scripts/ceilings/dll_n400.py --dataset szewczyk_paper --re_structure szewczyk_paper \
         "${common[@]}" --n_workers "$nw" $([[ $INSAMPLE == 1 ]] && echo --in_sample) "${OUT_ARGS[@]}" ;;
     megmasc)
       # Reuses a model's megmasc_lme_pooled_table.parquet; 12 workers keeps RAM under the node (890k-row fits).

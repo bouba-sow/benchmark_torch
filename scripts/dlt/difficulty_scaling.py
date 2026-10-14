@@ -40,6 +40,9 @@ from scipy.stats import pearsonr, spearmanr
 
 sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())))
 
+from neuroai.analysis.benchmark_common import EXCLUDED_MODEL_IDS
+from scripts.dlt.dlt_keys import attach_story_zone
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -267,11 +270,21 @@ def build_behavioral_scaling_table_multi_cutoff(
     rows_by_cutoff: dict[object, list[pd.DataFrame]] = {name: [] for name in cutoffs}
     for pw_path in per_word_files:
         per_word = pd.read_csv(pw_path)
-        # sentid/sentpos are exactly str(story_id)/int(zone) for both LME styles used
-        # here (see neuroai/regressors/lme.py::prepare_spr_lme_frame and
-        # neuroai/regressors/ucl_reading_lme.py::prepare_ucl_reading_lme_frame).
-        per_word["story_id"] = per_word["sentid"].astype(int)
-        per_word["zone"] = per_word["sentpos"].astype(int)
+        if "model" in per_word.columns:  # drop broken upstream checkpoints (out of scope)
+            per_word = per_word[~per_word["model"].isin(EXCLUDED_MODEL_IDS)]
+            if per_word.empty:
+                continue
+        # Last layer only. Per-word files hold one block of rows per saved layer (all
+        # layers for newer sweeps, last/best for older ones); without this the score is
+        # averaged over whichever layers happen to be saved.
+        if "layer" in per_word.columns:
+            _g = [c for c in ("model", "revision") if c in per_word.columns]
+            _max = per_word.groupby(_g)["layer"].transform("max") if _g else per_word["layer"].max()
+            per_word = per_word[per_word["layer"] == _max]
+        # sentid/sentpos are str(story_id)/int(zone) for every behavioral dataset EXCEPT
+        # Natural Stories, whose frame keeps the corpus' sentence numbering (see
+        # scripts/dlt/dlt_keys.py) — a direct cast there matched ~4% of rows.
+        per_word = attach_story_zone(per_word, natural_stories=per_word_filename == "spr_lme_per_word.csv")
         per_word = per_word.merge(dlt_key, on=["story_id", "zone"], how="left")
         total = per_word["total"].to_numpy(dtype=float)
 
@@ -739,6 +752,8 @@ def build_podcast_lme_scaling_table_multi_cutoff(
     rows_by_cutoff: dict[object, list[pd.DataFrame]] = {name: [] for name in cutoffs}
     for by_lag_path in by_lag_files:
         model_dir = by_lag_path.parent
+        if model_dir.name in {m.replace("/", "_") for m in EXCLUDED_MODEL_IDS}:
+            continue
         per_word = _lag_averaged_per_word(model_dir, predictions_dirname)
         if per_word is None:
             logger.warning("%s: no %s/lag*.parquet found — skipping", model_dir, predictions_dirname)
@@ -1269,6 +1284,8 @@ BEHAVIORAL = {
                         scores_filename="ucl_reading_spr_lme_checkpoint_scores.csv"),
     "meco": dict(per_word_filename="meco_FP_lme_per_word.csv",
                  scores_filename="meco_lme_checkpoint_scores.csv"),
+    "onestop": dict(per_word_filename="onestop_FP_lme_per_word.csv",
+                    scores_filename="onestop_lme_checkpoint_scores.csv"),
     "zuco_reading_sr": dict(per_word_filename="zuco_reading_SR_lme_per_word.csv",
                             scores_filename="zuco_reading_trt_lme_checkpoint_scores.csv"),
     "zuco_reading_nr": dict(per_word_filename="zuco_reading_NR_lme_per_word.csv",

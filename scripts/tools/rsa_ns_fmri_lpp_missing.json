@@ -1,0 +1,1096 @@
+{
+  "ns_fmri_missing": [
+    {
+      "family": "gpt2",
+      "array_index": 0,
+      "model_id": "openai-community/gpt2"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 4,
+      "model_id": "EleutherAI/gpt-neox-20b"
+    },
+    {
+      "family": "mamba",
+      "array_index": 1,
+      "model_id": "state-spaces/mamba-370m-hf"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 4,
+      "model_id": "AntonV/mamba2-2.7b-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 7,
+      "model_id": "EleutherAI/pythia-2.8b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 2,
+      "model_id": "Qwen/Qwen3-4B-Base"
+    },
+    {
+      "family": "mistral",
+      "array_index": 2,
+      "model_id": "mistralai/Ministral-3-14B-Base-2512"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 3,
+      "model_id": "Lanni-ni/stickbreaking_babylm_10m_4layer"
+    },
+    {
+      "family": "alibi",
+      "array_index": 5,
+      "model_id": "Lanni-ni/alibi_babylm_100m_4layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 1,
+      "model_id": "Lanni-ni/hard_2gram_pile_4layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 3,
+      "model_id": "Lanni-ni/hard_3gram_babylm_10m_4layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 5,
+      "model_id": "Lanni-ni/hard_5gram_babylm_100m_4layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 7,
+      "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-masked-focus"
+    },
+    {
+      "family": "gpt2",
+      "array_index": 1,
+      "model_id": "openai-community/gpt2-medium"
+    },
+    {
+      "family": "opt",
+      "array_index": 0,
+      "model_id": "facebook/opt-125m"
+    },
+    {
+      "family": "mamba",
+      "array_index": 2,
+      "model_id": "state-spaces/mamba-790m-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 0,
+      "model_id": "EleutherAI/pythia-14m-deduped"
+    },
+    {
+      "family": "pythia",
+      "array_index": 8,
+      "model_id": "EleutherAI/pythia-6.9b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 3,
+      "model_id": "Qwen/Qwen3-8B-Base"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 4,
+      "model_id": "Lanni-ni/stickbreaking_babylm_100m_2layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 0,
+      "model_id": "Lanni-ni/forgetting_pile_2layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 2,
+      "model_id": "Lanni-ni/hard_2gram_babylm_10m_2layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 4,
+      "model_id": "Lanni-ni/hard_3gram_babylm_100m_2layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 0,
+      "model_id": "colinglab/CLASS_IT-140M"
+    },
+    {
+      "family": "babylm",
+      "array_index": 8,
+      "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-causal-focus"
+    },
+    {
+      "family": "gpt2",
+      "array_index": 2,
+      "model_id": "openai-community/gpt2-large"
+    },
+    {
+      "family": "opt",
+      "array_index": 1,
+      "model_id": "facebook/opt-350m"
+    },
+    {
+      "family": "mamba",
+      "array_index": 3,
+      "model_id": "state-spaces/mamba-1.4b-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 1,
+      "model_id": "EleutherAI/pythia-31m-deduped"
+    },
+    {
+      "family": "pythia",
+      "array_index": 9,
+      "model_id": "EleutherAI/pythia-12b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 4,
+      "model_id": "Qwen/Qwen3-14B-Base"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 5,
+      "model_id": "Lanni-ni/stickbreaking_babylm_100m_4layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 1,
+      "model_id": "Lanni-ni/forgetting_pile_4layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 3,
+      "model_id": "Lanni-ni/hard_2gram_babylm_10m_4layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 5,
+      "model_id": "Lanni-ni/hard_3gram_babylm_100m_4layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 1,
+      "model_id": "llm-slice/blm-gpt2s-90M-s42_901M-s42_submission"
+    },
+    {
+      "family": "babylm",
+      "array_index": 9,
+      "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-mixed"
+    },
+    {
+      "family": "gpt2",
+      "array_index": 3,
+      "model_id": "openai-community/gpt2-xl"
+    },
+    {
+      "family": "opt",
+      "array_index": 2,
+      "model_id": "facebook/opt-1.3b"
+    },
+    {
+      "family": "mamba",
+      "array_index": 4,
+      "model_id": "state-spaces/mamba-2.8b-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 2,
+      "model_id": "EleutherAI/pythia-70m-deduped"
+    },
+    {
+      "family": "olmo2",
+      "array_index": 0,
+      "model_id": "allenai/OLMo-2-0425-1B"
+    },
+    {
+      "family": "llama32",
+      "array_index": 0,
+      "model_id": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "family": "cbr_rnn",
+      "array_index": 0,
+      "model_id": "cclark/cbr-rnn"
+    },
+    {
+      "family": "alibi",
+      "array_index": 0,
+      "model_id": "Lanni-ni/alibi_pile_2layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 2,
+      "model_id": "Lanni-ni/forgetting_babylm_10m_2layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 4,
+      "model_id": "Lanni-ni/hard_2gram_babylm_100m_2layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 0,
+      "model_id": "Lanni-ni/hard_5gram_pile_2layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 2,
+      "model_id": "Jtapsa/moep"
+    },
+    {
+      "family": "babylm",
+      "array_index": 10,
+      "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-masked-focus"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 0,
+      "model_id": "EleutherAI/gpt-neo-125m"
+    },
+    {
+      "family": "opt",
+      "array_index": 3,
+      "model_id": "facebook/opt-2.7b"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 0,
+      "model_id": "AntonV/mamba2-130m-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 3,
+      "model_id": "EleutherAI/pythia-160m-deduped"
+    },
+    {
+      "family": "olmo2",
+      "array_index": 1,
+      "model_id": "allenai/OLMo-2-1124-7B"
+    },
+    {
+      "family": "llama32",
+      "array_index": 1,
+      "model_id": "meta-llama/Llama-3.2-3B"
+    },
+    {
+      "family": "cbr_rnn",
+      "array_index": 1,
+      "model_id": "cclark/cbr-rnn-m"
+    },
+    {
+      "family": "alibi",
+      "array_index": 1,
+      "model_id": "Lanni-ni/alibi_pile_4layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 3,
+      "model_id": "Lanni-ni/forgetting_babylm_10m_4layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 5,
+      "model_id": "Lanni-ni/hard_2gram_babylm_100m_4layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 1,
+      "model_id": "Lanni-ni/hard_5gram_pile_4layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 3,
+      "model_id": "BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 1,
+      "model_id": "EleutherAI/gpt-neo-1.3B"
+    },
+    {
+      "family": "opt",
+      "array_index": 4,
+      "model_id": "facebook/opt-6.7b"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 1,
+      "model_id": "AntonV/mamba2-370m-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 4,
+      "model_id": "EleutherAI/pythia-410m-deduped"
+    },
+    {
+      "family": "olmo2",
+      "array_index": 2,
+      "model_id": "allenai/OLMo-2-1124-13B"
+    },
+    {
+      "family": "llama32",
+      "array_index": 2,
+      "model_id": "meta-llama/Llama-3.1-8B"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 0,
+      "model_id": "Lanni-ni/stickbreaking_pile_2layer"
+    },
+    {
+      "family": "alibi",
+      "array_index": 2,
+      "model_id": "Lanni-ni/alibi_babylm_10m_2layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 4,
+      "model_id": "Lanni-ni/forgetting_babylm_100m_2layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 0,
+      "model_id": "Lanni-ni/hard_3gram_pile_2layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 2,
+      "model_id": "Lanni-ni/hard_5gram_babylm_10m_2layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 4,
+      "model_id": "BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict-Small"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 2,
+      "model_id": "EleutherAI/gpt-neo-2.7B"
+    },
+    {
+      "family": "opt",
+      "array_index": 5,
+      "model_id": "facebook/opt-13b"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 2,
+      "model_id": "AntonV/mamba2-780m-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 5,
+      "model_id": "EleutherAI/pythia-1b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 0,
+      "model_id": "Qwen/Qwen3-0.6B-Base"
+    },
+    {
+      "family": "mistral",
+      "array_index": 0,
+      "model_id": "mistralai/Ministral-3-3B-Base-2512"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 1,
+      "model_id": "Lanni-ni/stickbreaking_pile_4layer"
+    },
+    {
+      "family": "alibi",
+      "array_index": 3,
+      "model_id": "Lanni-ni/alibi_babylm_10m_4layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 5,
+      "model_id": "Lanni-ni/forgetting_babylm_100m_4layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 1,
+      "model_id": "Lanni-ni/hard_3gram_pile_4layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 3,
+      "model_id": "Lanni-ni/hard_5gram_babylm_10m_4layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 5,
+      "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-causal-focus"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 3,
+      "model_id": "EleutherAI/gpt-j-6b"
+    },
+    {
+      "family": "mamba",
+      "array_index": 0,
+      "model_id": "state-spaces/mamba-130m-hf"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 3,
+      "model_id": "AntonV/mamba2-1.3b-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 6,
+      "model_id": "EleutherAI/pythia-1.4b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 1,
+      "model_id": "Qwen/Qwen3-1.7B-Base"
+    },
+    {
+      "family": "mistral",
+      "array_index": 1,
+      "model_id": "mistralai/Ministral-3-8B-Base-2512"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 2,
+      "model_id": "Lanni-ni/stickbreaking_babylm_10m_2layer"
+    },
+    {
+      "family": "alibi",
+      "array_index": 4,
+      "model_id": "Lanni-ni/alibi_babylm_100m_2layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 0,
+      "model_id": "Lanni-ni/hard_2gram_pile_2layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 2,
+      "model_id": "Lanni-ni/hard_3gram_babylm_10m_2layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 4,
+      "model_id": "Lanni-ni/hard_5gram_babylm_100m_2layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 6,
+      "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-mixed"
+    },
+    {
+      "family": "opt",
+      "array_index": 6,
+      "model_id": "facebook/opt-30b"
+    },
+    {
+      "family": "opt",
+      "array_index": 7,
+      "model_id": "facebook/opt-66b"
+    }
+  ],
+  "lpp_missing": [
+    {
+      "family": "gpt2",
+      "array_index": 0,
+      "model_id": "openai-community/gpt2"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 4,
+      "model_id": "EleutherAI/gpt-neox-20b"
+    },
+    {
+      "family": "mamba",
+      "array_index": 1,
+      "model_id": "state-spaces/mamba-370m-hf"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 4,
+      "model_id": "AntonV/mamba2-2.7b-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 7,
+      "model_id": "EleutherAI/pythia-2.8b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 2,
+      "model_id": "Qwen/Qwen3-4B-Base"
+    },
+    {
+      "family": "mistral",
+      "array_index": 2,
+      "model_id": "mistralai/Ministral-3-14B-Base-2512"
+    },
+    {
+      "family": "rwkv4",
+      "array_index": 2,
+      "model_id": "RWKV/rwkv-4-1b5-pile"
+    },
+    {
+      "family": "molm",
+      "array_index": 0,
+      "model_id": "ibm/MoLM-350M-4B"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 3,
+      "model_id": "Lanni-ni/stickbreaking_babylm_10m_4layer"
+    },
+    {
+      "family": "alibi",
+      "array_index": 5,
+      "model_id": "Lanni-ni/alibi_babylm_100m_4layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 1,
+      "model_id": "Lanni-ni/hard_2gram_pile_4layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 3,
+      "model_id": "Lanni-ni/hard_3gram_babylm_10m_4layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 5,
+      "model_id": "Lanni-ni/hard_5gram_babylm_100m_4layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 7,
+      "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-masked-focus"
+    },
+    {
+      "family": "gpt2",
+      "array_index": 1,
+      "model_id": "openai-community/gpt2-medium"
+    },
+    {
+      "family": "opt",
+      "array_index": 0,
+      "model_id": "facebook/opt-125m"
+    },
+    {
+      "family": "mamba",
+      "array_index": 2,
+      "model_id": "state-spaces/mamba-790m-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 0,
+      "model_id": "EleutherAI/pythia-14m-deduped"
+    },
+    {
+      "family": "pythia",
+      "array_index": 8,
+      "model_id": "EleutherAI/pythia-6.9b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 3,
+      "model_id": "Qwen/Qwen3-8B-Base"
+    },
+    {
+      "family": "bloom",
+      "array_index": 0,
+      "model_id": "bigscience/bloom-560m"
+    },
+    {
+      "family": "rwkv4",
+      "array_index": 3,
+      "model_id": "RWKV/rwkv-4-3b-pile"
+    },
+    {
+      "family": "molm",
+      "array_index": 1,
+      "model_id": "ibm/MoLM-700M-4B"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 4,
+      "model_id": "Lanni-ni/stickbreaking_babylm_100m_2layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 0,
+      "model_id": "Lanni-ni/forgetting_pile_2layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 2,
+      "model_id": "Lanni-ni/hard_2gram_babylm_10m_2layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 4,
+      "model_id": "Lanni-ni/hard_3gram_babylm_100m_2layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 0,
+      "model_id": "colinglab/CLASS_IT-140M"
+    },
+    {
+      "family": "babylm",
+      "array_index": 8,
+      "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-causal-focus"
+    },
+    {
+      "family": "gpt2",
+      "array_index": 2,
+      "model_id": "openai-community/gpt2-large"
+    },
+    {
+      "family": "opt",
+      "array_index": 1,
+      "model_id": "facebook/opt-350m"
+    },
+    {
+      "family": "mamba",
+      "array_index": 3,
+      "model_id": "state-spaces/mamba-1.4b-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 1,
+      "model_id": "EleutherAI/pythia-31m-deduped"
+    },
+    {
+      "family": "pythia",
+      "array_index": 9,
+      "model_id": "EleutherAI/pythia-12b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 4,
+      "model_id": "Qwen/Qwen3-14B-Base"
+    },
+    {
+      "family": "bloom",
+      "array_index": 1,
+      "model_id": "bigscience/bloom-1b1"
+    },
+    {
+      "family": "rwkv4",
+      "array_index": 4,
+      "model_id": "RWKV/rwkv-4-7b-pile"
+    },
+    {
+      "family": "molm",
+      "array_index": 2,
+      "model_id": "ibm/MoLM-700M-8B"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 5,
+      "model_id": "Lanni-ni/stickbreaking_babylm_100m_4layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 1,
+      "model_id": "Lanni-ni/forgetting_pile_4layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 3,
+      "model_id": "Lanni-ni/hard_2gram_babylm_10m_4layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 5,
+      "model_id": "Lanni-ni/hard_3gram_babylm_100m_4layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 1,
+      "model_id": "llm-slice/blm-gpt2s-90M-s42_901M-s42_submission"
+    },
+    {
+      "family": "babylm",
+      "array_index": 9,
+      "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-mixed"
+    },
+    {
+      "family": "gpt2",
+      "array_index": 3,
+      "model_id": "openai-community/gpt2-xl"
+    },
+    {
+      "family": "opt",
+      "array_index": 2,
+      "model_id": "facebook/opt-1.3b"
+    },
+    {
+      "family": "mamba",
+      "array_index": 4,
+      "model_id": "state-spaces/mamba-2.8b-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 2,
+      "model_id": "EleutherAI/pythia-70m-deduped"
+    },
+    {
+      "family": "olmo2",
+      "array_index": 0,
+      "model_id": "allenai/OLMo-2-0425-1B"
+    },
+    {
+      "family": "llama32",
+      "array_index": 0,
+      "model_id": "meta-llama/Llama-3.2-1B"
+    },
+    {
+      "family": "bloom",
+      "array_index": 2,
+      "model_id": "bigscience/bloom-1b7"
+    },
+    {
+      "family": "rwkv4",
+      "array_index": 5,
+      "model_id": "RWKV/rwkv-4-14b-pile"
+    },
+    {
+      "family": "cbr_rnn",
+      "array_index": 0,
+      "model_id": "cclark/cbr-rnn"
+    },
+    {
+      "family": "alibi",
+      "array_index": 0,
+      "model_id": "Lanni-ni/alibi_pile_2layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 2,
+      "model_id": "Lanni-ni/forgetting_babylm_10m_2layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 4,
+      "model_id": "Lanni-ni/hard_2gram_babylm_100m_2layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 0,
+      "model_id": "Lanni-ni/hard_5gram_pile_2layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 2,
+      "model_id": "Jtapsa/moep"
+    },
+    {
+      "family": "babylm",
+      "array_index": 10,
+      "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-masked-focus"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 0,
+      "model_id": "EleutherAI/gpt-neo-125m"
+    },
+    {
+      "family": "opt",
+      "array_index": 3,
+      "model_id": "facebook/opt-2.7b"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 0,
+      "model_id": "AntonV/mamba2-130m-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 3,
+      "model_id": "EleutherAI/pythia-160m-deduped"
+    },
+    {
+      "family": "olmo2",
+      "array_index": 1,
+      "model_id": "allenai/OLMo-2-1124-7B"
+    },
+    {
+      "family": "llama32",
+      "array_index": 1,
+      "model_id": "meta-llama/Llama-3.2-3B"
+    },
+    {
+      "family": "bloom",
+      "array_index": 3,
+      "model_id": "bigscience/bloom-3b"
+    },
+    {
+      "family": "fox",
+      "array_index": 0,
+      "model_id": "zhixuan-lin/fox-llama-760m-longcrawl64-48b"
+    },
+    {
+      "family": "cbr_rnn",
+      "array_index": 1,
+      "model_id": "cclark/cbr-rnn-m"
+    },
+    {
+      "family": "alibi",
+      "array_index": 1,
+      "model_id": "Lanni-ni/alibi_pile_4layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 3,
+      "model_id": "Lanni-ni/forgetting_babylm_10m_4layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 5,
+      "model_id": "Lanni-ni/hard_2gram_babylm_100m_4layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 1,
+      "model_id": "Lanni-ni/hard_5gram_pile_4layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 3,
+      "model_id": "BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 1,
+      "model_id": "EleutherAI/gpt-neo-1.3B"
+    },
+    {
+      "family": "opt",
+      "array_index": 4,
+      "model_id": "facebook/opt-6.7b"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 1,
+      "model_id": "AntonV/mamba2-370m-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 4,
+      "model_id": "EleutherAI/pythia-410m-deduped"
+    },
+    {
+      "family": "olmo2",
+      "array_index": 2,
+      "model_id": "allenai/OLMo-2-1124-13B"
+    },
+    {
+      "family": "llama32",
+      "array_index": 2,
+      "model_id": "meta-llama/Llama-3.1-8B"
+    },
+    {
+      "family": "bloom",
+      "array_index": 4,
+      "model_id": "bigscience/bloom-7b1"
+    },
+    {
+      "family": "fox",
+      "array_index": 1,
+      "model_id": "zhixuan-lin/fox-pro-760m-longcrawl64-48b"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 0,
+      "model_id": "Lanni-ni/stickbreaking_pile_2layer"
+    },
+    {
+      "family": "alibi",
+      "array_index": 2,
+      "model_id": "Lanni-ni/alibi_babylm_10m_2layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 4,
+      "model_id": "Lanni-ni/forgetting_babylm_100m_2layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 0,
+      "model_id": "Lanni-ni/hard_3gram_pile_2layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 2,
+      "model_id": "Lanni-ni/hard_5gram_babylm_10m_2layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 4,
+      "model_id": "BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict-Small"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 2,
+      "model_id": "EleutherAI/gpt-neo-2.7B"
+    },
+    {
+      "family": "opt",
+      "array_index": 5,
+      "model_id": "facebook/opt-13b"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 2,
+      "model_id": "AntonV/mamba2-780m-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 5,
+      "model_id": "EleutherAI/pythia-1b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 0,
+      "model_id": "Qwen/Qwen3-0.6B-Base"
+    },
+    {
+      "family": "mistral",
+      "array_index": 0,
+      "model_id": "mistralai/Ministral-3-3B-Base-2512"
+    },
+    {
+      "family": "rwkv4",
+      "array_index": 0,
+      "model_id": "RWKV/rwkv-4-169m-pile"
+    },
+    {
+      "family": "fox",
+      "array_index": 2,
+      "model_id": "zhixuan-lin/transformer-llama-760m-longcrawl64-48b"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 1,
+      "model_id": "Lanni-ni/stickbreaking_pile_4layer"
+    },
+    {
+      "family": "alibi",
+      "array_index": 3,
+      "model_id": "Lanni-ni/alibi_babylm_10m_4layer"
+    },
+    {
+      "family": "forgetting",
+      "array_index": 5,
+      "model_id": "Lanni-ni/forgetting_babylm_100m_4layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 1,
+      "model_id": "Lanni-ni/hard_3gram_pile_4layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 3,
+      "model_id": "Lanni-ni/hard_5gram_babylm_10m_4layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 5,
+      "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-causal-focus"
+    },
+    {
+      "family": "gptneo",
+      "array_index": 3,
+      "model_id": "EleutherAI/gpt-j-6b"
+    },
+    {
+      "family": "mamba",
+      "array_index": 0,
+      "model_id": "state-spaces/mamba-130m-hf"
+    },
+    {
+      "family": "mamba2",
+      "array_index": 3,
+      "model_id": "AntonV/mamba2-1.3b-hf"
+    },
+    {
+      "family": "pythia",
+      "array_index": 6,
+      "model_id": "EleutherAI/pythia-1.4b-deduped"
+    },
+    {
+      "family": "qwen3",
+      "array_index": 1,
+      "model_id": "Qwen/Qwen3-1.7B-Base"
+    },
+    {
+      "family": "mistral",
+      "array_index": 1,
+      "model_id": "mistralai/Ministral-3-8B-Base-2512"
+    },
+    {
+      "family": "rwkv4",
+      "array_index": 1,
+      "model_id": "RWKV/rwkv-4-430m-pile"
+    },
+    {
+      "family": "fox",
+      "array_index": 3,
+      "model_id": "zhixuan-lin/transformer-pro-760m-longcrawl64-48b"
+    },
+    {
+      "family": "stickbreaking",
+      "array_index": 2,
+      "model_id": "Lanni-ni/stickbreaking_babylm_10m_2layer"
+    },
+    {
+      "family": "alibi",
+      "array_index": 4,
+      "model_id": "Lanni-ni/alibi_babylm_100m_2layer"
+    },
+    {
+      "family": "hard_2gram",
+      "array_index": 0,
+      "model_id": "Lanni-ni/hard_2gram_pile_2layer"
+    },
+    {
+      "family": "hard_3gram",
+      "array_index": 2,
+      "model_id": "Lanni-ni/hard_3gram_babylm_10m_2layer"
+    },
+    {
+      "family": "hard_5gram",
+      "array_index": 4,
+      "model_id": "Lanni-ni/hard_5gram_babylm_100m_2layer"
+    },
+    {
+      "family": "babylm",
+      "array_index": 6,
+      "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-mixed"
+    },
+    {
+      "family": "opt",
+      "array_index": 6,
+      "model_id": "facebook/opt-30b"
+    },
+    {
+      "family": "opt",
+      "array_index": 7,
+      "model_id": "facebook/opt-66b"
+    }
+  ]
+}

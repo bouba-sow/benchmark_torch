@@ -31,7 +31,7 @@ original repositories) and a mirror for datasets that are hard to obtain.
 ## Cache locations
 
 Embeddings and surprisal are cached to disk (`.cache/` by default, or the `*_CACHE_DIR`
-environment variables exported by `scripts/slurm/torch/torch_cache_env.sh`). Large per-word or
+environment variables exported by `scripts/slurm/jz/jz_cache_env.sh`). Large per-word or
 per-electrode arrays go to `$SCRATCH` when it is set. Always set these variables before
 running a script by hand: an unset variable inside a config path used to create a literal
 `${VAR}` folder in the working directory.

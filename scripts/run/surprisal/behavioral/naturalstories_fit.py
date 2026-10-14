@@ -385,7 +385,7 @@ def main() -> None:
     p.add_argument(
         "--sweep_dir",
         default=os.environ.get(
-            "NS_LME_SWEEP_DIR", "outputs_torch/naturalstories/surprisal_sweep"
+            "NS_LME_SWEEP_DIR", "outputs_jeanzay/naturalstories/surprisal_sweep"
         ),
         help="Read sweep CSVs from here when using --summary_only",
     )
@@ -415,7 +415,7 @@ def main() -> None:
                         "default; pass --no-save_word_predictions to disable.")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("NS_PERPLEXITY_DIR", "outputs_torch/naturalstories/perplexity"),
+        default=os.environ.get("NS_PERPLEXITY_DIR", "outputs_jeanzay/naturalstories/perplexity"),
         help="Perplexity JSON/CSV root for scaling-vs-PPL plots",
     )
     p.add_argument("--dry_run", action="store_true")

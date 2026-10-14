@@ -26,6 +26,8 @@
 : "${NS_FAMILY:?Set NS_FAMILY before sourcing job_naturalstories_embed_gpu_jz_common.sh}"
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -123,6 +125,14 @@ ns_embed_gpu_jz_run_array_task() {
   ns_embed_gpu_jz_setup_env
 
   "${PY[@]}" scripts/slurm/family_tasks.py resolve --family "${NS_FAMILY}" --index "${IDX}"
+
+  # A saved ridge score does not imply that its feature cache still exists.
+  # Repair missing activations before the fit's existing-score shortcut.
+  if [[ "${NS_ENSURE_ACTIVATIONS:-0}" == "1" ]]; then
+    "${PY[@]}" scripts/run/embedding/behavioral/naturalstories.py \
+      --config "${CONFIG}" --from-registry --family "${NS_FAMILY}" \
+      --array-index "${IDX}" --activations_only
+  fi
 
   "${PY[@]}" scripts/run/embedding/behavioral/naturalstories.py \
     --config "${CONFIG}" \

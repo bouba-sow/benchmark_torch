@@ -162,7 +162,7 @@ def _save_podcast_perplexity(
     model_id: str, revision: str, n_params: float | None,
     perplexity: float, n_tokens: int, max_length: int,
 ) -> None:
-    perplexity_dir = Path("outputs_torch") / "podcast/lme_perplexity"
+    perplexity_dir = Path("outputs_jeanzay") / "podcast/lme_perplexity"
     safe = model_id.replace("/", "_")
     rev_safe = (revision or "main").replace("/", "_")
     out_dir = perplexity_dir / safe
@@ -171,7 +171,7 @@ def _save_podcast_perplexity(
     record = {
         "model_id": model_id, "revision": revision or "main", "label": model_id.split("/")[-1],
         "n_params": n_params, "family": "pythia", "dataset": "podcast",
-        "perplexity": perplexity, "n_tokens": n_tokens, "max_length": max_length,
+        "perplexity": perplexity, "perplexity_method": "logits_v2_per_word", "n_tokens": n_tokens, "max_length": max_length,
     }
     out_path.write_text(json.dumps(record, indent=2))
     logger.info("Saved Podcast perplexity %.4f for %s @ %s", perplexity, model_id, revision or "main")
@@ -180,7 +180,7 @@ def _save_podcast_perplexity(
 def _collect_podcast_perplexity_summary() -> None:
     import pandas as pd
 
-    perplexity_dir = Path("outputs_torch") / "podcast/lme_perplexity"
+    perplexity_dir = Path("outputs_jeanzay") / "podcast/lme_perplexity"
     rows = []
     for p in sorted(perplexity_dir.glob("*/*_podcast_perplexity.json")):
         try:
@@ -206,8 +206,8 @@ def _extract_perplexity(
     run/surprisal/neural/lpp_extract.py's module docstring for why re-calling
     _get_cached_causal_lm here, BEFORE clear_hf_model_cache() runs, is a
     cache hit and not a second GPU load). This is a SEPARATE cache namespace
-    (outputs_torch/podcast/lme_perplexity/) from the pre-existing standalone
-    scripts/perplexity/podcast.py's (outputs_torch/podcast_
+    (outputs_jeanzay/podcast/lme_perplexity/) from the pre-existing standalone
+    scripts/perplexity/podcast.py's (outputs_jeanzay/podcast_
     perplexity/) -- that script's own --checkpoints --family pythia_checkpoints
     --all mode already works end-to-end and could be run instead/as well, but
     would reload every one of the 110 checkpoints from scratch a second time;
@@ -218,10 +218,10 @@ def _extract_perplexity(
     model_id = task.load_model_id
     revision = task.revision if task.revision not in ("main", "") else None
     out_path = (
-        Path("outputs_torch") / "podcast/lme_perplexity" / model_id.replace("/", "_")
+        Path("outputs_jeanzay") / "podcast/lme_perplexity" / model_id.replace("/", "_")
         / f"{(revision or 'main').replace('/', '_')}_podcast_perplexity.json"
     )
-    if out_path.is_file():
+    if out_path.is_file() and json.loads(out_path.read_text()).get("perplexity_method") == "logits_v2_per_word":
         logger.info("Podcast perplexity already cached for %s @ %s — skipping", model_id, revision or "main")
         return
     try:
@@ -271,22 +271,40 @@ def prefetch_one(
         import torch
 
         dtype = torch.float32
+    is_cbr_rnn = task.registry_family == "cbr_rnn"
     try:
-        logit_lens_surprisal_all_layers(
-            words,
-            task.load_model_id,
-            revision=model_revision,
-            device=device,
-            max_length=max_length,
-            tokenizer_no_revision=True,
-            cache_dir=cache_dir,
-            section_id=0,
-            lang="en",
-            n_params=n_params,
-            trust_remote_code=trust_remote_code,
-            dtype=dtype,
-        )
-        if not skip_perplexity:
+        if is_cbr_rnn:
+            # CBR-RNN is a custom PyTorchModelHubMixin model, not a Transformers
+            # causal LM. Use the same bounded word contexts as PodcastLmeBenchmark
+            # and persist one (word, 1) surprisal array for cache-only consumers.
+            from neuroai.datasets.podcast import build_word_context
+            from neuroai.features.cbr_rnn import batch_surprisal_cbr_rnn
+
+            batch_surprisal_cbr_rnn(
+                task.load_model_id,
+                build_word_context(words),
+                words,
+                device=device,
+                n_params=n_params,
+                cache_dir=cache_dir,
+                section_id=0,
+            )
+        else:
+            logit_lens_surprisal_all_layers(
+                words,
+                task.load_model_id,
+                revision=model_revision,
+                device=device,
+                max_length=max_length,
+                tokenizer_no_revision=True,
+                cache_dir=cache_dir,
+                section_id=0,
+                lang="en",
+                n_params=n_params,
+                trust_remote_code=trust_remote_code,
+                dtype=dtype,
+            )
+        if not skip_perplexity and not is_cbr_rnn:
             _extract_perplexity(task, words=words, device=device, trust_remote_code=trust_remote_code, n_params=n_params)
     except Exception:
         logger.error(
@@ -295,7 +313,8 @@ def prefetch_one(
         )
         raise
     finally:
-        clear_hf_model_cache()
+        if not is_cbr_rnn:
+            clear_hf_model_cache()
 
 
 def main() -> None:
@@ -311,7 +330,7 @@ def main() -> None:
     p.add_argument("--skip_perplexity", action="store_true",
                    help="Skip the post-extraction Podcast-corpus perplexity computation")
     p.add_argument("--collect_perplexity_summary", action="store_true",
-                   help="Rebuild outputs_torch/podcast/lme_perplexity/podcast_perplexity_summary.csv "
+                   help="Rebuild outputs_jeanzay/podcast/lme_perplexity/podcast_perplexity_summary.csv "
                         "from every *_podcast_perplexity.json on disk and exit.")
     args = p.parse_args()
 

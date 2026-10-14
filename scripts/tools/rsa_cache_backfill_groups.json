@@ -1,0 +1,1283 @@
+{
+  "n_groups": 8,
+  "groups": [
+    [
+      {
+        "family": "mamba",
+        "array_index": 1,
+        "model_id": "state-spaces/mamba-370m-hf",
+        "revision": "main",
+        "safe": "state-spaces_mamba-370m-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 0,
+        "model_id": "colinglab/CLASS_IT-140M",
+        "revision": "main",
+        "safe": "colinglab_CLASS_IT-140M",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_2gram",
+        "array_index": 3,
+        "model_id": "Lanni-ni/hard_2gram_babylm_10m_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_2gram_babylm_10m_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "olmo2",
+        "array_index": 0,
+        "model_id": "allenai/OLMo-2-0425-1B",
+        "revision": "stage1-step1907359-tokens4001B",
+        "safe": "allenai_OLMo-2-0425-1B",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "opt",
+        "array_index": 3,
+        "model_id": "facebook/opt-2.7b",
+        "revision": "main",
+        "safe": "facebook_opt-2.7b",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_5gram",
+        "array_index": 1,
+        "model_id": "Lanni-ni/hard_5gram_pile_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_5gram_pile_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "stickbreaking",
+        "array_index": 0,
+        "model_id": "Lanni-ni/stickbreaking_pile_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_stickbreaking_pile_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mamba2",
+        "array_index": 2,
+        "model_id": "AntonV/mamba2-780m-hf",
+        "revision": "main",
+        "safe": "AntonV_mamba2-780m-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 5,
+        "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-causal-focus",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-100m-gpt-bert-causal-focus",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_2gram",
+        "array_index": 0,
+        "model_id": "Lanni-ni/hard_2gram_pile_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_2gram_pile_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "cbr_rnn",
+        "array_index": 1,
+        "model_id": "cclark/cbr-rnn-m",
+        "revision": "main",
+        "safe": "cclark_cbr-rnn-m",
+        "missing_datasets": [
+          "naturalstories",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "mamba2",
+        "array_index": 4,
+        "model_id": "AntonV/mamba2-2.7b-hf",
+        "revision": "main",
+        "safe": "AntonV_mamba2-2.7b-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "gpt2",
+        "array_index": 2,
+        "model_id": "openai-community/gpt2-large",
+        "revision": "main",
+        "safe": "openai-community_gpt2-large",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_3gram",
+        "array_index": 5,
+        "model_id": "Lanni-ni/hard_3gram_babylm_100m_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_3gram_babylm_100m_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "llama32",
+        "array_index": 0,
+        "model_id": "meta-llama/Llama-3.2-1B",
+        "revision": "main",
+        "safe": "meta-llama_Llama-3.2-1B",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mamba2",
+        "array_index": 0,
+        "model_id": "AntonV/mamba2-130m-hf",
+        "revision": "main",
+        "safe": "AntonV_mamba2-130m-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 3,
+        "model_id": "BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict",
+        "revision": "main",
+        "safe": "BabyLM-community_BabyLM-2026-Baseline-GPT2-Strict",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "alibi",
+        "array_index": 2,
+        "model_id": "Lanni-ni/alibi_babylm_10m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_alibi_babylm_10m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 5,
+        "model_id": "EleutherAI/pythia-1b-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-1b-deduped",
+        "missing_datasets": [
+          "fedorenko2016",
+          "naturalstories",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "podcast"
+        ]
+      },
+      {
+        "family": "gptneo",
+        "array_index": 3,
+        "model_id": "EleutherAI/gpt-j-6b",
+        "revision": "main",
+        "safe": "EleutherAI_gpt-j-6b",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_3gram",
+        "array_index": 2,
+        "model_id": "Lanni-ni/hard_3gram_babylm_10m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_3gram_babylm_10m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mistral",
+        "array_index": 2,
+        "model_id": "mistralai/Ministral-3-14B-Base-2512",
+        "revision": "main",
+        "safe": "mistralai_Ministral-3-14B-Base-2512",
+        "missing_datasets": [
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "babylm",
+        "array_index": 7,
+        "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-masked-focus",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-100m-gpt-bert-masked-focus",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mamba",
+        "array_index": 3,
+        "model_id": "state-spaces/mamba-1.4b-hf",
+        "revision": "main",
+        "safe": "state-spaces_mamba-1.4b-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 1,
+        "model_id": "llm-slice/blm-gpt2s-90M-s42_901M-s42_submission",
+        "revision": "main",
+        "safe": "llm-slice_blm-gpt2s-90M-s42_901M-s42_submission",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "alibi",
+        "array_index": 0,
+        "model_id": "Lanni-ni/alibi_pile_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_alibi_pile_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 3,
+        "model_id": "EleutherAI/pythia-160m-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-160m-deduped",
+        "missing_datasets": [
+          "fedorenko2016",
+          "naturalstories",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "podcast"
+        ]
+      },
+      {
+        "family": "gptneo",
+        "array_index": 1,
+        "model_id": "EleutherAI/gpt-neo-1.3B",
+        "revision": "main",
+        "safe": "EleutherAI_gpt-neo-1.3B",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "forgetting",
+        "array_index": 4,
+        "model_id": "Lanni-ni/forgetting_babylm_100m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_forgetting_babylm_100m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "qwen3",
+        "array_index": 0,
+        "model_id": "Qwen/Qwen3-0.6B-Base",
+        "revision": "main",
+        "safe": "Qwen_Qwen3-0.6B-Base",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mamba",
+        "array_index": 0,
+        "model_id": "state-spaces/mamba-130m-hf",
+        "revision": "main",
+        "safe": "state-spaces_mamba-130m-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_5gram",
+        "array_index": 4,
+        "model_id": "Lanni-ni/hard_5gram_babylm_100m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_5gram_babylm_100m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 0,
+        "model_id": "EleutherAI/pythia-14m-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-14m-deduped",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr"
+        ]
+      },
+      {
+        "family": "qwen3",
+        "array_index": 3,
+        "model_id": "Qwen/Qwen3-8B-Base",
+        "revision": "main",
+        "safe": "Qwen_Qwen3-8B-Base",
+        "missing_datasets": [
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "gpt2",
+        "array_index": 1,
+        "model_id": "openai-community/gpt2-medium",
+        "revision": "main",
+        "safe": "openai-community_gpt2-medium",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 1,
+        "model_id": "EleutherAI/pythia-31m-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-31m-deduped",
+        "missing_datasets": [
+          "fedorenko2016",
+          "naturalstories",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 9,
+        "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-mixed",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-10m-gpt-bert-mixed",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "forgetting",
+        "array_index": 2,
+        "model_id": "Lanni-ni/forgetting_babylm_10m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_forgetting_babylm_10m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "olmo2",
+        "array_index": 1,
+        "model_id": "allenai/OLMo-2-1124-7B",
+        "revision": "stage1-step928646-tokens3896B",
+        "safe": "allenai_OLMo-2-1124-7B",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "opt",
+        "array_index": 4,
+        "model_id": "facebook/opt-6.7b",
+        "revision": "main",
+        "safe": "facebook_opt-6.7b",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_3gram",
+        "array_index": 0,
+        "model_id": "Lanni-ni/hard_3gram_pile_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_3gram_pile_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "stickbreaking",
+        "array_index": 1,
+        "model_id": "Lanni-ni/stickbreaking_pile_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_stickbreaking_pile_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mamba2",
+        "array_index": 3,
+        "model_id": "AntonV/mamba2-1.3b-hf",
+        "revision": "main",
+        "safe": "AntonV_mamba2-1.3b-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 6,
+        "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-mixed",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-100m-gpt-bert-mixed",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 8,
+        "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-causal-focus",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-10m-gpt-bert-causal-focus",
+        "missing_datasets": [
+          "fedorenko2016",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "stickbreaking",
+        "array_index": 4,
+        "model_id": "Lanni-ni/stickbreaking_babylm_100m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_stickbreaking_babylm_100m_2layer",
+        "missing_datasets": [
+          "nieuwland",
+          "podcast"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "opt",
+        "array_index": 0,
+        "model_id": "facebook/opt-125m",
+        "revision": "main",
+        "safe": "facebook_opt-125m",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 9,
+        "model_id": "EleutherAI/pythia-12b-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-12b-deduped",
+        "missing_datasets": [
+          "fedorenko2016",
+          "naturalstories",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "podcast"
+        ]
+      },
+      {
+        "family": "gpt2",
+        "array_index": 3,
+        "model_id": "openai-community/gpt2-xl",
+        "revision": "main",
+        "safe": "openai-community_gpt2-xl",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_2gram",
+        "array_index": 4,
+        "model_id": "Lanni-ni/hard_2gram_babylm_100m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_2gram_babylm_100m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "llama32",
+        "array_index": 1,
+        "model_id": "meta-llama/Llama-3.2-3B",
+        "revision": "main",
+        "safe": "meta-llama_Llama-3.2-3B",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mamba2",
+        "array_index": 1,
+        "model_id": "AntonV/mamba2-370m-hf",
+        "revision": "main",
+        "safe": "AntonV_mamba2-370m-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_5gram",
+        "array_index": 2,
+        "model_id": "Lanni-ni/hard_5gram_babylm_10m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_5gram_babylm_10m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "alibi",
+        "array_index": 3,
+        "model_id": "Lanni-ni/alibi_babylm_10m_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_alibi_babylm_10m_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 6,
+        "model_id": "EleutherAI/pythia-1.4b-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-1.4b-deduped",
+        "missing_datasets": [
+          "fedorenko2016",
+          "naturalstories",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "podcast"
+        ]
+      },
+      {
+        "family": "opt",
+        "array_index": 6,
+        "model_id": "facebook/opt-30b",
+        "revision": "main",
+        "safe": "facebook_opt-30b",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 8,
+        "model_id": "EleutherAI/pythia-6.9b-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-6.9b-deduped",
+        "missing_datasets": [
+          "ucl_reading",
+          "zuco_reading_nr",
+          "podcast"
+        ]
+      },
+      {
+        "family": "forgetting",
+        "array_index": 0,
+        "model_id": "Lanni-ni/forgetting_pile_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_forgetting_pile_2layer",
+        "missing_datasets": [
+          "nieuwland",
+          "podcast"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "mamba",
+        "array_index": 2,
+        "model_id": "state-spaces/mamba-790m-hf",
+        "revision": "main",
+        "safe": "state-spaces_mamba-790m-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "qwen3",
+        "array_index": 4,
+        "model_id": "Qwen/Qwen3-14B-Base",
+        "revision": "main",
+        "safe": "Qwen_Qwen3-14B-Base",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "opt",
+        "array_index": 2,
+        "model_id": "facebook/opt-1.3b",
+        "revision": "main",
+        "safe": "facebook_opt-1.3b",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_5gram",
+        "array_index": 0,
+        "model_id": "Lanni-ni/hard_5gram_pile_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_5gram_pile_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "alibi",
+        "array_index": 1,
+        "model_id": "Lanni-ni/alibi_pile_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_alibi_pile_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 4,
+        "model_id": "EleutherAI/pythia-410m-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-410m-deduped",
+        "missing_datasets": [
+          "fedorenko2016",
+          "naturalstories",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 4,
+        "model_id": "BabyLM-community/BabyLM-2026-Baseline-GPT2-Strict-Small",
+        "revision": "main",
+        "safe": "BabyLM-community_BabyLM-2026-Baseline-GPT2-Strict-Small",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "forgetting",
+        "array_index": 5,
+        "model_id": "Lanni-ni/forgetting_babylm_100m_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_forgetting_babylm_100m_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "qwen3",
+        "array_index": 1,
+        "model_id": "Qwen/Qwen3-1.7B-Base",
+        "revision": "main",
+        "safe": "Qwen_Qwen3-1.7B-Base",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "gptneo",
+        "array_index": 4,
+        "model_id": "EleutherAI/gpt-neox-20b",
+        "revision": "main",
+        "safe": "EleutherAI_gpt-neox-20b",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland"
+        ]
+      },
+      {
+        "family": "mistral",
+        "array_index": 0,
+        "model_id": "mistralai/Ministral-3-3B-Base-2512",
+        "revision": "main",
+        "safe": "mistralai_Ministral-3-3B-Base-2512",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 7,
+        "model_id": "EleutherAI/pythia-2.8b-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-2.8b-deduped",
+        "missing_datasets": [
+          "podcast"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "hard_2gram",
+        "array_index": 2,
+        "model_id": "Lanni-ni/hard_2gram_babylm_10m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_2gram_babylm_10m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "stickbreaking",
+        "array_index": 5,
+        "model_id": "Lanni-ni/stickbreaking_babylm_100m_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_stickbreaking_babylm_100m_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mamba",
+        "array_index": 4,
+        "model_id": "state-spaces/mamba-2.8b-hf",
+        "revision": "main",
+        "safe": "state-spaces_mamba-2.8b-hf",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 10,
+        "model_id": "BabyLM-community/babylm-baseline-10m-gpt-bert-masked-focus",
+        "revision": "main",
+        "safe": "BabyLM-community_babylm-baseline-10m-gpt-bert-masked-focus",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "forgetting",
+        "array_index": 3,
+        "model_id": "Lanni-ni/forgetting_babylm_10m_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_forgetting_babylm_10m_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "olmo2",
+        "array_index": 2,
+        "model_id": "allenai/OLMo-2-1124-13B",
+        "revision": "stage1-step596057-tokens5001B",
+        "safe": "allenai_OLMo-2-1124-13B",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "gptneo",
+        "array_index": 2,
+        "model_id": "EleutherAI/gpt-neo-2.7B",
+        "revision": "main",
+        "safe": "EleutherAI_gpt-neo-2.7B",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_3gram",
+        "array_index": 1,
+        "model_id": "Lanni-ni/hard_3gram_pile_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_3gram_pile_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "stickbreaking",
+        "array_index": 2,
+        "model_id": "Lanni-ni/stickbreaking_babylm_10m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_stickbreaking_babylm_10m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "opt",
+        "array_index": 1,
+        "model_id": "facebook/opt-350m",
+        "revision": "main",
+        "safe": "facebook_opt-350m",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "mistral",
+        "array_index": 1,
+        "model_id": "mistralai/Ministral-3-8B-Base-2512",
+        "revision": "main",
+        "safe": "mistralai_Ministral-3-8B-Base-2512",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland"
+        ]
+      }
+    ],
+    [
+      {
+        "family": "hard_3gram",
+        "array_index": 4,
+        "model_id": "Lanni-ni/hard_3gram_babylm_100m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_3gram_babylm_100m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "forgetting",
+        "array_index": 1,
+        "model_id": "Lanni-ni/forgetting_pile_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_forgetting_pile_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "pythia",
+        "array_index": 2,
+        "model_id": "EleutherAI/pythia-70m-deduped",
+        "revision": "main",
+        "safe": "EleutherAI_pythia-70m-deduped",
+        "missing_datasets": [
+          "fedorenko2016",
+          "naturalstories",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "podcast"
+        ]
+      },
+      {
+        "family": "gptneo",
+        "array_index": 0,
+        "model_id": "EleutherAI/gpt-neo-125m",
+        "revision": "main",
+        "safe": "EleutherAI_gpt-neo-125m",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_2gram",
+        "array_index": 5,
+        "model_id": "Lanni-ni/hard_2gram_babylm_100m_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_2gram_babylm_100m_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "llama32",
+        "array_index": 2,
+        "model_id": "meta-llama/Llama-3.1-8B",
+        "revision": "main",
+        "safe": "meta-llama_Llama-3.1-8B",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "opt",
+        "array_index": 5,
+        "model_id": "facebook/opt-13b",
+        "revision": "main",
+        "safe": "facebook_opt-13b",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "hard_5gram",
+        "array_index": 3,
+        "model_id": "Lanni-ni/hard_5gram_babylm_10m_4layer",
+        "revision": "main",
+        "safe": "Lanni-ni_hard_5gram_babylm_10m_4layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "alibi",
+        "array_index": 4,
+        "model_id": "Lanni-ni/alibi_babylm_100m_2layer",
+        "revision": "main",
+        "safe": "Lanni-ni_alibi_babylm_100m_2layer",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "babylm",
+        "array_index": 2,
+        "model_id": "Jtapsa/moep",
+        "revision": "main",
+        "safe": "Jtapsa_moep",
+        "missing_datasets": [
+          "fedorenko2016",
+          "ucl_reading",
+          "nieuwland",
+          "podcast"
+        ]
+      },
+      {
+        "family": "cbr_rnn",
+        "array_index": 0,
+        "model_id": "cclark/cbr-rnn",
+        "revision": "main",
+        "safe": "cclark_cbr-rnn",
+        "missing_datasets": [
+          "naturalstories",
+          "zuco_reading_nr",
+          "nieuwland",
+          "podcast"
+        ]
+      }
+    ]
+  ]
+}

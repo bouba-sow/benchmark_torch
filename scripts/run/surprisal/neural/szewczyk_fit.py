@@ -79,6 +79,7 @@ def _build_benchmark_config(
     feature_cache_dir: str | None = None,
     trust_remote_code: bool | None = None,
     save_word_predictions: bool | None = None,
+    surprisal_only: bool = False,
 ) -> SzewczykLmeBenchmarkConfig:
     ds = cfg["dataset"]
     lme = cfg.get("lme", {})
@@ -95,6 +96,7 @@ def _build_benchmark_config(
             else bool(ds.get("trust_remote_code", False))
         ),
         device=device or str(ds.get("device", "cpu")),
+        sub_experiment=ds.get("sub_experiment") or None,
         feature_cache_dir=feature_cache_dir or os.path.expandvars(
             str(cache_cfg.get("features_dir", ".cache/szewczyk_lme_features"))
         ),
@@ -118,6 +120,7 @@ def _build_benchmark_config(
             save_word_predictions if save_word_predictions is not None
             else bool(lme.get("save_word_predictions", True))
         ),
+        surprisal_only=surprisal_only,
     )
     return SzewczykLmeBenchmarkConfig(
         data=data_cfg,
@@ -152,6 +155,9 @@ def main() -> None:
     p.add_argument("--feature_cache_dir", default=None,
                    help="Surprisal cache dir populated by run/surprisal/neural/szewczyk_extract.py")
     p.add_argument("--save_word_predictions", action=argparse.BooleanOptionalAction, default=None)
+    p.add_argument("--surprisal_only", action="store_true",
+                   help="Write the pooled surprisal table/array (what surprisal_rsa.py reads), "
+                        "then return -- skip the per-layer LME regression loop entirely.")
     args = p.parse_args()
 
     cfg = load_config(args.config)
@@ -199,6 +205,7 @@ def main() -> None:
         feature_cache_dir=args.feature_cache_dir,
         trust_remote_code=trust_remote_code,
         save_word_predictions=args.save_word_predictions,
+        surprisal_only=args.surprisal_only,
     )
 
     logger.info(

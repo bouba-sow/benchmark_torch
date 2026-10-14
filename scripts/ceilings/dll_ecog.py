@@ -69,7 +69,7 @@ def _load_fedorenko2016_pooled() -> tuple[pd.DataFrame, str, str]:
     return df, "stimulus_id", "fedorenko2016"
 
 
-def _load_podcast_pooled() -> tuple[pd.DataFrame, str, str]:
+def _load_podcast_pooled(lag: int | None = None) -> tuple[pd.DataFrame, str, str]:
     """subject, electrode, chunk, word_idx, wlen, freq in the cached table;
     y is a separate (n_rows, n_lags) array -- average the lag columns
     falling in _PODCAST_LAG_WINDOW_S (matches the checkpoint sweeps'
@@ -84,6 +84,11 @@ def _load_podcast_pooled() -> tuple[pd.DataFrame, str, str]:
     analysis_times = np.linspace(-0.2, 0.8, n_lags, endpoint=False)
     lo, hi = _PODCAST_LAG_WINDOW_S
     win_mask = (analysis_times >= lo) & (analysis_times <= hi)
+    if lag is not None:
+        if not 0 <= lag < n_lags:
+            raise ValueError(f"--lag {lag} outside [0, {n_lags})")
+        win_mask = np.zeros(n_lags, dtype=bool)
+        win_mask[lag] = True
     if not win_mask.any():
         raise ValueError(f"window {_PODCAST_LAG_WINDOW_S} matches no lags in "
                           f"[{analysis_times.min():.3f}, {analysis_times.max():.3f}]s")
@@ -106,12 +111,21 @@ def main() -> None:
     ap.add_argument("--n_splits", type=int, default=15)
     ap.add_argument("--n_workers", type=int, default=1)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--mode", choices=("split_half", "loso"), default="split_half")
+    ap.add_argument("--n_repeats", type=int, default=1,
+                    help="loso only: repeats over different train/held-out chunk splits (seed+rep)")
     ap.add_argument("--out_of_sample", dest="out_of_sample", action="store_true", default=True)
     ap.add_argument("--in_sample", dest="out_of_sample", action="store_false")
     ap.add_argument("--out_dir", default=str(OUT_DIR))
+    ap.add_argument("--lag", type=int, default=None,
+                    help="podcast only: use this single lag index (0-31; time = -0.2 + lag/32 s) "
+                         "as y instead of the 0-200 ms window mean; output gets a _lagNN tag")
     args = ap.parse_args()
+    if args.lag is not None and args.dataset != "podcast":
+        ap.error("--lag is only supported for --dataset podcast")
 
-    base_df, item_col, dataset = DATASET_LOADERS[args.dataset]()
+    loader = DATASET_LOADERS[args.dataset]
+    base_df, item_col, dataset = loader(args.lag) if args.lag is not None else loader()
     if base_df.empty:
         raise ValueError(f"No pooled rows for {args.dataset!r}")
     logger.info(
@@ -124,7 +138,7 @@ def main() -> None:
     result = compute_ecog_ceiling_delta_loglik(
         base_df, dataset=dataset, item_col=item_col,
         n_splits=args.n_splits, seed=args.seed, n_workers=args.n_workers,
-        out_of_sample=args.out_of_sample,
+        out_of_sample=args.out_of_sample, mode=args.mode, n_repeats=args.n_repeats,
     )
     elapsed = time.time() - t0
 
@@ -137,11 +151,17 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     suffix = "oos" if args.out_of_sample else "insample"
-    out_path = out_dir / f"delta_loglik_ceiling_{args.dataset}_ecog_{suffix}.json"
+    mtag = "" if args.mode == "split_half" else f"_{args.mode}"
+    if args.lag is not None:
+        mtag += f"_lag{args.lag:02d}"
+    out_path = out_dir / f"delta_loglik_ceiling_{args.dataset}_ecog_{suffix}{mtag}.json"
     out_path.write_text(json.dumps({
         "dataset": args.dataset,
         "method": "timkey_et_al_2026_split_half_ecog_adapted",
         "out_of_sample": args.out_of_sample,
+        "mode": args.mode,
+        "n_repeats": args.n_repeats,
+        "lag_index": args.lag,
         "item_col": item_col,
         "n_splits_requested": result.n_iterations_requested,
         "n_splits_converged": result.n_iterations_used,

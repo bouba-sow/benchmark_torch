@@ -1,0 +1,203 @@
+{
+  "models": [
+    {
+      "family": "pythia",
+      "array_index": 0,
+      "model_id": "EleutherAI/pythia-14m-deduped",
+      "revision": "main",
+      "safe": "EleutherAI_pythia-14m-deduped",
+      "n_params": 14000000.0,
+      "datasets": [
+        "tuckute"
+      ]
+    },
+    {
+      "family": "cbr_rnn",
+      "array_index": 1,
+      "model_id": "cclark/cbr-rnn-m",
+      "revision": "main",
+      "safe": "cclark_cbr-rnn-m",
+      "n_params": 17360688.0,
+      "datasets": [
+        "pereira",
+        "broderick",
+        "podcast",
+        "naturalstories"
+      ]
+    },
+    {
+      "family": "cbr_rnn",
+      "array_index": 0,
+      "model_id": "cclark/cbr-rnn",
+      "revision": "main",
+      "safe": "cclark_cbr-rnn",
+      "n_params": 17360688.0,
+      "datasets": [
+        "pereira",
+        "broderick",
+        "podcast",
+        "naturalstories"
+      ]
+    },
+    {
+      "family": "babylm",
+      "array_index": 5,
+      "model_id": "BabyLM-community/babylm-baseline-100m-gpt-bert-causal-focus",
+      "revision": "main",
+      "safe": "BabyLM-community_babylm-baseline-100m-gpt-bert-causal-focus",
+      "n_params": 119454532.0,
+      "datasets": [
+        "ucl_reading"
+      ]
+    },
+    {
+      "family": "molm",
+      "array_index": 2,
+      "model_id": "ibm/MoLM-700M-8B",
+      "revision": "main",
+      "safe": "ibm_MoLM-700M-8B",
+      "n_params": 700000000.0,
+      "datasets": [
+        "szewczyk"
+      ]
+    },
+    {
+      "family": "olmo2",
+      "array_index": 0,
+      "model_id": "allenai/OLMo-2-0425-1B",
+      "revision": "stage1-step1907359-tokens4001B",
+      "safe": "allenai_OLMo-2-0425-1B",
+      "n_params": 1000000000.0,
+      "datasets": [
+        "broderick",
+        "megmasc",
+        "podcast"
+      ]
+    },
+    {
+      "family": "gpt2",
+      "array_index": 3,
+      "model_id": "openai-community/gpt2-xl",
+      "revision": "main",
+      "safe": "openai-community_gpt2-xl",
+      "n_params": 1600000000.0,
+      "datasets": [
+        "zuco_reading_nr"
+      ]
+    },
+    {
+      "family": "mamba2",
+      "array_index": 4,
+      "model_id": "AntonV/mamba2-2.7b-hf",
+      "revision": "main",
+      "safe": "AntonV_mamba2-2.7b-hf",
+      "n_params": 2700000000.0,
+      "datasets": [
+        "broderick"
+      ]
+    },
+    {
+      "family": "mamba",
+      "array_index": 4,
+      "model_id": "state-spaces/mamba-2.8b-hf",
+      "revision": "main",
+      "safe": "state-spaces_mamba-2.8b-hf",
+      "n_params": 2800000000.0,
+      "datasets": [
+        "broderick"
+      ]
+    },
+    {
+      "family": "opt",
+      "array_index": 4,
+      "model_id": "facebook/opt-6.7b",
+      "revision": "main",
+      "safe": "facebook_opt-6.7b",
+      "n_params": 6700000000.0,
+      "datasets": [
+        "ucl_reading"
+      ]
+    },
+    {
+      "family": "olmo2",
+      "array_index": 1,
+      "model_id": "allenai/OLMo-2-1124-7B",
+      "revision": "stage1-step928646-tokens3896B",
+      "safe": "allenai_OLMo-2-1124-7B",
+      "n_params": 7000000000.0,
+      "datasets": [
+        "broderick",
+        "megmasc",
+        "podcast"
+      ]
+    },
+    {
+      "family": "rwkv4",
+      "array_index": 4,
+      "model_id": "RWKV/rwkv-4-7b-pile",
+      "revision": "main",
+      "safe": "RWKV_rwkv-4-7b-pile",
+      "n_params": 7000000000.0,
+      "datasets": [
+        "ucl_reading"
+      ]
+    },
+    {
+      "family": "olmo2",
+      "array_index": 2,
+      "model_id": "allenai/OLMo-2-1124-13B",
+      "revision": "stage1-step596057-tokens5001B",
+      "safe": "allenai_OLMo-2-1124-13B",
+      "n_params": 13000000000.0,
+      "datasets": [
+        "broderick",
+        "megmasc",
+        "podcast"
+      ]
+    },
+    {
+      "family": "mistral",
+      "array_index": 2,
+      "model_id": "mistralai/Ministral-3-14B-Base-2512",
+      "revision": "main",
+      "safe": "mistralai_Ministral-3-14B-Base-2512",
+      "n_params": 14000000000.0,
+      "datasets": [
+        "broderick"
+      ]
+    },
+    {
+      "family": "qwen3",
+      "array_index": 4,
+      "model_id": "Qwen/Qwen3-14B-Base",
+      "revision": "main",
+      "safe": "Qwen_Qwen3-14B-Base",
+      "n_params": 14000000000.0,
+      "datasets": [
+        "broderick"
+      ]
+    },
+    {
+      "family": "rwkv4",
+      "array_index": 5,
+      "model_id": "RWKV/rwkv-4-14b-pile",
+      "revision": "main",
+      "safe": "RWKV_rwkv-4-14b-pile",
+      "n_params": 14000000000.0,
+      "datasets": [
+        "ucl_reading"
+      ]
+    },
+    {
+      "family": "gptneo",
+      "array_index": 4,
+      "model_id": "EleutherAI/gpt-neox-20b",
+      "revision": "main",
+      "safe": "EleutherAI_gpt-neox-20b",
+      "n_params": 20000000000.0,
+      "datasets": [
+        "broderick"
+      ]
+    }
+  ]
+}

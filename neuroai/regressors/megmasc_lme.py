@@ -538,9 +538,12 @@ def _megmasc_ceiling_direction_task(
     ``prepare_megmasc_lme_pooled_frame`` z-scores it into ``surprisal_z``)."""
     src = df[df["subject"].astype(str).isin(source_ids)]
     tgt = df[df["subject"].astype(str).isin(target_ids)].copy()
-    oracle = src.groupby("word_idx")["y"].mean().rename("surprisal").reset_index()
+    # Oracle is per (region, word): averaging across regions too would hand every
+    # region the same region-blind mean, which cancels the regional signal.
+    keys = ["region", "chunk", "word_idx"]
+    oracle = src.groupby(keys)["y"].mean().rename("surprisal").reset_index()
     tgt = tgt.drop(columns=["surprisal"], errors="ignore").merge(
-        oracle, on="word_idx", how="left"
+        oracle, on=keys, how="left"
     )
     tgt = tgt.dropna(subset=["surprisal"])
     # prepare_megmasc_lme_pooled_frame requires a prev_surprisal column even

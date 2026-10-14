@@ -1,0 +1,60 @@
+\section{Representational Evaluation}
+\label{app:rsa}
+
+The ridge encoders of the embedding track have a number of free parameters that grows with the hidden size $d$ of the model, so a score that increases with model size may reflect the capacity of the regression rather than a better representation. Representational similarity analysis (RSA; \citealp{kriegeskorte2008rsa}) removes this dependence: whatever $d$ is, a model yields one stimulus-by-stimulus dissimilarity matrix (RDM), and the downstream score involves at most a single model coefficient, with no per-feature weights and no tuned hyperparameter. We run it for both tracks, on the same models and stimuli as the main benchmark and with the final layer of each model. The subsections below describe the dissimilarity matrices, the unfitted RSA score, the confound-controlled RDM regression with its cross-validation, the noise ceilings, and the aggregation.
+
+\subsection{Dissimilarity matrices}
+\label{app:rsa-rdms}
+
+For each stimulus $i$, let $h_i$ denote its final-layer embedding and $s_i$ its surprisal. Embedding features are standardized across the scored stimuli, $\widetilde h_{ik}=(h_{ik}-\mu_k)/\sigma_k$, with constant features set to zero. This preprocessing addresses unequal feature scales \citep{timkey2021allbark}; it is distinct from standardizing outcome scores across models. Because the statistics include all scored stimuli, it is a transductive transformation, although it uses no response values. Raw last-layer states of Transformers contain a handful of high-magnitude dimensions that dominate cosine and correlation distances \citep{timkey2021allbark}, which is why every feature is standardized before distances are computed. Surprisal $s_i$ is the surprisal of the (critical) word, or the summed surprisal of the sentence for sentence-level datasets, exactly as used by the mixed-effects analyses. Model distances are
+\[
+D^E_{ij}=1-\operatorname{corr}(\widetilde h_i,\widetilde h_j),\qquad D^S_{ij}=|s_i-s_j|.
+\]
+Behavioral distances are absolute differences in item-mean reading responses. Scalar N400 responses are treated analogously; multivariate neural response patterns use correlation distance. Stimulus alignment and response aggregation are dataset-specific. The current RSA Pareto analysis uses language-region units for Pereira and Tuckute, language parcels for Podcast, regional responses for Broderick and MEG-MASC, and the three N400 datasets.
+
+All stimulus pairs are used where feasible; GECO and OneStop use a fixed random sample of 30 million pairs, the same for every model. Model, response, nuisance, and ceiling quantities use corresponding pairs within each analysis. The per-dataset correlations of Table~\ref{tab:rsa-summary} use each dataset's full response RDM rather than the regional units of the Pareto composites, so their values are not directly comparable with those composites.
+
+\subsection{Unfitted Pearson RSA}
+\label{app:rsa-scores}
+
+Let $v(D)$ denote the retained upper-triangle entries. Unfitted RSA is
+\[
+R=\operatorname{corr}\bigl(v(D^{\mathrm{model}}),v(D^{\mathrm{response}})\bigr).
+\]
+It learns no weights mapping model features to responses and does not remove lexical confounds. The neural RSA Pareto score divides each response unit's RSA by its own positive RSA ceiling, summarizes these ratios by the median within a dataset, and takes the median across the eight neural datasets. Behavioral composites take the median across the 16 measure-specific ratios. All 118 plotted models have complete coverage at these dataset/measure levels. The RSA ceiling uses the square root of Spearman--Brown-corrected split-half RDM reliability.
+
+\subsection{Confound-controlled RDM regression}
+\label{app:rsa-cv}
+
+For each retained pair, the nuisance model predicts response distance from an intercept and absolute differences in word length and frequency. The full model adds one model-distance predictor:
+\begin{align*}
+D^{\mathrm{response}}_{ij}&=a+b_LD^{\mathrm{length}}_{ij}+b_FD^{\mathrm{frequency}}_{ij}+e_{ij},\\
+D^{\mathrm{response}}_{ij}&=a+b_LD^{\mathrm{length}}_{ij}+b_FD^{\mathrm{frequency}}_{ij}+b_MD^{\mathrm{model}}_{ij}+e_{ij}.
+\end{align*}
+For Federmeier et al.\ (2007) and Hubbard et al.\ (2019), the nuisance model additionally includes absolute differences in word position, orthographic neighborhood (OLD20) and concreteness, to match the covariates of their published mixed-effects formulas; for sentence datasets, the lexical distances are computed from sentence length, mean word length and mean word frequency. Random-effect structures have no counterpart on an item-averaged target and are not reproduced. All distance entries are z-scored before fitting. The models are fit by ordinary least squares, and Gaussian test log likelihood uses the variance estimated from training residuals. The score is the full-minus-baseline test log likelihood per pair. There is one model-distance coefficient regardless of embedding width; no feature reweighting is fitted.
+
+Cross-validation partitions stimuli. For a held-out fold, training pairs have both stimuli outside the fold and test pairs have both inside it; pairs crossing the boundary are omitted. This prevents training and test pairs from sharing stimuli in a split \citep{schutt2023statistical}. Following \citet{schutt2023statistical}, the number of folds depends on the number of stimuli $n$: $K=2$ for $n<12$, 3 for $12\le n<24$, 4 for $24\le n<40$, and 5 for $n\ge 40$. Test log likelihoods are summed over folds, and the procedure is repeated with new random partitions (10 by default), the reported score being the mean over repeats. Partitions are fixed per dataset and unit, so all models and both tracks are scored on identical train and test pairs, and base and full models are always compared on the same test pairs. Pairs sharing a stimulus remain correlated within the training and test sets, which violates the independence assumption of the Gaussian likelihood and inflates absolute values by roughly the same amount for all models. The pair likelihood is therefore used to rank models, not as a source of independent-pair significance tests, and its absolute scale is not interpreted. Negative scores indicate worse held-out fit than the nuisance baseline.
+
+Figure~\ref{fig:rdm-pareto} uses dataset- and measure-level RDM-regression scores, divided by the matching split-half likelihood references and then aggregated by medians. This differs from the unit-wise Pearson RSA normalization described above. In both cases, only usable positive references enter the composite; negative model scores and ratios above one are retained. Normalization does not make the direct-prediction, Pearson RSA, and RDM-likelihood scales interchangeable.
+
+\subsection{Noise ceilings for representational scores}
+\label{app:rsa-ceilings}
+
+Both representational scores are expressed relative to the reliability of the human data, computed in the same RDM space, with the same item folds, nuisance RDMs and pair likelihood as the models. Participants are randomly split into two equal halves $A$ and $B$ (15 splits); items must be observed in both halves. For neural datasets the split is over subjects and is carried out separately for each response unit (ROI, channel, region, or region $\times$ lag), so each unit has its own ceiling.
+
+\paragraph{RSA-correlation ceiling.} The split-half reliability $r_{\mathrm{half}}$ is the Pearson correlation between the entries of the two half-sample response RDMs, averaged over splits and extrapolated by the Spearman--Brown formula; the ceiling for a correlation is $\sqrt{r_{\mathrm{SB}}}$, as in Appendix~\ref{app:corr-ceiling}. Units whose $r_{\mathrm{half}}$ is not positive have no defined ceiling and are excluded.
+
+\paragraph{Split-half $\Delta\ell$ reference.} Half $A$'s item-mean RDM is used as the predictor of half $B$'s item-mean RDM in the full model above, in place of a model RDM, and compared with the same nuisance-only baseline on the same test pairs; the roles of $A$ and $B$ are then swapped, the two totals are summed and divided by the total number of test pairs, and the reference is the mean over splits. The predictor is built from only half of the participants, so the reference is conservative and no Spearman--Brown correction is available on the likelihood scale; ratios above 1 can occur.
+
+Table~\ref{tab:rsa-ceilings} reports the RSA-correlation references with the number of usable units, and Table~\ref{tab:rdm-dll-ceilings} the RDM-regression references used in Figure~\ref{fig:rdm-pareto}.
+
+\input{sections/rsa_ceiling_table}
+
+\input{sections/rdm_dll_ceiling_table}
+
+\subsection{Scaling and agreement with direct prediction}
+\label{app:rsa-panels}
+
+Table~\ref{tab:rsa-summary} reports descriptive correlations across the 118 models, computed from the per-model RSA and direct-prediction scores with the current group assignments. The size columns correlate RSA with $\log_{10}$ parameter count, pooled over all models and within constraint groups (the partial correlation controlling for group membership). The agreement columns correlate embedding RSA with direct embedding Pearson scores, and surprisal RSA with direct surprisal $\Delta\ell$ scores. These correlations are not adjusted for model family and do not test a difference between behavioral and neural correlations.
+
+\input{sections/rsa_summary_table}

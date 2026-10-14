@@ -89,6 +89,27 @@ try:
             self._keys_to_ignore_on_load_missing = set(self._keys_to_ignore_on_load_missing)
 
     _modeling_utils.PreTrainedModel.__init__ = _pretrained_model_init_with_tied_weights_fallback
+
+    # fla (flash-linear-attention)'s Mamba2 model -- neuroai.models.registry's
+    # mamba2 family -- declares `_tied_weights_keys = []` (a list, meaning "no
+    # tied weights"), but this transformers version's
+    # get_expanded_tied_weights_keys() assumes dict-shaped `_tied_weights_keys`
+    # (per its own docstring: `{"lm_head.weight": "model.embed_tokens.weight"}`)
+    # and calls `tied_mapping.keys() | tied_mapping.values()` on it -- crashing
+    # with `AttributeError: 'list' object has no attribute 'keys'` at
+    # PreTrainedModel.__init__ time (i.e. before
+    # _pretrained_model_init_with_tied_weights_fallback's own post-init
+    # cleanup above even gets a chance to run). Normalize any list-valued
+    # `_tied_weights_keys` to `{}` (empty list and empty dict both mean "no
+    # tying") before deferring to the real implementation.
+    _orig_get_expanded_tied_weights_keys = _modeling_utils.PreTrainedModel.get_expanded_tied_weights_keys
+
+    def _get_expanded_tied_weights_keys_list_safe(self, *args, **kwargs):
+        if isinstance(getattr(self, "_tied_weights_keys", None), list):
+            self._tied_weights_keys = {k: k for k in self._tied_weights_keys} if self._tied_weights_keys else {}
+        return _orig_get_expanded_tied_weights_keys(self, *args, **kwargs)
+
+    _modeling_utils.PreTrainedModel.get_expanded_tied_weights_keys = _get_expanded_tied_weights_keys_list_safe
 except ImportError:
     pass
 
@@ -1098,7 +1119,7 @@ _MOLM_CONFIG_IGNORED_KEYS = {
 
 
 def _load_moduleformer_direct(model_name: str, model_rev_fp: dict[str, object]) -> tp.Any:
-    """Load an ``ibm-research/MoLM-*`` checkpoint via the vendored ``moduleformer``
+    """Load an ``ibm/MoLM-*`` checkpoint via the vendored ``moduleformer``
     classes (``moduleformer/moduleformer/`` at the repo root), bypassing
     ``AutoModelForCausalLM``/``AutoConfig`` entirely.
 
@@ -1144,7 +1165,7 @@ def _load_moduleformer_direct(model_name: str, model_rev_fp: dict[str, object]) 
             weights_path = hf_hub_download(model_name, "pytorch_model.bin", revision=revision)
             state_dict = torch.load(weights_path, map_location="cpu")
         except Exception:
-            # Sharded checkpoint (e.g. ibm-research/MoLM-700M-8B ships
+            # Sharded checkpoint (e.g. ibm/MoLM-700M-8B ships
             # pytorch_model-0000N-of-0000M.bin + an index, no single-file
             # model.safetensors/pytorch_model.bin) -- merge every shard named
             # in the index's weight_map.
@@ -1176,7 +1197,7 @@ def _load_fox_direct(model_name: str, model_rev_fp: dict[str, object]) -> tp.Any
     (and locally patched) ``forgetting_transformer`` classes, bypassing
     ``AutoModelForCausalLM``/``AutoConfig`` entirely.
 
-    Like ``ibm-research/MoLM-*``, these were never published as standard HF
+    Like ``ibm/MoLM-*``, these were never published as standard HF
     ``trust_remote_code`` repos -- ``config.json`` has no ``auto_map`` entry
     and ships no ``.py`` files at all, and their model_types
     (``forgetting_transformer-project_fox`` / ``transformer-project_fox``)
@@ -1451,21 +1472,25 @@ def _get_cached_causal_lm(
         _missing: list[str] = []
     elif model_name.startswith(_MOLM_DIRECT_PREFIX):
         # Bypass the unregistered "moduleformer" AutoConfig model_type -- see
-        # _load_moduleformer_direct's docstring. Always single-GPU .to(device)
-        # below (like the forgetting/FoX direct-load branches) -- unlike the
-        # generic AutoModelForCausalLM path, _load_moduleformer_direct never
-        # implements real accelerate device_map sharding, so trusting
-        # _apply_device_map_if_needed()'s True here (it returns True for
-        # essentially any real GPU job) left the model silently stranded on
-        # CPU while callers moved their inputs to cuda -- "Expected all
-        # tensors to be on the same device" crashes in eeg_erp.py's
-        # extract_sentence_features. All 3 MoLM checkpoints (up to 8B total
-        # params, ~16 GiB in bf16) fit comfortably on one A100/H100/H200 GPU
-        # anyway. Confirmed 2026-09-23.
+        # _load_moduleformer_direct's docstring. Largest checkpoint (incl.
+        # inactive MoE experts) is ~8B params, ~16GiB in bf16 -- always fits
+        # on one H100, so real device_map sharding is never needed. Fixed
+        # 2026-09-23: this used to call _apply_device_map_if_needed (which
+        # returns True and sets model_kw["device_map"] for ANY CUDA-available
+        # run, not just ones that need sharding) and then skip .to(device)
+        # whenever it returned True -- but _load_moduleformer_direct ignores
+        # model_kw entirely (constructs + loads state dict with no device
+        # placement of its own), so the model was silently stranded on CPU
+        # for every MoLM run on GPU, all session. _model_input_device() then
+        # "correctly" reported cpu and inputs followed it there -- no crash,
+        # numerically correct, just ~7-20x slower. Same failure mode already
+        # hit and fixed once for the VLM-prefix-strip path above. Match
+        # forgetting/fox's already-correct pattern instead: never claim
+        # device_map, always place explicitly.
         use_device_map = False
         model = _load_moduleformer_direct(model_name, model_rev_fp)
         _dtype = model_kw.get("torch_dtype", torch.bfloat16)
-        model = model.to(dtype=_dtype)
+        model = model.to(dtype=_dtype).to(device)
         _missing: list[str] = []
     elif model_name.startswith(_FOX_DIRECT_PREFIX):
         # Bypass trust_remote_code entirely -- see _load_fox_direct's
@@ -1672,6 +1697,53 @@ def _get_cached_causal_lm(
 # Cache helpers
 # ---------------------------------------------------------------------------
 
+# Models whose cached EMBEDDINGS changed in the 2026-10-12 audit: hook-fallback architectures
+# (last layer now post-final-norm) and FoX/forgetting FLA models (padding now handled).
+# Their embedding caches get a version suffix so pre-audit caches are never reused; every
+# other model's embeddings are unchanged and keep their cache names.
+_EMBED_V2_PATTERNS = ("stickbreaking", "hard_2gram", "hard_3gram", "hard_5gram", "forgetting", "zhixuan-lin/")
+
+
+def embedding_cache_tag(model_name: str) -> str:
+    """'__embv2' for models whose embeddings changed in the 2026-10-12 audit, else ''."""
+    m = (model_name or "").lower()
+    return "__embv2" if any(p in m for p in _EMBED_V2_PATTERNS) else ""
+
+
+def embed_last_layer_only() -> bool:
+    """EMBED_LAST_LAYER_ONLY=1: embedding pipelines fit only the final layer (2026-10-12).
+
+    Set by the embedding SLURM runners; caches still hold every layer, so unsetting it and
+    rerunning the ridge restores the full layer sweep without re-extracting.
+    """
+    import os
+
+    return os.environ.get("EMBED_LAST_LAYER_ONLY", "0") == "1"
+
+
+def select_embedding_layers(arr):
+    """Keep only the final layer (axis 1) of an (items, layers, dim) array when
+    :func:`embed_last_layer_only` is on; anything else is returned unchanged."""
+    if embed_last_layer_only() and isinstance(arr, np.ndarray) and arr.ndim == 3 and arr.shape[1] > 1:
+        return arr[:, -1:, :]
+    return arr
+
+
+def embedding_layer_selection(fn):
+    """Decorator for embedding extractors: applies :func:`select_embedding_layers` to the
+    returned array (or to the first element of a returned tuple)."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        out = fn(*args, **kwargs)
+        if isinstance(out, tuple) and out and isinstance(out[0], np.ndarray):
+            return (select_embedding_layers(out[0]), *out[1:])
+        return select_embedding_layers(out)
+
+    return wrapper
+
+
 def _feature_cache_path(
     cache_dir: Path | str,
     model_name: str,
@@ -1696,7 +1768,7 @@ def _feature_cache_path(
         f"__sec{section:02d}"
         f"__ctx{ctx_tag}"
         f"__maxlen{maxlen_tag}"
-        f"__{layer_tag}.npz"
+        f"__{layer_tag}{embedding_cache_tag(model_name)}.npz"
     )
     return Path(cache_dir) / filename
 
@@ -1720,7 +1792,7 @@ def _lbg_feature_cache_path(
         f"__sec{section:02d}"
         f"__lbg_ml{maxlen}"
         f"__stride{stride}"
-        f"__{layer_tag}.npz"
+        f"__{layer_tag}{embedding_cache_tag(model_name)}.npz"
     )
     return Path(cache_dir) / filename
 
@@ -1748,7 +1820,7 @@ def _fulltext_feature_cache_path(
         f"__sec{section:02d}"
         f"__fulltext_ml{maxlen}"
         f"__sdelta{stride_delta}"
-        f"__{layer_tag}.npz"
+        f"__{layer_tag}{'' if str(layer_tag).startswith('logitlens') else embedding_cache_tag(model_name)}.npz"
     )
     return Path(cache_dir) / filename
 
@@ -1980,14 +2052,21 @@ def _model_transformer_layers(model: tp.Any) -> list:
 _hook_fallback_cache: "weakref.WeakKeyDictionary[tp.Any, tuple[list, list]]" = weakref.WeakKeyDictionary()
 
 
-def _forward_hidden_states(
+def _forward_hidden_states_raw(
     model: tp.Any,
     input_ids: tp.Any,
     attention_mask: tp.Any,
     *,
     model_name: str = "",
-) -> tuple:
-    """Run one forward pass and return per-layer hidden states.
+    return_logits: bool = False,
+) -> tp.Any:
+    """Run one forward pass and return per-layer hidden states (no padding guard).
+
+    ``return_logits=True`` returns ``(hidden_states, logits)`` instead, where
+    ``logits`` is the model's own output of the same forward pass. Logit-lens
+    readouts use these for the LAST layer: hook-captured block outputs are
+    pre-final-norm, so reconstructing the last layer from them is wrong, while
+    the native logits are correct for every architecture.
 
     Falls back to forward hooks on the model's transformer blocks when
     ``output_hidden_states=True`` is ignored (``out.hidden_states is None``) —
@@ -2012,7 +2091,7 @@ def _forward_hidden_states(
         # return_dict=True. Fall through to the hook-based path below rather
         # than crashing on `.hidden_states` access.
         if not isinstance(out, tuple) and out.hidden_states is not None:
-            return out.hidden_states
+            return (out.hidden_states, out.logits) if return_logits else out.hidden_states
 
         logger.warning(
             "HF LM: %s returned hidden_states=None — falling back to forward "
@@ -2039,19 +2118,137 @@ def _forward_hidden_states(
     _hook_handles, captures = cached
     captures.clear()
     with torch.no_grad():
-        model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
+        out = model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False, return_dict=True)
     if not captures:
         raise RuntimeError(
             f"{model_name or type(model).__name__} returned hidden_states=None "
             "and hook fallback captured nothing."
         )
-    return tuple(captures)
+    hs = list(captures)
+    # Hooked block outputs are the raw residual stream: the LAST one is pre-final-norm,
+    # unlike HF's native hidden_states whose last entry is post-norm (what lm_head sees).
+    # Apply the model's final norm so "last layer" means the same thing for every model.
+    final_norm = _final_norm_module(model)
+    if final_norm is not None:
+        with torch.no_grad():
+            hs[-1] = final_norm(hs[-1])
+    else:
+        logger.warning("HF LM: %s hook fallback without a resolvable final norm — last layer left pre-norm",
+                       model_name or type(model).__name__)
+    if return_logits:
+        logits = out[0] if isinstance(out, tuple) else out.logits
+        return tuple(hs), logits
+    return tuple(hs)
+
+
+_FINAL_NORM_PATHS_LLM = (
+    "transformer.ln_f", "gpt_neox.final_layer_norm", "model.norm",
+    "model.decoder.final_layer_norm", "backbone.norm_f",
+)
+
+
+def _final_norm_module(model: tp.Any) -> tp.Any:
+    import torch
+
+    for path in _FINAL_NORM_PATHS_LLM:
+        obj = model
+        for attr in path.split("."):
+            obj = getattr(obj, attr, None)
+            if obj is None:
+                break
+        if isinstance(obj, torch.nn.Module):
+            return obj
+    return None
+
+
+# Per-model verdict: does a right-padded batch give the same hidden states as unpadded
+# per-row forwards? FoX/forgetting FLA kernels do not (2026-10-12 audit). Checked once per
+# model on its first padded call; unsafe models then always run row by row (exact).
+_padding_safe_cache: "weakref.WeakKeyDictionary[tp.Any, bool]" = weakref.WeakKeyDictionary()
+
+
+def _forward_rows_unpadded(model, input_ids, attention_mask, *, model_name, return_logits):
+    """Forward each row on its own non-padded span; re-pad outputs with zeros."""
+    import torch
+
+    B, L = input_ids.shape
+    rows = []
+    for b in range(B):
+        nz = torch.nonzero(attention_mask[b], as_tuple=False).flatten()
+        s0, s1 = (int(nz[0]), int(nz[-1]) + 1) if nz.numel() else (0, 0)
+        ids_b = input_ids[b : b + 1, s0:s1]
+        res = _forward_hidden_states_raw(model, ids_b, torch.ones_like(ids_b), model_name=model_name,
+                                         return_logits=return_logits)
+        rows.append((s0, s1, res))
+    hs0 = rows[0][2][0] if return_logits else rows[0][2]
+    out_hs = []
+    for li in range(len(hs0)):
+        ref = hs0[li]
+        t = ref.new_zeros((B, L, ref.shape[-1]))
+        for b, (s0, s1, res) in enumerate(rows):
+            h = (res[0] if return_logits else res)[li]
+            t[b, s0:s1] = h[0]
+        out_hs.append(t)
+    if not return_logits:
+        return tuple(out_hs)
+    ref = rows[0][2][1]
+    lg = ref.new_zeros((B, L, ref.shape[-1]))
+    for b, (s0, s1, res) in enumerate(rows):
+        lg[b, s0:s1] = res[1][0]
+    return tuple(out_hs), lg
+
+
+def _forward_hidden_states(
+    model: tp.Any,
+    input_ids: tp.Any,
+    attention_mask: tp.Any,
+    *,
+    model_name: str = "",
+    return_logits: bool = False,
+) -> tp.Any:
+    """Per-layer hidden states (and optionally logits) with a padding guard.
+
+    Unpadded inputs go straight to :func:`_forward_hidden_states_raw`. For padded inputs the
+    first call per model compares the padded batch with unpadded per-row forwards; models
+    whose outputs differ (relative max error > 0.2 on non-padded positions; bf16 noise is ~0.02) are thereafter
+    always run row by row, which is exact for every architecture.
+    """
+    import torch
+
+    padded = attention_mask is not None and bool((attention_mask == 0).any())
+    if not padded:
+        return _forward_hidden_states_raw(model, input_ids, attention_mask, model_name=model_name,
+                                          return_logits=return_logits)
+    safe = _padding_safe_cache.get(model)
+    if safe is False:
+        return _forward_rows_unpadded(model, input_ids, attention_mask, model_name=model_name,
+                                      return_logits=return_logits)
+    batched = _forward_hidden_states_raw(model, input_ids, attention_mask, model_name=model_name,
+                                         return_logits=return_logits)
+    if safe is None:
+        rows = _forward_rows_unpadded(model, input_ids, attention_mask, model_name=model_name,
+                                      return_logits=return_logits)
+        hb = (batched[0] if return_logits else batched)[-1].float()
+        hr = (rows[0] if return_logits else rows)[-1].float()
+        m = attention_mask.bool()
+        err = float((hb[m] - hr[m]).abs().max() / (hr[m].abs().max() + 1e-6))
+        # bf16 batching noise is 0.006-0.02 here; broken FLA kernels give ~1.0 (2026-10-12 test)
+        safe = err <= 0.2
+        _padding_safe_cache[model] = safe
+        (logger.info if safe else logger.warning)(
+            "HF LM: %s padded-batch check: relative max error %.3g -> %s", model_name or type(model).__name__,
+            err, "batching kept" if safe else "rows run unpadded from now on",
+        )
+        if not safe:
+            return rows
+    return batched
 
 
 # ---------------------------------------------------------------------------
 # Main extraction function
 # ---------------------------------------------------------------------------
 
+@embedding_layer_selection
 def contextual_word_embeddings_hf(
     words: list[str],
     model_name: str,
@@ -2452,6 +2649,7 @@ def _fulltext_chunks_on_gpu(
     return result
 
 
+@embedding_layer_selection
 def contextual_word_embeddings_hf_fulltext(
     words: list[str],
     model_name: str,
@@ -2799,6 +2997,7 @@ def contextual_word_embeddings_hf_fulltext(
     return result
 
 
+@embedding_layer_selection
 def contextual_word_embeddings_hf_lbg(
     words_df: pd.DataFrame,
     model_name: str,

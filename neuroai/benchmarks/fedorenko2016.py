@@ -21,6 +21,7 @@ import torch
 from ..benchmarks.base import ModelConfig, RegressionConfig, word_predictions_dir
 from ..datasets.fedorenko2016 import Fedorenko2016Dataset
 from ..regressors.ridge import CVScore, cv_ridge_score_multioutput, cv_ridge_score_multioutput_gpu
+from ..features.llm import embedding_layer_selection  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,9 @@ def _feature_cache_path(
     revision: str,
     sentence_hash: str,
 ) -> Path:
-    return cache_dir / _safe_model_id(model_name) / revision / f"fedorenko2016_{sentence_hash}.npz"
+    from ..features.llm import embedding_cache_tag
+
+    return cache_dir / _safe_model_id(model_name) / revision / f"fedorenko2016_{sentence_hash}{embedding_cache_tag(model_name)}.npz"
 
 
 def _sentences_hash(sentences: list[str]) -> str:
@@ -90,6 +93,7 @@ def _resolve_transformer_hidden_states(
     return kept
 
 
+@embedding_layer_selection
 def extract_embeddings_and_perplexity_by_sentence(
     *,
     sentence_tokens: list[list[str]],
@@ -244,6 +248,7 @@ def extract_embeddings_and_perplexity_by_sentence(
                     attention_mask=attention_mask,
                     output_hidden_states=True,
                     use_cache=False,
+                    return_dict=True,
                 )
             except TypeError:
                 out = model(
@@ -252,7 +257,14 @@ def extract_embeddings_and_perplexity_by_sentence(
                     output_hidden_states=True,
                 )
 
-        if out.hidden_states is None:
+        # Some trust_remote_code checkpoints (notably BabyLM GPT-BERT) ignore
+        # return_dict and return a tuple even when hidden states are requested.
+        # Use the same hook fallback as models that explicitly return
+        # hidden_states=None, rather than dereferencing `.hidden_states` here.
+        output_hidden_states = (
+            None if isinstance(out, (tuple, list)) else getattr(out, "hidden_states", None)
+        )
+        if output_hidden_states is None:
             # FLA / stickbreaking / forgetting / alibi: register hooks once, reuse every batch.
             if not hooks:
                 found_layers = _find_transformer_layers(model)
@@ -278,7 +290,7 @@ def extract_embeddings_and_perplexity_by_sentence(
             with torch.no_grad():
                 try:
                     out = model(input_ids=input_ids, attention_mask=attention_mask,
-                                output_hidden_states=False, use_cache=False)
+                                output_hidden_states=False, use_cache=False, return_dict=True)
                 except TypeError:
                     out = model(input_ids=input_ids, attention_mask=attention_mask,
                                 output_hidden_states=False)
@@ -286,10 +298,19 @@ def extract_embeddings_and_perplexity_by_sentence(
             hook_captures.clear()
         else:
             hidden_states = _resolve_transformer_hidden_states(
-                out.hidden_states, n_layers=n_layers, model_name=model_name, warned=dim_warned,
+                output_hidden_states, n_layers=n_layers, model_name=model_name, warned=dim_warned,
             )
 
-        logits = out.logits.float()
+        logits = getattr(out, "logits", None)
+        if logits is None and isinstance(out, (tuple, list)) and out:
+            # Causal-LM tuple outputs put logits first when labels are absent.
+            logits = out[0]
+        if not isinstance(logits, torch.Tensor):
+            raise TypeError(
+                f"{model_name}: expected logits in ModelOutput or first tuple element, "
+                f"got {type(out).__name__}"
+            )
+        logits = logits.float()
 
         # Per-sentence perplexity ingredients.
         shift_logits = logits[:, :-1, :]
@@ -799,4 +820,3 @@ class Fedorenko2016Encoder:
             revision=np.array(self.cfg.model.model_revision or "main"),
         )
         logger.info("  Saved word-level predictions (%s) -> %s", oof_by_layer.shape, out_path)
-

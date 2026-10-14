@@ -52,6 +52,16 @@ from ..datasets.fedorenko2016 import Fedorenko2016Dataset
 from ..sweep import csv_file_lock
 from .base import ModelConfig
 
+
+def _pw_dir(out_dir):
+    """Per-word prediction directory: mirrors ``out_dir`` under $SCRATCH (word_predictions_root)
+    so large per-word CSVs never land on $WORK (2026-10-12)."""
+    from .base import word_predictions_root
+
+    d = word_predictions_root(out_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
 logger = logging.getLogger(__name__)
 
 # "revision" added (checkpoint-collision fix, 2026-08-27): without it, every
@@ -413,7 +423,7 @@ class Fedorenko2016LmeBenchmark:
                     verbose=self.cfg.lme.verbose,
                     allow_slope_fallback=self.cfg.lme.allow_slope_fallback,
                     save_word_predictions=self.cfg.lme.save_word_predictions,
-                    per_word_csv_path=str(out_dir / "fedorenko2016_lme_per_word.csv"),
+                    per_word_csv_path=str(_pw_dir(out_dir) / "fedorenko2016_lme_per_word.csv"),
                 ): li
                 for li in pending
             }

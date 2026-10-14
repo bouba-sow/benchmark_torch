@@ -53,6 +53,7 @@ Szewczyk, J. M., & Federmeier, K. D. (2021). eLife. OSF: https://osf.io/w96nc
 
 from __future__ import annotations
 
+import json
 import logging
 import multiprocessing
 import os
@@ -81,6 +82,47 @@ from ..regressors.ridge import CVScore, cv_ridge_score_multioutput_gpu
 
 logger = logging.getLogger(__name__)
 _csv_lock = threading.Lock()
+_fit_cache_lock = threading.Lock()
+
+
+def _fit_cache_path(fit_cache_dir: str | Path, model_name: str, revision: str | None) -> Path:
+    safe_model = model_name.replace("/", "_")
+    safe_rev = (revision or "main").replace("/", "_")
+    from ..features.llm import embedding_cache_tag
+
+    return Path(fit_cache_dir) / f"szewczyk_fit_cache_{safe_model}_{safe_rev}{embedding_cache_tag(model_name)}.jsonl"
+
+
+def _load_fit_cache(path: Path) -> dict[tuple[str, int], tuple[float, float]]:
+    """Reload a JSONL fit cache: {(subject, layer): (spearmanr, pearsonr)}.
+
+    Tolerant of a truncated last line (SLURM SIGKILL at the wall-time limit
+    can cut the process off mid-write).
+    """
+    out: dict[tuple[str, int], tuple[float, float]] = {}
+    if not path.is_file():
+        return out
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            out[(rec["subject"], int(rec["layer"]))] = (rec["spearmanr"], rec["pearsonr"])
+    return out
+
+
+def _append_fit_cache(path: Path, subject: str, layer: int, spearmanr: float, pearsonr: float) -> None:
+    rec = json.dumps({"subject": subject, "layer": layer,
+                       "spearmanr": spearmanr, "pearsonr": pearsonr})
+    with _fit_cache_lock:
+        with open(path, "a") as f:
+            f.write(rec + "\n")
+            f.flush()
+            os.fsync(f.fileno())
 
 
 # ---------------------------------------------------------------------------
@@ -253,6 +295,15 @@ class SzewczykConfig:
     tokenizer_no_revision: bool = True
     trust_remote_code: bool = False
     feature_cache_dir: str | Path | None = None
+    # Per-(subject, layer) ridge-fit cache (GPU path only). The flattened
+    # sweep is ~4,000-7,000 independent fits and can run past a SLURM wall
+    # limit on the biggest checkpoints (see 2026-09-24 szewczyk timeout on
+    # MoLM-700M-8B, 49 layers -- lost the *entire* sweep since only the
+    # LLM-feature cache survived). Each fit result is appended to a JSONL
+    # file as soon as it completes; a restart reloads it and only re-submits
+    # (subject, layer) pairs missing from it. None disables the cache
+    # (matches old behaviour).
+    fit_cache_dir: str | Path | None = None
 
     # Regression ──────────────────────────────────────────────────────────────
     n_splits: int = 10                  # GroupKFold folds (grouped by frame)
@@ -416,18 +467,37 @@ class SzewczykEncoder:
                 stream.synchronize()
                 return subj, li, scores[0]
 
-            tasks = [(s, li) for s in subj_data for li in range(n_layers)]
-            n_workers = max(1, min(cfg.n_gpu_workers, len(tasks)))
+            all_tasks = [(s, li) for s in subj_data for li in range(n_layers)]
+
+            fit_cache_path: Path | None = None
+            if cfg.fit_cache_dir:
+                fit_cache_path = _fit_cache_path(cfg.fit_cache_dir, cfg.hf_model_name, cfg.hf_revision)
+                cached = _load_fit_cache(fit_cache_path)
+                for (s, li), (sr_v, pr_v) in cached.items():
+                    if s in subj_layer_sr and li < n_layers:
+                        subj_layer_sr[s][li] = sr_v
+                        subj_layer_pr[s][li] = pr_v
+                if cached:
+                    logger.info(
+                        "Szewczyk: resuming from fit cache — %d/%d (subject, layer) fits already done",
+                        len(cached), len(all_tasks),
+                    )
+
+            tasks = [(s, li) for s, li in all_tasks if not np.isfinite(subj_layer_sr[s][li])]
+            n_workers = max(1, min(cfg.n_gpu_workers, len(tasks) or 1))
             logger.info(
-                "Szewczyk: %d subjects x %d layers = %d ridge fits, %d concurrent workers (gpu=True)",
-                len(subj_data), n_layers, len(tasks), n_workers,
+                "Szewczyk: %d subjects x %d layers = %d ridge fits, %d remaining, %d concurrent workers (gpu=True)",
+                len(subj_data), n_layers, len(all_tasks), len(tasks), n_workers,
             )
-            with ThreadPoolExecutor(max_workers=n_workers) as pool:
-                futures = {pool.submit(_fit_one, s, li): (s, li) for s, li in tasks}
-                for fut in as_completed(futures):
-                    subj, li, score = fut.result()
-                    subj_layer_sr[subj][li] = score.spearmanr
-                    subj_layer_pr[subj][li] = score.pearsonr
+            if tasks:
+                with ThreadPoolExecutor(max_workers=n_workers) as pool:
+                    futures = {pool.submit(_fit_one, s, li): (s, li) for s, li in tasks}
+                    for fut in as_completed(futures):
+                        subj, li, score = fut.result()
+                        subj_layer_sr[subj][li] = score.spearmanr
+                        subj_layer_pr[subj][li] = score.pearsonr
+                        if fit_cache_path is not None:
+                            _append_fit_cache(fit_cache_path, subj, li, score.spearmanr, score.pearsonr)
         else:
             # Real multiprocessing, parallelized per SUBJECT (not per
             # (subject, layer)) -- see _szewczyk_fit_subject_all_layers's

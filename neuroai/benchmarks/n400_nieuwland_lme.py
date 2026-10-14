@@ -127,6 +127,11 @@ class NieuwlandLmeDataConfig:
     # back to loading the LLM on CPU (slow, but not wrong) — same soft
     # contract as Podcast's pooled LME.
     feature_cache_dir: str | None = None
+    # Path to the paper's ``nieuwland_2018.tsv`` (subject, cloze, lab, n400 (uV),
+    # FullText, TargetWords). When set, the pooled table is built from these
+    # preprocessed per-trial N400 values (paper-formula mode only) and raw EEG is
+    # never epoched.
+    paper_n400_tsv: str | None = None
 
 
 @dataclass
@@ -323,88 +328,96 @@ class NieuwlandLmeBenchmark:
             )
         keep_item_condition_ids = set(items.loc[item_finite, "item_condition_id"].tolist())
 
-        # ── Full MNE epoching (expensive, cached per-subject; zscore=False
-        #    so random intercepts — not pre-standardization — absorb subject
-        #    baseline, matching the single-lab N400 datasets' raw-DV convention) ──────
-        epoch_cfg = NieuwlandEpochsConfig(
-            bids_root=dcfg.bids_root,
-            subjects=dcfg.subjects,
-            included_in_paper_only=dcfg.included_in_paper_only,
-            exclude_labs=dcfg.exclude_labs,
-            target_channels=dcfg.target_channels,
-            target_sfreq=dcfg.target_sfreq,
-            epoch_tmin=dcfg.epoch_tmin,
-            epoch_tmax=dcfg.epoch_tmax,
-            baseline=dcfg.baseline,
-            artifact_threshold_uv=dcfg.artifact_threshold_uv,
-            min_trials=dcfg.min_trials,
-            epoch_cache_dir=dcfg.epoch_cache_dir,
-            zscore=False,
-        )
-        epochs_result = load_all_epochs(epoch_cfg)
-        Y, meta = epochs_result.Y, epochs_result.meta
-        times, channel_names = epochs_result.times, epochs_result.channel_names
-
-        n400_per_ch = n400_window_mean_per_channel(
-            Y, times, dcfg.n400_tmin, dcfg.n400_tmax
-        )  # (n_trials, n_channels)
-
-        meta = meta.merge(
-            items[["item_number", "condition", "item_condition_id"]],
-            on=["item_number", "condition"], how="left",
-        )
-
-        trial_mask = (
-            meta["item_condition_id"].notna().values
-            & meta["item_condition_id"].isin(keep_item_condition_ids).values
-            & np.isfinite(n400_per_ch).all(axis=1)
-        )
-        n_kept = int(trial_mask.sum())
-        n_channels = len(channel_names)
-        logger.info(
-            "Nieuwland: %d/%d trials matched a kept item and have finite N400",
-            n_kept, len(meta),
-        )
-
-        kept_idx = np.where(trial_mask)[0]
-        item_cond_id_kept = meta["item_condition_id"].values[kept_idx].astype(np.int64)
-        n_layers = surprisal_items.shape[1]
-
-        if self.cfg.lme.use_paper_formula:
-            # One row per TRIAL (not trial x channel): N400 averaged across
-            # the already-restricted 6 centro-parietal channels
-            # (target_channels == N400_CHANNELS by default), matching the
-            # paper's own pre-averaged outcome exactly -- no electrode term.
-            n400_avg = np.nanmean(n400_per_ch[kept_idx], axis=1).astype(np.float64)
+        if dcfg.paper_n400_tsv:
+            # Reuse the paper's already-preprocessed per-trial N400 (200-500 ms mean over
+            # the 6 centro-parietal channels) instead of re-epoching raw EEG.
+            base_df, item_cond_id_kept = self._paper_trials(items, keep_item_condition_ids)
             surprisal_by_row = surprisal_items[item_cond_id_kept]
             prev_surprisal_by_row = prev_surprisal_items[item_cond_id_kept]
-            base_df = pd.DataFrame({
-                "subject": meta["subject"].astype(str).values[kept_idx],
-                "lab": meta["lab"].astype(str).values[kept_idx],
-                "frame_id": meta["item_number"].values[kept_idx],
-                "item_id": item_cond_id_kept,
-                "n400": n400_avg,
-            })
+            n_layers = surprisal_items.shape[1]
         else:
-            subj_rep = np.repeat(meta["subject"].astype(str).values[kept_idx], n_channels)
-            lab_rep = np.repeat(meta["lab"].astype(str).values[kept_idx], n_channels)
-            frame_rep = np.repeat(meta["item_number"].values[kept_idx], n_channels)
-            elec_rep = np.tile(np.array(channel_names), n_kept)
-            n400_rep = n400_per_ch[kept_idx].reshape(-1).astype(np.float64)
-            item_cond_id_rep = np.repeat(item_cond_id_kept, n_channels)
+            # ── Full MNE epoching (expensive, cached per-subject; zscore=False
+            #    so random intercepts — not pre-standardization — absorb subject
+            #    baseline, matching the single-lab N400 datasets' raw-DV convention) ──────
+            epoch_cfg = NieuwlandEpochsConfig(
+                bids_root=dcfg.bids_root,
+                subjects=dcfg.subjects,
+                included_in_paper_only=dcfg.included_in_paper_only,
+                exclude_labs=dcfg.exclude_labs,
+                target_channels=dcfg.target_channels,
+                target_sfreq=dcfg.target_sfreq,
+                epoch_tmin=dcfg.epoch_tmin,
+                epoch_tmax=dcfg.epoch_tmax,
+                baseline=dcfg.baseline,
+                artifact_threshold_uv=dcfg.artifact_threshold_uv,
+                min_trials=dcfg.min_trials,
+                epoch_cache_dir=dcfg.epoch_cache_dir,
+                zscore=False,
+            )
+            epochs_result = load_all_epochs(epoch_cfg)
+            Y, meta = epochs_result.Y, epochs_result.meta
+            times, channel_names = epochs_result.times, epochs_result.channel_names
 
-            surprisal_by_row = surprisal_items[item_cond_id_rep]           # (n_rows, n_layers)
-            prev_surprisal_by_row = prev_surprisal_items[item_cond_id_rep]  # (n_rows, n_layers)
+            n400_per_ch = n400_window_mean_per_channel(
+                Y, times, dcfg.n400_tmin, dcfg.n400_tmax
+            )  # (n_trials, n_channels)
 
-            base_df = pd.DataFrame({
-                "subject": subj_rep,
-                "electrode": elec_rep,
-                "frame_id": frame_rep,
-                "lab": lab_rep,
-                "wlen": wlen_freq[item_cond_id_rep, 0],
-                "freq": wlen_freq[item_cond_id_rep, 1],
-                "n400": n400_rep,
-            })
+            meta = meta.merge(
+                items[["item_number", "condition", "item_condition_id"]],
+                on=["item_number", "condition"], how="left",
+            )
+
+            trial_mask = (
+                meta["item_condition_id"].notna().values
+                & meta["item_condition_id"].isin(keep_item_condition_ids).values
+                & np.isfinite(n400_per_ch).all(axis=1)
+            )
+            n_kept = int(trial_mask.sum())
+            n_channels = len(channel_names)
+            logger.info(
+                "Nieuwland: %d/%d trials matched a kept item and have finite N400",
+                n_kept, len(meta),
+            )
+
+            kept_idx = np.where(trial_mask)[0]
+            item_cond_id_kept = meta["item_condition_id"].values[kept_idx].astype(np.int64)
+            n_layers = surprisal_items.shape[1]
+
+            if self.cfg.lme.use_paper_formula:
+                # One row per TRIAL (not trial x channel): N400 averaged across
+                # the already-restricted 6 centro-parietal channels
+                # (target_channels == N400_CHANNELS by default), matching the
+                # paper's own pre-averaged outcome exactly -- no electrode term.
+                n400_avg = np.nanmean(n400_per_ch[kept_idx], axis=1).astype(np.float64)
+                surprisal_by_row = surprisal_items[item_cond_id_kept]
+                prev_surprisal_by_row = prev_surprisal_items[item_cond_id_kept]
+                base_df = pd.DataFrame({
+                    "subject": meta["subject"].astype(str).values[kept_idx],
+                    "lab": meta["lab"].astype(str).values[kept_idx],
+                    "frame_id": meta["item_number"].values[kept_idx],
+                    "item_id": item_cond_id_kept,
+                    "n400": n400_avg,
+                })
+            else:
+                subj_rep = np.repeat(meta["subject"].astype(str).values[kept_idx], n_channels)
+                lab_rep = np.repeat(meta["lab"].astype(str).values[kept_idx], n_channels)
+                frame_rep = np.repeat(meta["item_number"].values[kept_idx], n_channels)
+                elec_rep = np.tile(np.array(channel_names), n_kept)
+                n400_rep = n400_per_ch[kept_idx].reshape(-1).astype(np.float64)
+                item_cond_id_rep = np.repeat(item_cond_id_kept, n_channels)
+
+                surprisal_by_row = surprisal_items[item_cond_id_rep]           # (n_rows, n_layers)
+                prev_surprisal_by_row = prev_surprisal_items[item_cond_id_rep]  # (n_rows, n_layers)
+
+                base_df = pd.DataFrame({
+                    "subject": subj_rep,
+                    "electrode": elec_rep,
+                    "frame_id": frame_rep,
+                    "lab": lab_rep,
+                    "wlen": wlen_freq[item_cond_id_rep, 0],
+                    "freq": wlen_freq[item_cond_id_rep, 1],
+                    "n400": n400_rep,
+                })
         if "electrode" in base_df.columns:
             n_groups = base_df.groupby(["subject", "electrode"]).ngroups
             logger.info("Pooled table: %d rows (%d subject×electrode groups), %d layers",
@@ -512,6 +525,49 @@ class NieuwlandLmeBenchmark:
                 )
 
         return pd.DataFrame(rows)
+
+    def _paper_trials(self, items: pd.DataFrame, keep_ids: set) -> tuple[pd.DataFrame, np.ndarray]:
+        """Pooled paper-formula table from the paper's own per-trial N400.
+
+        Trials are matched to ``items`` on (sentence-context prefix, target noun); each
+        of the 160 (context, noun) keys must match exactly one item. ``n400`` is
+        z-scored globally, like ``scale(n400)`` in the paper's R script (delta-loglik
+        is invariant to this scale).
+        """
+        import re
+
+        if not self.cfg.lme.use_paper_formula:
+            raise ValueError("paper_n400_tsv requires lme.use_paper_formula=True")
+
+        def key(text: str) -> str:
+            return re.sub(r"[^a-z]", "", str(text).lower())
+
+        paper = pd.read_csv(self.cfg.data.paper_n400_tsv, sep="\t").drop_duplicates()
+        paper = paper.dropna(subset=["n400", "FullText", "TargetWords"])
+        paper["k"] = paper["FullText"].map(key).str[:20] + "|" + paper["TargetWords"].map(key)
+        it = items.copy()
+        it["k"] = it["sentence_context"].map(key).str[:20] + "|" + it["noun"].map(key)
+        if it["k"].duplicated().any():
+            raise ValueError("Item (context, noun) keys are not unique")
+        unmatched = set(paper["k"]) - set(it["k"])
+        if unmatched:
+            raise ValueError(f"{len(unmatched)} paper (context, noun) keys have no matching item")
+        merged = paper.merge(
+            it[["k", "item_number", "item_condition_id"]], on="k", how="inner",
+        )
+        merged = merged[merged["item_condition_id"].isin(keep_ids)]
+        merged = merged.drop_duplicates(["subject", "item_condition_id"])
+        n400 = merged["n400"].to_numpy(dtype=np.float64)
+        base_df = pd.DataFrame({
+            "subject": merged["subject"].astype(str).to_numpy(),
+            "lab": merged["lab"].astype(str).str.lower().to_numpy(),
+            "frame_id": merged["item_number"].to_numpy(),
+            "item_id": merged["item_condition_id"].to_numpy(dtype=np.int64),
+            "n400": (n400 - n400.mean()) / n400.std(),
+        })
+        logger.info("Paper N400 table: %d trials, %d subjects, %d labs",
+                    len(base_df), base_df["subject"].nunique(), base_df["lab"].nunique())
+        return base_df, base_df["item_id"].to_numpy(dtype=np.int64)
 
     # ------------------------------------------------------------------
     # Item loading (EEG-free)

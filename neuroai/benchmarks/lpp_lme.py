@@ -108,6 +108,16 @@ from ..roi.lpp import load_fedorenko_parcelization
 from ..sweep import csv_file_lock
 from .base import ModelConfig
 
+
+def _pw_dir(out_dir):
+    """Per-word prediction directory: mirrors ``out_dir`` under $SCRATCH (word_predictions_root)
+    so large per-word CSVs never land on $WORK (2026-10-12)."""
+    from .base import word_predictions_root
+
+    d = word_predictions_root(out_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
 logger = logging.getLogger(__name__)
 
 # Matches terminal (leaf) tokens in a constituency tree line: "(POS word)"
@@ -245,6 +255,9 @@ class LppLmeConfig:
     # DLT-difficulty-style convention as every other pooled LME here, see
     # ``fit_spr_lme(..., save_per_word=True)``. On by default.
     save_word_predictions: bool = True
+    # Separate experiment: fit independent models for each Fedorenko parcel,
+    # omitting the parcel random effect because each fit contains one parcel.
+    roi_wise: bool = False
 
 
 @dataclass
@@ -271,6 +284,7 @@ def _fit_one_layer_worker(
     allow_slope_fallback: bool,
     save_word_predictions: bool = False,
     persubject: bool = False,
+    region: str | None = None,
 ) -> dict[str, tp.Any]:
     """Runs in its own spawned process: load the shared table, fit one layer."""
     import numpy as _np
@@ -280,11 +294,17 @@ def _fit_one_layer_worker(
 
     t0 = time.time()
     row: dict[str, tp.Any] = {"layer": layer_idx}
+    if region is not None:
+        row["region"] = region
     per_word_out: _pd.DataFrame | None = None
     try:
         base_df = _pd.read_parquet(base_parquet_path)
         surp_all = _np.load(surprisal_npy_path, mmap_mode="r")
         base_df["surprisal"] = _np.asarray(surp_all[:, layer_idx], dtype=_np.float64)
+        if region is not None:
+            base_df = base_df.loc[base_df["region"].astype(str) == region].copy()
+            if base_df.empty:
+                raise ValueError(f"No observations for region {region!r}")
 
         fit = fit_lpp_lme_one_layer(
             base_df,
@@ -294,6 +314,7 @@ def _fit_one_layer_worker(
             allow_slope_fallback=allow_slope_fallback,
             save_per_word=save_word_predictions,
             persubject=persubject,
+            per_region=region is not None,
         )
         if fit.per_word is not None and not fit.per_word.empty:
             per_word_out = fit.per_word.copy()
@@ -325,7 +346,7 @@ def _fit_one_layer_worker(
             "error": None,
         })
     except Exception as exc:  # noqa: BLE001 — one bad layer must not kill the pool
-        logger.error("Layer %d failed", layer_idx, exc_info=True)
+        logger.error("Region %s layer %d failed", region, layer_idx, exc_info=True)
         row["error"] = str(exc)
     row["fit_wall_time_s"] = time.time() - t0
     return {"row": row, "per_word": per_word_out}
@@ -413,7 +434,7 @@ class LppLmeBenchmark:
 
         out_dir = Path(self.cfg.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
-        layer_csv = out_dir / "lpp_lme_by_layer.csv"
+        layer_csv = out_dir / ("lpp_lme_by_roi.csv" if lcfg.roi_wise else "lpp_lme_by_layer.csv")
 
         encoder = self._encoder()
         n_vox_full = encoder._precomputed_n_voxels()
@@ -610,7 +631,7 @@ class LppLmeBenchmark:
             model_name, len(layer_indices), lcfg.layer_stride, lcfg.n_workers,
         )
 
-        out_columns = list(_LAYER_ROW_COLUMNS) + [
+        out_columns = (["region"] if lcfg.roi_wise else []) + list(_LAYER_ROW_COLUMNS) + [
             k for k in (extra_fields or {}) if k not in _LAYER_ROW_COLUMNS
         ]
         done_layers: set[int] = set()
@@ -620,7 +641,10 @@ class LppLmeBenchmark:
                 existing_revision = existing["revision"] if "revision" in existing.columns else "main"
                 same_revision = existing_revision == model_revision
                 good = existing.loc[same_revision & existing["error"].isna()]
-                done_layers = set(good["layer"].tolist())
+                if lcfg.roi_wise:
+                    done_layers = set(zip(good["region"].astype(str), good["layer"].astype(int)))
+                else:
+                    done_layers = set(good["layer"].tolist())
                 n_failed = int((same_revision & existing["error"].notna()).sum())
                 if done_layers:
                     logger.info("Skipping %d already-fit layer(s) for revision=%s", len(done_layers), model_revision)
@@ -638,8 +662,10 @@ class LppLmeBenchmark:
         import multiprocessing as mp
         ctx = mp.get_context("spawn")
 
-        per_word_csv = out_dir / "lpp_lme_per_word.csv"
-        pending = [li for li in layer_indices if li not in done_layers]
+        per_word_csv = _pw_dir(out_dir) / "lpp_lme_per_word.csv"
+        fit_regions = sorted(set(region_names)) if lcfg.roi_wise else [None]
+        tasks = [(region, li) for region in fit_regions for li in layer_indices
+                 if ((region, li) not in done_layers if lcfg.roi_wise else li not in done_layers)]
         rows_out: list[dict] = []
         with ProcessPoolExecutor(
             max_workers=lcfg.n_workers, mp_context=ctx, max_tasks_per_child=1,
@@ -654,17 +680,20 @@ class LppLmeBenchmark:
                     allow_slope_fallback=lcfg.allow_slope_fallback,
                     save_word_predictions=lcfg.save_word_predictions,
                     persubject=lcfg.use_persubject,
-                ): li
-                for li in pending
+                    region=region,
+                ): (region, li)
+                for region, li in tasks
             }
             for fut in as_completed(futures):
-                li = futures[fut]
+                region, li = futures[fut]
                 try:
                     result = fut.result()
                     row, per_word = result["row"], result["per_word"]
                 except Exception as exc:
                     logger.error("Layer %d worker crashed: %s", li, exc, exc_info=True)
                     row, per_word = {"layer": li, "error": str(exc)}, None
+                if region is not None:
+                    row["region"] = region
                 row["revision"] = model_revision
                 if extra_fields:
                     row.update(extra_fields)
@@ -679,8 +708,8 @@ class LppLmeBenchmark:
                             per_word_csv, mode="a", header=not per_word_csv.exists(), index=False,
                         )
                 logger.info(
-                    "  [layer %d] done in %.1fs — delta_loglik_test=%s converged=%s%s",
-                    li, row.get("fit_wall_time_s", float("nan")),
+                    "  [%s | layer %d] done in %.1fs — delta_loglik_test=%s converged=%s%s",
+                    region or "pooled", li, row.get("fit_wall_time_s", float("nan")),
                     f"{row['delta_loglik_test']:.2f}" if row.get("delta_loglik_test") is not None else "NA",
                     row.get("converged"),
                     " (slope dropped)" if row.get("slope_dropped") else "",

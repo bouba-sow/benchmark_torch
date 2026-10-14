@@ -258,6 +258,34 @@ ns_lme_jz_run_array_task_cpu() {
     --no_plots \
     "${SAVE_WORD_PREDICTIONS_FLAG[@]}"
 
+  # The Python sweep records failed fits in CSV and can still exit normally.
+  # Require a usable deepest-layer score before marking a repair job complete.
+  if [[ "${NS_REQUIRE_FINAL_SCORE:-0}" == "1" ]]; then
+    "${PY[@]}" - "$NS_FAMILY" "$IDX" "$SWEEP_ROOT" <<'PY'
+import math
+import sys
+from pathlib import Path
+
+import pandas as pd
+from neuroai.models.registry import resolve_family_task
+from neuroai.sweep import safe_model_dir
+
+family, index, root = sys.argv[1], int(sys.argv[2]), Path(sys.argv[3])
+task = resolve_family_task(family, index)
+path = root / family / safe_model_dir(task.model_id) / "spr_lme_checkpoint_scores.csv"
+scores = pd.read_csv(path)
+scores = scores.loc[scores.revision.astype(str) == task.revision]
+if scores.empty:
+    raise SystemExit(f"Missing LME results for {task.model_id}@{task.revision}: {path}")
+last = scores.loc[scores.layer == scores.layer.max()].iloc[-1]
+delta = pd.to_numeric(last.delta_loglik_test, errors="coerce")
+count = pd.to_numeric(last.n_obs_test, errors="coerce")
+if not (math.isfinite(delta) and math.isfinite(count) and count > 0):
+    raise SystemExit(f"Invalid final-layer LME score for {task.model_id}@{task.revision}: {path}")
+print(f"Verified final-layer LME score for {task.model_id}@{task.revision}")
+PY
+  fi
+
   echo "Stage 2 completed at $(date)"
 }
 

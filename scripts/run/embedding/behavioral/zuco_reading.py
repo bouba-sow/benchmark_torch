@@ -234,6 +234,7 @@ def _benchmark_config(
         average_across_subjects=bool(cfg.get("average_across_subjects", False)),
         min_subjects_per_item=int(cfg.get("min_subjects_per_item", 1)),
         average_only=bool(cfg.get("average_only", False)),
+        average_ridge_device=str(cfg.get("average_ridge_device", "cpu")),
     )
 
 
@@ -291,7 +292,12 @@ def run_model_sweep(
         already_avg = True
         if average_scores_csv is not None:
             already_avg = already_computed(load_existing_csv(average_scores_csv), ckpt.revision)
-        if already_main and already_avg:
+        if not extract_only and already_main and already_avg:
+            # extract_only bypasses this skip: cache backfill needs to run
+            # even when the fit already completed (the two are independent —
+            # a model can be fully fitted with no raw cache retained), and
+            # ZuCoReadingEmbedBenchmark.run_extract_only() below never
+            # touches the fit CSVs this check reads anyway.
             logger.info("[%s] %s already done — skipping", model_id, ckpt.revision)
             continue
 
@@ -536,7 +542,7 @@ def main() -> None:
                         "On by default; pass --no-save_word_predictions to disable.")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("ZUCO_READING_PERPLEXITY_DIR", "outputs_torch/zuco_reading/perplexity"),
+        default=os.environ.get("ZUCO_READING_PERPLEXITY_DIR", "outputs_jeanzay/zuco_reading/perplexity"),
         help="Save each checkpoint's corpus perplexity here too (merges into the "
              "existing zuco_reading_<task>_perplexity_summary.csv tree). Set to '' to disable.",
     )
@@ -558,6 +564,13 @@ def main() -> None:
              "'average_only: true'.",
     )
     p.add_argument(
+        "--average_ridge_device", default=None, choices=("cpu", "cuda"),
+        help="Ridge fit device for the averaged-RT branch specifically "
+             "(default: cpu). 'cuda' uses himalaya's SVD-based GCV instead of "
+             "sklearn's nested-CV grid search. Can also be set via the "
+             "config's top-level 'average_ridge_device: cuda'.",
+    )
+    p.add_argument(
         "--extract_only", action="store_true",
         help="Populate the embedding feature cache only, skip the ridge fit "
              "entirely -- the GPU half of a two-stage pipeline. A later plain "
@@ -569,8 +582,19 @@ def main() -> None:
     output_family = args.output_family or args.family
 
     cfg = load_config(args.config)
+    # ZuCo Reading embed is grand-average-subject-only by design (matches the
+    # report's documented metric). Default both flags ON so a bare/legacy
+    # config can never trigger a per-subject fit; an explicit
+    # 'average_only: false' still wins.
+    cfg.setdefault("average_across_subjects", True)
+    cfg.setdefault("average_only", True)
     if args.average_across_subjects:
         cfg["average_across_subjects"] = True
+    if args.average_only:
+        cfg["average_across_subjects"] = True
+        cfg["average_only"] = True
+    if args.average_ridge_device:
+        cfg["average_ridge_device"] = args.average_ridge_device
     zuco_task = str(cfg.get("dataset", {}).get("task", "nr")).lower()
     default_save_dir = f"outputs/zuco_reading/embedding_sweep/{zuco_task}"
     out_dir = Path(args.out_dir or cfg.get("output", {}).get("save_dir", default_save_dir))

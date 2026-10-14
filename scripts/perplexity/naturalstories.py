@@ -91,7 +91,7 @@ def run_model(
 
     if out_path.is_file() and not force:
         existing = json.loads(out_path.read_text())
-        if "error" not in existing:
+        if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
             logger.info("Already done: %s — skipping (use --force to recompute)", model_id)
             return existing
         logger.warning("Previous run had error — recomputing: %s", out_path)
@@ -165,7 +165,7 @@ def run_model(
         "family": model_entry["family"],
         "corpus": "naturalstories",
         "perplexity": result["perplexity"],
-        "n_tokens": result["n_tokens"],
+        "n_tokens": result["n_tokens"], "n_words": result.get("n_words"), "perplexity_per_token": result.get("perplexity_per_token"), "perplexity_method": result.get("perplexity_method"),
         "max_length": max_length,
         "stride": max_length // 2,
         "device": device,
@@ -203,7 +203,7 @@ def compute_cbr_rnn_perplexity(
     out_path = out_dir / safe / "perplexity.json"
     if out_path.is_file() and not force:
         existing = json.loads(out_path.read_text())
-        if "error" not in existing:
+        if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
             logger.info("Already done: %s — skipping (use --force to recompute)", model_id)
             return existing
         logger.warning("CBR-RNN output has error field — recomputing: %s", out_path)
@@ -253,7 +253,7 @@ def compute_cbr_rnn_perplexity(
         if end == len(inputs):
             break
 
-    ppl = math.exp(total_nll / n_scored)
+    ppl = math.exp(total_nll / len(full_text.split()))  # per word (2026-10-12 audit)
     logger.info("CBR-RNN NS perplexity: %.4f  (n_scored=%d)", ppl, n_scored)
 
     del model
@@ -267,7 +267,7 @@ def compute_cbr_rnn_perplexity(
         "n_params": 17_360_688,
         "family": "cbr_rnn",
         "corpus": "naturalstories",
-        "perplexity": ppl,
+        "perplexity": ppl, "perplexity_method": "logits_v2_per_word",
         "n_tokens": n_scored,
         "max_length": max_seq_len,
         "stride": stride,

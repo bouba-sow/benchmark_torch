@@ -61,6 +61,7 @@ from neuroai.models.registry import (
     resolve_load_model_id,
 )
 from neuroai.regressors.ridge import cv_ridge_score_multioutput, cv_ridge_score_multioutput_gpu
+from neuroai.features.llm import embedding_layer_selection  # noqa: E402
 from neuroai.sweep import (
     CheckpointItem,
     append_row,
@@ -112,7 +113,9 @@ def _embed_cache_path(
 ) -> Path:
     safe = safe_model_dir(model_id)
     rev  = revision.replace("/", "_")
-    return cache_dir / safe / rev / "embeddings.npz"
+    from neuroai.features.llm import embedding_cache_tag
+
+    return cache_dir / safe / rev / f"embeddings{embedding_cache_tag(model_id)}.npz"
 
 
 def _find_transformer_layers(model: Any) -> list:
@@ -186,6 +189,7 @@ def _resolve_transformer_hidden_states(
     return kept
 
 
+@embedding_layer_selection
 def extract_embeddings(
     model_id: str,
     sentences: list[str],

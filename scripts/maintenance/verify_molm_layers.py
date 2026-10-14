@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """One-off: verify n_layers (len(output_hidden_states)) and real-weight
-loading for the ibm-research/MoLM-* checkpoints added to neuroai/models/registry.py's
+loading for the ibm/MoLM-* checkpoints added to neuroai/models/registry.py's
 "molm" family (2026-09-12), via the new
 neuroai.features.llm._load_moduleformer_direct loader.
 

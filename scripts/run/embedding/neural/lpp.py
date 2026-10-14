@@ -328,6 +328,7 @@ def _run_encoding_for_subject(
     revision: str,
     per_layer: bool,
     compute_lateralization: bool,
+    activations_only: bool = False,
 ) -> tuple[LppEncodingResult | None, LppLayerwiseEncodingResult | None]:
     """Run encoding for one subject at one checkpoint revision."""
     cfg = LppFmriEncodingConfig(
@@ -338,7 +339,10 @@ def _run_encoding_for_subject(
         echo=dataset_cfg.get("echo", 2) if dataset_cfg.get("bold_source", "derivatives") == "raw" else None,
         apply_lbg_fixes=dataset_cfg.get("apply_lbg_fixes", False),
         # Feature extraction
-        feature_mode=encoding_cfg_base.feature_mode,
+        # CBR-RNN is not an AutoModelForCausalLM: use the encoder's dedicated "cbr_rnn" feature mode
+        # (neuroai.features.cbr_rnn, the same extractor every other dataset uses) instead of the HF path.
+        feature_mode=("cbr_rnn" if "cbr-rnn" in str(encoding_cfg_base.hf_model_name).lower()
+                      else encoding_cfg_base.feature_mode),
         hf_model_name=encoding_cfg_base.hf_model_name,
         hf_revision=revision,
         hf_device=encoding_cfg_base.hf_device,
@@ -385,6 +389,9 @@ def _run_encoding_for_subject(
         save_word_predictions=encoding_cfg_base.save_word_predictions,
     )
     encoder = LppFmriEncoder(cfg)
+    if activations_only:
+        encoder.extract_and_cache_only()
+        return None, None
     if per_layer:
         lw_result = encoder.run_layerwise()
         return None, lw_result
@@ -912,6 +919,7 @@ def _run_model_sweep(
     dry_run: bool = False,
     ho_parcelization: Any = None,
     generate_plots: bool = True,
+    activations_only: bool = False,
 ) -> None:
     model_id = model_cfg["model_id"]
     model_label = model_cfg.get("label", model_id.split("/")[-1])
@@ -1019,7 +1027,10 @@ def _run_model_sweep(
                 enc_cfg_base.hf_model_name,
             )
 
-        for subject in subjects:
+        # Feature extraction doesn't depend on fMRI subject, only on the
+        # stimulus text -- one subject is enough to populate the cache.
+        subjects_to_run = subjects[:1] if activations_only else subjects
+        for subject in subjects_to_run:
             try:
                 flat_r, lw_r = _run_encoding_for_subject(
                     subject=subject,
@@ -1028,6 +1039,7 @@ def _run_model_sweep(
                     revision=ckpt.revision,
                     per_layer=per_layer,
                     compute_lateralization=compute_lat,
+                    activations_only=activations_only,
                 )
                 if flat_r is not None:
                     flat_results.append(flat_r)
@@ -1431,6 +1443,16 @@ def parse_args() -> argparse.Namespace:
         help="Override training steps for Pythia-family models.",
     )
     p.add_argument(
+        "--activations_only",
+        action="store_true",
+        help=(
+            "Extract + cache raw per-word features only (one subject, all "
+            "layers) -- skips BOLD loading and ridge/LOSO encoding entirely. "
+            "For populating feature_cache_dir cheaply (RSA raw-embedding-"
+            "cache backfill), not for scoring."
+        ),
+    )
+    p.add_argument(
         "--dry_run",
         action="store_true",
         help="Print checkpoint plan without running any computation.",
@@ -1766,6 +1788,7 @@ def main() -> None:
                 dry_run=False,
                 ho_parcelization=ho_parcelization,
                 generate_plots=not args.no_plots,
+                activations_only=args.activations_only,
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("[%s] FATAL: %s", model_label, exc)

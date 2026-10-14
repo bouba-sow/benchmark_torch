@@ -39,8 +39,9 @@ import polars as pl
 from joblib import Parallel, delayed
 from scipy.stats import pearsonr
 
-from neuroai.analysis.benchmark_common import REPO_ROOT
+from neuroai.analysis.benchmark_common import EXCLUDED_MODEL_IDS, REPO_ROOT
 from scripts.dlt.delta_loglik import DATASET_SPEC, _final_revision
+from scripts.dlt.dlt_keys import attach_story_zone
 from scripts.summarize.benchmark import (
     _iter_model_score_files,
     _model_id_from_dir,
@@ -80,6 +81,8 @@ def _process_one_model(dataset: str, family: str, model_dir: Path, scores_filena
                         per_word_filename: str, dlt_key: pd.DataFrame) -> list[dict] | None:
     try:
         model_id = _model_id_from_dir(model_dir)
+        if model_id in EXCLUDED_MODEL_IDS:  # broken upstream checkpoints, out of benchmark scope
+            return None
         score_files = sorted(model_dir.rglob(scores_filename)) or [model_dir / scores_filename]
         frames = [d for f in score_files if f.exists() and (d := _read_csv_safe(f)) is not None]
         if not frames:
@@ -116,8 +119,7 @@ def _process_one_model(dataset: str, family: str, model_dir: Path, scores_filena
         if pw.empty:
             return None
 
-        pw["story_id"] = pw["sentid"].astype(int)
-        pw["zone"] = pw["sentpos"].astype(int)
+        pw = attach_story_zone(pw, natural_stories=dataset.startswith("naturalstories"))
         pw = pw.merge(dlt_key, on=["story_id", "zone"], how="left")
         has_baseline = "yhat_baseline" in pw.columns
         subset_cols = ["total", "fdur", "yhat_full"] + (["yhat_baseline"] if has_baseline else [])

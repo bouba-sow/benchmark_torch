@@ -73,6 +73,7 @@ def _build_benchmark_config(
     output_dir: Path,
     n_workers: int,
     layer_stride: int,
+    last_layer_only: bool = False,
     device: str | None = None,
     feature_cache_dir: str | None = None,
     epoch_cache_dir: str | None = None,
@@ -129,6 +130,7 @@ def _build_benchmark_config(
         verbose=bool(lme.get("verbose", False)),
         allow_slope_fallback=bool(lme.get("allow_slope_fallback", True)),
         layer_stride=layer_stride,
+        last_layer_only=last_layer_only,
         n_workers=n_workers,
         # CPU-only stage: R (pymer4/lme4) is CPU-only on Jean Zay. Surprisal
         # is expected to already be cached by
@@ -162,6 +164,7 @@ def main() -> None:
                    help="Concurrent worker processes fitting layers (default 10)")
     p.add_argument("--layer_stride", type=int, default=1,
                    help="Fit every Nth layer (default 1 = all layers)")
+    p.add_argument("--last_layer_only", action="store_true", help="Fit only the final layer")
     p.add_argument("--device", default=None,
                    help="Override dataset device (surprisal extraction fallback only)")
     p.add_argument("--feature_cache_dir", default=None,
@@ -226,6 +229,7 @@ def main() -> None:
         output_dir=output_dir,
         n_workers=args.n_workers,
         layer_stride=args.layer_stride,
+        last_layer_only=args.last_layer_only,
         device=args.device,
         feature_cache_dir=args.feature_cache_dir,
         epoch_cache_dir=args.epoch_cache_dir,

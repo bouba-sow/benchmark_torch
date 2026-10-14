@@ -1,9 +1,23 @@
-\begin{thebibliography}{96}
+\begin{thebibliography}{98}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[AlKhamissi et~al.(2025)AlKhamissi, Tuckute, Tang, Binhuraib, Bosselut,
+  and Schrimpf]{alkhamissi-etal-2025-language}
+Badr AlKhamissi, Greta Tuckute, Yingtian Tang, Taha Osama~A Binhuraib, Antoine
+  Bosselut, and Martin Schrimpf.
+\newblock From language to cognition: How {LLM}s outgrow the human language
+  network.
+\newblock In Christos Christodoulopoulos, Tanmoy Chakraborty, Carolyn Rose, and
+  Violet Peng (eds.), \emph{Proceedings of the 2025 Conference on Empirical
+  Methods in Natural Language Processing}, pp.\  24321--24339, Suzhou, China,
+  November 2025. Association for Computational Linguistics.
+\newblock ISBN 979-8-89176-332-6.
+\newblock \doi{10.18653/v1/2025.emnlp-main.1237}.
+\newblock URL \url{https://aclanthology.org/2025.emnlp-main.1237/}.
 
 \bibitem[Andreas(2022)]{andreas-2022-language}
 Jacob Andreas.
@@ -27,13 +41,6 @@ Dale~J. Barr, Roger Levy, Christoph Scheepers, and Harry~J. Tily.
   maximal.
 \newblock \emph{Journal of Memory and Language}, 68\penalty0 (3):\penalty0
   255--278, 2013.
-
-\bibitem[Belrose et~al.(2023)Belrose, Furman, Smith, Halawi, McKinney,
-  Ostrovsky, Biderman, and Steinhardt]{belrose2023tuned}
-Nora Belrose, Zach Furman, Logan Smith, Danny Halawi, Lev McKinney, Igor
-  Ostrovsky, Stella Biderman, and Jacob Steinhardt.
-\newblock Eliciting latent predictions from transformers with the tuned lens.
-\newblock \emph{arXiv preprint arXiv:2303.08112}, 2023.
 
 \bibitem[Bender \& Koller(2020)Bender and Koller]{bender-koller-2020-climbing}
 Emily~M. Bender and Alexander Koller.
@@ -61,6 +68,11 @@ Stella Biderman, Hailey Schoelkopf, Quentin~Gregory Anthony, Herbie Bradley,
 \newblock Pythia: A suite for analyzing large language models across training
   and scaling.
 \newblock In \emph{Proceedings of ICML}, pp.\  2397--2430, 2023.
+
+\bibitem[{BigScience Workshop}(2022)]{workshop2022bloom}
+{BigScience Workshop}.
+\newblock {BLOOM}: A 176{B}-parameter open-access multilingual language model.
+\newblock \emph{arXiv preprint arXiv:2211.05100}, 2022.
 
 \bibitem[Black et~al.(2021)Black, Gao, Wang, Leahy, and
   Biderman]{black2021gptneo}
@@ -216,19 +228,6 @@ Richard Futrell, Edward Gibson, Harry~J. Tily, Idan Blank, Anastasia
 \newblock \emph{Language Resources and Evaluation}, 55\penalty0 (1):\penalty0
   63--77, 2021.
 
-\bibitem[Gibson(1998)]{gibson1998linguistic}
-Edward Gibson.
-\newblock Linguistic complexity: Locality of syntactic dependencies.
-\newblock \emph{Cognition}, 68\penalty0 (1):\penalty0 1--76, 1998.
-
-\bibitem[Gibson(2000)]{gibson2000dlt}
-Edward Gibson.
-\newblock The dependency locality theory: A distance-based theory of linguistic
-  complexity.
-\newblock In Alec Marantz, Yasushi Miyashita, and Wayne O'Neil (eds.),
-  \emph{Image, Language, Brain: Papers from the First Mind Articulation Project
-  Symposium}, pp.\  95--126. MIT Press, Cambridge, MA, 2000.
-
 \bibitem[Gilkerson et~al.(2017)Gilkerson, Richards, Warren, Montgomery,
   Greenwood, Oller, Hansen, and Paul]{gilkerson2017mapping}
 Jill Gilkerson, Jeffrey~A. Richards, Steven~F. Warren, Judith~K. Montgomery,
@@ -284,7 +283,7 @@ Michael Hahn, Richard Futrell, Roger Levy, and Edward Gibson.
 \bibitem[Hale(2001)]{hale2001probabilistic}
 John Hale.
 \newblock A probabilistic {E}arley parser as a psycholinguistic model.
-\newblock pp.\  159--166, 2001.
+\newblock In \emph{Proceedings of NAACL}, pp.\  159--166, 2001.
 
 \bibitem[Hollenstein et~al.(2018)Hollenstein, Rotsztejn, Troendle, Pedroni,
   Zhang, and Langer]{hollenstein2018zuco}
@@ -340,6 +339,13 @@ Maayan Keshev, Mandy Cartner, Aya Meltzer-Asscher, and Brian Dillon.
   88--105, 2025.
 \newblock Part of the topic ``Best of Papers from the 2024 Cognitive Science
   Society Conference''.
+
+\bibitem[Kriegeskorte et~al.(2008)Kriegeskorte, Mur, and
+  Bandettini]{kriegeskorte2008rsa}
+Nikolaus Kriegeskorte, Marieke Mur, and Peter Bandettini.
+\newblock Representational similarity analysis -- connecting the branches of
+  systems neuroscience.
+\newblock \emph{Frontiers in Systems Neuroscience}, 2:\penalty0 4, 2008.
 
 \bibitem[Kuribayashi et~al.(2021)Kuribayashi, Oseki, Ito, Yoshida, Asahara, and
   Inui]{kuribayashi2021lower}
@@ -459,11 +465,6 @@ Mante~S. Nieuwland, Stephen Politzer-Ahles, Evelien Heyselaar, Katrien Segaert,
   prediction in language comprehension.
 \newblock \emph{eLife}, 7:\penalty0 e33468, 2018.
 
-\bibitem[nostalgebraist(2020)]{logitlens2020}
-nostalgebraist.
-\newblock Interpreting {GPT}: The logit lens.
-\newblock LessWrong blog post, 2020.
-
 \bibitem[Oh \& Schuler(2023{\natexlab{a}})Oh and
   Schuler]{ohschuler2023twobillion}
 Byung-Doh Oh and William Schuler.
@@ -483,6 +484,12 @@ Byung-Doh Oh and William Schuler.
 Andreas Opedal, Eleanor Chodroff, Ryan Cotterell, and Ethan Wilcox.
 \newblock On the role of context in reading time prediction.
 \newblock In \emph{Proceedings of EMNLP}, pp.\  3042--3058, 2024.
+
+\bibitem[Peng et~al.(2023)Peng, Alcaide, Anthony, Albalak, Arcadinho,
+  et~al.]{peng2023rwkv}
+Bo~Peng, Eric Alcaide, Quentin Anthony, Alon Albalak, Samuel Arcadinho, et~al.
+\newblock {RWKV}: Reinventing {RNN}s for the transformer era.
+\newblock \emph{arXiv preprint arXiv:2305.13048}, 2023.
 
 \bibitem[Pereira et~al.(2018)Pereira, Lou, Pritchett, Ritter, Gershman,
   Kanwisher, Botvinick, and Fedorenko]{pereira2018toward}
@@ -512,8 +519,6 @@ Nathan~E. Rasmussen and William Schuler.
   surprisal and locality effects.
 \newblock \emph{Cognitive Science}, 42\penalty0 (S4):\penalty0 1009--1042,
   2018.
-\newblock Listed as "Rasmussen and Schuler (Cognitive Science 2017)" in the
-  CogPlausAI review; the published version is dated 2018 (vol. 42, issue S4).
 
 \bibitem[Schrimpf et~al.(2021)Schrimpf, Blank, Tuckute, Kauf, Hosseini,
   Kanwisher, Tenenbaum, and Fedorenko]{schrimpf2021neural}
@@ -523,6 +528,13 @@ Martin Schrimpf, Idan~Asher Blank, Greta Tuckute, Carina Kauf, Eghbal~A.
   on predictive processing.
 \newblock \emph{Proceedings of the National Academy of Sciences}, 118\penalty0
   (45):\penalty0 e2105646118, 2021.
+
+\bibitem[Sch{\"u}tt et~al.(2023)Sch{\"u}tt, Kipnis, Diedrichsen, and
+  Kriegeskorte]{schutt2023statistical}
+Heiko~H. Sch{\"u}tt, Alexander~D. Kipnis, J{\"o}rn Diedrichsen, and Nikolaus
+  Kriegeskorte.
+\newblock Statistical inference on representational geometries.
+\newblock \emph{eLife}, 12:\penalty0 e82566, 2023.
 
 \bibitem[Shain et~al.(2022)Shain, Blank, Fedorenko, Gibson, and
   Schuler]{shain2022robust}
@@ -540,6 +552,13 @@ Cory Shain, Clara Meister, Tiago Pimentel, Ryan Cotterell, and Roger Levy.
   on reading time.
 \newblock \emph{Proceedings of the National Academy of Sciences}, 121\penalty0
   (10):\penalty0 e2307876121, 2024.
+
+\bibitem[Shen et~al.(2023)Shen, Zhang, Cao, Tan, Chen, and
+  Gan]{shen2023moduleformer}
+Yikang Shen, Zheyu Zhang, Tianyou Cao, Shawn Tan, Zhenfang Chen, and Chuang
+  Gan.
+\newblock {ModuleFormer}: Modularity emerges from mixture-of-experts.
+\newblock \emph{arXiv preprint arXiv:2306.04640}, 2023.
 
 \bibitem[Siegelman et~al.(2022)Siegelman, Schroeder, Acart{\"u}rk, Ahn,
   Alexeeva, Amenta, Bertram, Bonandrini, Brysbaert, Chernova,
@@ -596,25 +615,25 @@ Joonas Tapaninaho.
 \newblock 2 {OLMo} 2 furious.
 \newblock \emph{arXiv preprint arXiv:2501.00656}, 2025.
 
-\bibitem[Tenney et~al.(2019)Tenney, Das, and Pavlick]{tenney2019bert}
-Ian Tenney, Dipanjan Das, and Ellie Pavlick.
-\newblock {BERT} rediscovers the classical {NLP} pipeline.
-\newblock In \emph{Proceedings of ACL}, pp.\  4593--4601, 2019.
-
 \bibitem[Thamma \& Heilbron(2025)Thamma and Heilbron]{thamma2025humanlike}
 Abishek Thamma and Micha Heilbron.
 \newblock Human-like fleeting memory improves language learning but impairs
   reading time prediction in transformer language models.
 \newblock \emph{arXiv preprint arXiv:2508.05803}, 2025.
-\newblock Listed as "2026" in the CogPlausAI review, likely referring to a
-  forthcoming conference/journal version; cite the arXiv preprint until a venue
-  is confirmed.
 
 \bibitem[Timkey \& Linzen(2023)Timkey and Linzen]{timkey2023limited}
 William Timkey and Tal Linzen.
 \newblock A language model with limited memory capacity captures interference
   in human sentence processing.
 \newblock In \emph{Findings of EMNLP}, 2023.
+
+\bibitem[Timkey \& van Schijndel(2021)Timkey and van
+  Schijndel]{timkey2021allbark}
+William Timkey and Marten van Schijndel.
+\newblock All bark and no bite: Rogue dimensions in transformer language models
+  obscure representational quality.
+\newblock In \emph{Proceedings of the 2021 Conference on Empirical Methods in
+  Natural Language Processing}, 2021.
 
 \bibitem[Timkey et~al.(2026)Timkey, Huang, Oh, Prasad, Arehalli, Linzen, and
   Dillon]{timkey2026dissociation}
@@ -655,8 +674,7 @@ Greta Tuckute, Aalok Sathe, Shashank Srikant, Maya Taliaferro, Mingye Wang,
 Sander van Bree, Malin Styrnal, and Martin~N. Hebart.
 \newblock How much variance does your model explain? a clarifying note on the
   use of split-half reliability for computing noise ceilings, 2025.
-\newblock Preprint, circulated December 2025; no archival identifier available
-  at time of citation.
+\newblock Preprint.
 
 \bibitem[Vaswani et~al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez,
   Kaiser, and Polosukhin]{vaswani2017attention}
@@ -719,12 +737,6 @@ Weijie Xu and Richard Futrell.
 \newblock Strategic resource allocation in memory encoding: An efficiency
   principle shaping language processing.
 \newblock \emph{Journal of Memory and Language}, 146:\penalty0 104706, 2026.
-\newblock Listed as "Xu and Futrell (JML 2025)" / "Informativity enhances
-  memory robustness against interference in sentence comprehension" in the
-  CogPlausAI review; the matching published paper is titled as above (JML
-  146:104706, 2026), also circulated as arXiv:2503.14728. Confirm this is the
-  intended reference, as the review's title differs slightly from the published
-  title.
 
 \bibitem[Xu et~al.(2026)Xu, Dillon, and Futrell]{xu2026memory}
 Weijie Xu, Brian Dillon, and Richard Futrell.

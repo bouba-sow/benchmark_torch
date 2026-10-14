@@ -23,23 +23,20 @@ profiles:
     account: torch_pr_287_general
     partition: cs
     cpus: 40
-    mem: 64G   # Torch's bare default (no --mem given) is 2G -- OOM-kills any real job; see docs/torch_cluster.md
+    mem: 120G   # Torch's bare default (no --mem given) is 2G -- OOM-kills any real job; see docs/torch_cluster.md
   gpu:
     account: torch_pr_287_general
     gres: gpu:1
     constraint: h100|h200|a100   # excludes L40S: no sm_89 kernels in this repo's CUDA 12.4 wheel
     cpus: 24
     # Fair per-GPU share of host RAM = node RealMemory / GPUs-on-node, floored to the
-    # smallest node type --constraint= can land on (so scheduling never fails). Verified
-    # via `sinfo -N -o "%N %m %G %c"` 2026-09-22: A100 512000MB/4gpu=128G (most common;
-    # some A100 nodes are 1028000MB/4gpu=257G), H100 1545000MB/4gpu=386G,
-    # H200 2061000MB/8gpu=258G -- A100's 128G is the binding floor. MoLM-700M-8B
-    # (8B total params) needed >64G, ran fine at 128G -- confirmed 2026-09-22.
+    # smallest node type --constraint= can land on. Verified via `sinfo -N -o "%N %m %G %c"`:
+    # A100 512000MB/4gpu=128G (most common), H100 1545000MB/4gpu=386G, H200 2061000MB/8gpu=258G.
     mem: 120G
 large_model:
   min_params: 20000000000.0
   gres: gpu:2
-  mem: 240G   # 2x the gpu profile's per-GPU floor (120G) -- see that profile's comment
+  mem: 240G   # 2x the gpu profile's per-GPU floor -- see that profile's comment
   cpus: 48
 family_runtime:
   alibi:
@@ -127,6 +124,12 @@ stages:
     cpus: 16
     env:
       N_LAYER_WORKERS: '16'
+  nieuwland.embedding.paper:
+    runner: scripts/slurm/torch/embedding/neural/nieuwland_paper.sh
+    family_var: NIEUWLAND_FAMILY
+    fn: nieuwland_paper_torch_run_array_task
+    profile: gpu
+    cpus: 6
   pereira.embedding.fit:
     runner: scripts/slurm/torch/embedding/neural/pereira.sh
     family_var: PEREIRA_FAMILY
@@ -190,6 +193,22 @@ stages:
     fn: szewczyk_torch_run_gpu
     summary_fn: szewczyk_torch_run_summary
     profile: gpu
+  szewczyk_f2007.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/szewczyk_item_mean.sh
+    family_var: SZEWCZYK_FAMILY
+    fn: szewczyk_item_mean_torch_run_array_task
+    profile: gpu
+    cpus: 5
+    env:
+      SZEWCZYK_STUDY: f2007
+  szewczyk_h2019.embedding.fit:
+    runner: scripts/slurm/torch/embedding/neural/szewczyk_item_mean.sh
+    family_var: SZEWCZYK_FAMILY
+    fn: szewczyk_item_mean_torch_run_array_task
+    profile: gpu
+    cpus: 5
+    env:
+      SZEWCZYK_STUDY: h2019
   ucl_reading.embedding.fit:
     runner: scripts/slurm/torch/embedding/behavioral/ucl_reading.sh
     family_var: UCL_READING_FAMILY
@@ -466,6 +485,13 @@ stages:
     env:
       LAG_STRIDE: '1'
       N_WORKERS: '10'
+  podcast_region.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/podcast_region_fit.sh
+    family_var: PODCAST_FAMILY
+    fn: podcast_region_torch_run_array_task
+    profile: cpu
+    env:
+      N_WORKERS: '20'
   provo.surprisal.fit:
     runner: scripts/slurm/torch/surprisal/behavioral/provo.sh
     family_var: PROVO_FAMILY
@@ -489,6 +515,28 @@ stages:
     env:
       LAYER_STRIDE: '1'
       N_WORKERS: '20'
+  szewczyk_f2007.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/szewczyk_fit.sh
+    family_var: SZEWCZYK_FAMILY
+    fn: szewczyk_lme_torch_run_array_task
+    profile: cpu
+    cpus: 20
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '16'
+      CONFIG: configs/surprisal/neural/szewczyk_f2007.yaml
+      SZEWCZYK_LME_SWEEP_ROOT: outputs_jeanzay/szewczyk_f2007/surprisal_sweep
+  szewczyk_h2019.surprisal.fit:
+    runner: scripts/slurm/torch/surprisal/neural/szewczyk_fit.sh
+    family_var: SZEWCZYK_FAMILY
+    fn: szewczyk_lme_torch_run_array_task
+    profile: cpu
+    cpus: 20
+    env:
+      LAYER_STRIDE: '1'
+      N_WORKERS: '16'
+      CONFIG: configs/surprisal/neural/szewczyk_h2019.yaml
+      SZEWCZYK_LME_SWEEP_ROOT: outputs_jeanzay/szewczyk_h2019/surprisal_sweep
   tuckute.surprisal.fit:
     runner: scripts/slurm/torch/surprisal/neural/tuckute_fit.sh
     family_var: TUCKUTE_FAMILY

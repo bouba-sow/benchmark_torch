@@ -15,6 +15,7 @@ ppl_setup() {
     source "${BENCHMARK_ROOT}/scripts/slurm/jz/jz_cache_env.sh"
   fi
   export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+  export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"   # compute nodes have no network; use the HF cache
   export UV_CACHE_DIR="${UV_CACHE_DIR:-$PWD/.uv-cache}"
   if command -v uv >/dev/null 2>&1; then
     PY=(uv run --frozen --no-sync --no-dev python)

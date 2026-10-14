@@ -95,6 +95,7 @@ from neuroai.analysis.benchmark_common import (
     DATASETS_BY_SLUG,
     EXCLUDED_MODEL_IDS,
     filter_degenerate_dll_rows,
+    select_best_row,
     sum_dll_across_units,
     GROUP_COLORS,
     GROUP_DISPLAY,
@@ -177,8 +178,8 @@ DLL_DATASET_SPECS: dict[str, dict] = {
                         pattern="*_lme_checkpoint_scores.csv", ceiling_tag="onestop_gp"),
     "onestop_sp": dict(root="onestop/surprisal_sweep/sp",
                         pattern="*_lme_checkpoint_scores.csv", ceiling_tag="onestop_sp"),
-    "pereira_fmri": dict(root="pereira/surprisal_sweep",
-                          pattern="*_lme_by_layer.csv", ceiling_tag="pereira_fmri"),
+    "pereira_fmri": dict(root="pereira/surprisal_roi_lastlayer",
+                          pattern="*_lme_by_roi.csv", ceiling_tag="pereira_fmri", group_col="roi"),
     # Added 2026-09-04: GECO/MECO/Provo's GP (go-past) and MECO/Provo's SP
     # (scan-path/total dwell) measures -- main-model data already existed
     # under a "gp"/"sp" sibling subfolder of each dataset's default root
@@ -247,7 +248,7 @@ def _model_id_from_dirname(dirname: str) -> str:
 
 
 def _best_row_per_word(per_layer: pd.DataFrame) -> tuple[float, float] | None:
-    """(delta_loglik_test, n_obs_test) at the row with max delta_loglik_test.
+    """(delta_loglik_test, n_obs_test) at the row with max delta_loglik_TRAIN (layer selected on training data).
     None if the frame is empty or every row errored (delta_loglik_test all NaN
     -- e.g. a checkpoint whose LME fit failed to converge)."""
     if per_layer.empty or "delta_loglik_test" not in per_layer.columns:
@@ -258,7 +259,7 @@ def _best_row_per_word(per_layer: pd.DataFrame) -> tuple[float, float] | None:
     valid = filter_degenerate_dll_rows(valid)
     if valid.empty:
         return None
-    best = valid.loc[valid["delta_loglik_test"].idxmax()]
+    best = select_best_row(valid)   # layer chosen on TRAIN dLL, scored on held-out (2026-10-01)
     return float(best["delta_loglik_test"]), float(best["n_obs_test"])
 
 

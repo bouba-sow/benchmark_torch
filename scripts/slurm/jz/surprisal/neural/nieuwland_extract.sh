@@ -115,7 +115,8 @@ nieuwland_surprisal_jz_run_array_task() {
     --family "${NIEUWLAND_FAMILY}" \
     --array-index "${IDX}" \
     --device cuda \
-    --feature_cache_dir "${NIEUWLAND_LME_FEATURE_CACHE_DIR}"
+    --feature_cache_dir "${NIEUWLAND_LME_FEATURE_CACHE_DIR}" \
+    ${NIEUWLAND_SKIP_PERPLEXITY:+--skip_perplexity}
 
   echo "Job completed at $(date)"
 }

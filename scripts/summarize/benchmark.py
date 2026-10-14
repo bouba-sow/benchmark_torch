@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -30,6 +31,7 @@ from neuroai.analysis.benchmark_common import (  # noqa: E402
     EXCLUDED_FAMILY_DIRS,
     EXCLUDED_MODEL_IDS,
     filter_degenerate_dll_rows,
+    select_best_row,
     sum_dll_across_units,
     MEMORY_CONSTRAINED_FAMILIES,
     NORM_YLABEL,
@@ -37,6 +39,7 @@ from neuroai.analysis.benchmark_common import (  # noqa: E402
     REGISTRY_INDEX,
     add_ceiling_line,
     ceiling_for,
+    load_noise_ceilings,
     lookup_model_meta,
     load_perplexity_dir,
     model_dir_to_model_id,
@@ -152,24 +155,20 @@ DELTA_CORR_SANITY_MAX = 0.1
 
 
 def _sanitize_delta_col(df: pd.DataFrame, col: str, max_abs: float = DELTA_CORR_SANITY_MAX) -> pd.DataFrame:
-    """NaN out delta-correlation rows whose magnitude is implausible (see
-    DELTA_CORR_SANITY_MAX docstring above) so they can't be picked up by a
-    max-over-layers ``best`` selection or land as a garbage ``last`` layer."""
+    """Pass-through (decision 2026-10-01: no result filtering). Previously NaN'd implausible
+    delta-correlation rows; suspicious values are now investigated or rerun instead."""
     if col not in df.columns:
         return df
-    vals = pd.to_numeric(df[col], errors="coerce")
     df = df.copy()
-    df[col] = vals.where(vals.abs() <= max_abs)
+    df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
 def _best_last_dll_per_obs(df: pd.DataFrame, layer_col: str = "layer") -> tuple[float, float]:
     """Per-observation delta-log-likelihood (delta_loglik_test / n_obs_test) at
-    the best layer (max delta_loglik_test, NOT max of the ratio itself -- the
-    "best layer" selection is defined on delta_loglik_test's own scale, matching
-    the convention already established in
-    scripts/figures/figure8_scale_matched_comparison.py's _best_row_per_word)
-    and at the last (highest-index) layer. NaN/NaN if delta_loglik_test or
+    the best layer and at the last (highest-index) layer. The best layer is chosen on the TRAINING
+    delta_loglik_train (benchmark_common.select_best_row; switched from max held-out delta_loglik_test on
+    2026-10-01 to remove the winner's-curse selection on small test sets), then scored on the held-out set. NaN/NaN if delta_loglik_test or
     n_obs_test is missing/unusable everywhere."""
     need = {"delta_loglik_test", "n_obs_test"}
     if not need <= set(df.columns):
@@ -182,7 +181,7 @@ def _best_last_dll_per_obs(df: pd.DataFrame, layer_col: str = "layer") -> tuple[
     valid = filter_degenerate_dll_rows(valid)
     if valid.empty:
         return float("nan"), float("nan")
-    best_row = valid.loc[valid["delta_loglik_test"].idxmax()]
+    best_row = select_best_row(valid)   # layer chosen on TRAIN dLL (benchmark_common.LAYER_SELECTION)
     best = float(best_row["delta_loglik_test"]) / float(best_row["n_obs_test"])
     if layer_col in valid.columns:
         lay = pd.to_numeric(valid[layer_col], errors="coerce")
@@ -254,17 +253,25 @@ def _in_window(df: pd.DataFrame) -> pd.DataFrame:
     return df[(df["time_s"] >= STD_WINDOW[0]) & (df["time_s"] <= STD_WINDOW[1])]
 
 
-def _std_from_layerwise_timecourse(base: Path, fname: str, metric: str = "spearmanr_mean") -> float | None:
+def _std_from_layerwise_timecourse(base: Path, fname: str, metric: str = "spearmanr_mean",
+                                    exclude_subjects: tuple[str, ...] = ()) -> float | None:
     """Full convention from one file (subject x layer x time_s x <metric>).
 
     ``pearsonr_mean``/``spearmanr_mean`` is already the mean over that
     subject's channels, so: mean over lags in window -> mean over subjects ->
     take the best layer. Used by broderick.
     """
-    d = _read_csv_safe(base / fname)
+    return _std_from_layerwise_df(_read_csv_safe(base / fname), metric, exclude_subjects)
+
+
+def _std_from_layerwise_df(d: pd.DataFrame | None, metric: str = "spearmanr_mean",
+                           exclude_subjects: tuple[str, ...] = ()) -> float | None:
+    """Same convention as :func:`_std_from_layerwise_timecourse`, from an already-loaded frame."""
     need = {"subject", "layer", "time_s", metric}
     if d is None or not need <= set(d.columns):
         return None
+    if exclude_subjects:
+        d = d[~d["subject"].astype(str).isin(exclude_subjects)]
     w = _in_window(d)
     if w.empty:
         return None
@@ -347,7 +354,9 @@ def _finalize_model_df(rows: list[dict], ppl_df: pd.DataFrame | None) -> pd.Data
     if df.empty:
         return df
     if ppl_df is not None and not ppl_df.empty:
-        df = df.merge(ppl_df, on="model_id", how="left")
+        # One perplexity row per model: a nested walk (tuckute) can find two JSONs for the same model,
+        # which would duplicate that model's score row.
+        df = df.merge(ppl_df.drop_duplicates("model_id"), on="model_id", how="left")
     else:
         df["perplexity"] = np.nan
     return df
@@ -495,10 +504,7 @@ def _load_lme_reading(sweep_root: Path, scores_filename: str, ppl_dir: Path) -> 
         if not frames:
             continue
         scores = pd.concat(frames, ignore_index=True)
-        if "converged" in scores.columns:
-            converged = scores[scores["converged"] == True]  # noqa: E712
-            if not converged.empty:
-                scores = converged
+        # no convergence filter: results are never dropped (2026-10-01); investigate or rerun instead
         final = _pick_final_row(scores)
         # Restrict to the final checkpoint, then take best/last over LAYERS (the
         # multilayer LME writes one row per layer).
@@ -711,6 +717,11 @@ def load_pereira_embed() -> dict[str, pd.DataFrame]:
     return {"model_df": _finalize_model_df(rows, ppl_df), "layer_df": pd.DataFrame(), "roi_df": pd.DataFrame()}
 
 
+_PEREIRA_ROI_CEILING = {r: c for r, c in json.loads(
+    (Path(__file__).resolve().parents[2] / "outputs/noise_ceilings/delta_loglik_ceiling_pereira_fmri_oos.json").read_text())["per_roi_ceiling"].items()}
+_PEREIRA_MEAN_CEILING = sum(_PEREIRA_ROI_CEILING.values()) / len(_PEREIRA_ROI_CEILING)
+
+
 def load_pereira_fmri() -> dict[str, pd.DataFrame]:
     """Pereira fMRI, surprisal/LME track. Its embedding-track sibling is
     ``pereira_fmri__embed`` (load_pereira_embed, above).
@@ -723,15 +734,30 @@ def load_pereira_fmri() -> dict[str, pd.DataFrame]:
     same convention as every other surprisal-track dataset (see
     _best_last_dll_per_obs), mirroring _load_podcast_surprisal_full's
     directly-from-raw-files shape."""
-    sweep_root = OUTPUTS_JEANZAY / "pereira/surprisal_sweep"
+    # 2026-10-14: per-ROI LMEs on LH_AntTemp + LH_PostTemp only (last layer), the two ROIs that carry
+    # sentence-level signal; score = pooled held-out dLL/obs over the two ROIs, normalised by the mean of
+    # their split-half ceilings (outputs/noise_ceilings/delta_loglik_ceiling_pereira_fmri_oos.json).
+    # Old pooled-12-ROI sweep: outputs_jeanzay/pereira/surprisal_sweep (kept, no longer read).
+    sweep_root = OUTPUTS_JEANZAY / "pereira/surprisal_roi_lastlayer"
     ppl_df = load_perplexity_dir(OUTPUTS_JEANZAY / "pereira/perplexity")
     rows = []
-    for family, model_dir, score_files in _iter_model_score_files(sweep_root, "pereira_lme_by_layer.csv"):
+    for family, model_dir, score_files in _iter_model_score_files(sweep_root, "pereira_lme_by_roi.csv"):
         model_id = _model_id_from_dir(model_dir)
         frames = [d for f in score_files if (d := _read_csv_safe(f)) is not None]
         if not frames:
             continue
         scores = pd.concat(frames, ignore_index=True)
+        scores = scores[scores["roi"].isin(list(_PEREIRA_ROI_CEILING))]
+        if scores["roi"].nunique() != len(_PEREIRA_ROI_CEILING):
+            continue
+        # each ROI is normalised by its OWN ceiling, then the ROI scores are averaged. The summary pipeline later
+        # divides `score` by the mean ceiling C, so score = C * mean_roi(dLL_roi / n_roi / c_roi) makes
+        # score_norm exactly the mean of the per-ROI normalised scores.
+        scores = scores.assign(delta_loglik_test=pd.to_numeric(scores["delta_loglik_test"], errors="coerce"),
+                               n_obs_test=pd.to_numeric(scores["n_obs_test"], errors="coerce"))
+        scores["per_obs_norm"] = scores["delta_loglik_test"] / scores["n_obs_test"] / scores["roi"].map(_PEREIRA_ROI_CEILING)
+        scores = (scores.groupby("layer", as_index=False)["per_obs_norm"].mean()
+                  .assign(delta_loglik_test=lambda d: d["per_obs_norm"] * _PEREIRA_MEAN_CEILING, n_obs_test=1.0))
         best, last = _best_last_dll_per_obs(scores, "layer")
         if best != best:  # NaN
             continue
@@ -813,88 +839,42 @@ def load_podcast_ieeg() -> dict[str, pd.DataFrame]:
 
 
 def load_nieuwland_eeg() -> dict[str, pd.DataFrame]:
-    # nieuwland/checkpoint_sweep (no suffix) is the old pre-rerun location and
-    # no longer exists; _dlt is the current canonical dir.
-    sweep_root = OUTPUTS_JEANZAY / "nieuwland/embedding_sweep"
+    """Nieuwland N400 embedding track: ridge on the paper's item-mean N400 (160 items).
+
+    Written by scripts/run/embedding/neural/nieuwland_paper_item_mean.py via
+    scripts/slurm/jz/embedding/neural/nieuwland_paper.sh into
+    outputs_jeanzay/nieuwland/embedding_sweep_paper_n400/ (NIEUWLAND_PAPER_EMB_ROOT). ``score`` is the
+    best-layer Spearman of out-of-fold predictions vs item means, normalised against the split-half
+    item ceiling of the same table (noise_ceilings 'nieuwland' row, Spearman). The previous
+    per-subject, per-channel epoch-based results are backed up under
+    outputs_jeanzay/nieuwland_backup_epoch_based_20260929/.
+    """
+    sweep_root = OUTPUTS_JEANZAY / "nieuwland/embedding_sweep_paper_n400"
     ppl_df = load_perplexity_dir(OUTPUTS_JEANZAY / "nieuwland/perplexity")
 
-    model_rows, layer_rows, roi_rows = [], [], []
-    for family, model_dir, score_files in _iter_model_score_files(sweep_root, "nieuwland_checkpoint_scores.csv"):
-        model_id = _model_id_from_dir(model_dir)
-        frames = [d for f in score_files if (d := _read_csv_safe(f)) is not None]
-        if not frames:
-            continue
-        scores = pd.concat(frames, ignore_index=True)
-        final = _pick_final_row(scores)
-        meta = lookup_model_meta(model_id, family, n_params_fallback=final.get("n_params"), n_layers_fallback=final.get("n_layers"))
-        model_rows.append({
-            "model_id": model_id, "family": family, "group": meta.group, "label": meta.label,
-            "n_params": meta.n_params, "n_layers": meta.n_layers,
-            "score": _std_or(_std_from_by_subject(
-                _final_base(score_files), "nieuwland_by_subject.csv", ["perchannel_spearmanr"]),
-                final.get("mean_subject_perchannel_spearmanr")),
-            "score_legacy": final.get("mean_subject_perchannel_pearsonr"),
-        })
-
-        base = model_dir if (model_dir / "nieuwland_checkpoint_scores.csv").exists() else score_files[-1].parent
-        lw = _read_csv_safe(base / "nieuwland_checkpoint_layerwise.csv")
-        if lw is not None and "layer" in lw.columns:
-            n_layers = meta.n_layers or (lw["layer"].max() + 1)
-            score_col = "pc_sr" if "pc_sr" in lw.columns else "mean_pearsonr"
-            for _, r in lw.iterrows():
-                layer_rows.append({
-                    "model_id": model_id, "family": family, "group": meta.group,
-                    "layer": r["layer"], "layer_frac": r["layer"] / max(1, n_layers - 1), "score": r.get(score_col),
-                })
-        chan = _read_csv_safe(base / "nieuwland_by_channel.csv")
-        if chan is not None and "channel" in chan.columns:
-            col = "pearsonr" if "pearsonr" in chan.columns else None
-            if col:
-                for _, r in chan.iterrows():
-                    roi_rows.append({
-                        "model_id": model_id, "family": family, "group": meta.group,
-                        "roi": r["channel"], "score": r.get(col),
-                    })
-
-    return {
-        "model_df": _finalize_model_df(model_rows, ppl_df),
-        "layer_df": pd.DataFrame(layer_rows),
-        "roi_df": pd.DataFrame(roi_rows),
-    }
-
-
-def load_szewczyk_eeg() -> dict[str, pd.DataFrame]:
-    # One ROI-averaged N400 scalar per (subject, trial): no electrode/ROI breakdown.
-    sweep_root = OUTPUTS_JEANZAY / "szewczyk/embedding_sweep"
-    ppl_df = load_perplexity_dir(OUTPUTS_JEANZAY / "szewczyk_perplexity")
-
     model_rows, layer_rows = [], []
-    for family, model_dir, score_files in _iter_model_score_files(sweep_root, "szewczyk_checkpoint_scores.csv"):
+    for family, model_dir, score_files in _iter_model_score_files(sweep_root, "nieuwland_paper_item_mean_scores.csv"):
         model_id = _model_id_from_dir(model_dir)
         frames = [d for f in score_files if (d := _read_csv_safe(f)) is not None]
         if not frames:
             continue
-        scores = pd.concat(frames, ignore_index=True)
-        final = _pick_final_row(scores)
+        final = _pick_final_row(pd.concat(frames, ignore_index=True))
         meta = lookup_model_meta(model_id, family, n_params_fallback=final.get("n_params"), n_layers_fallback=final.get("n_layers"))
         model_rows.append({
             "model_id": model_id, "family": family, "group": meta.group, "label": meta.label,
             "n_params": meta.n_params, "n_layers": meta.n_layers,
-            "score": _std_or(_std_from_by_subject(
-                _final_base(score_files), "szewczyk_by_subject.csv", ["mean_spearmanr"]),
-                final.get("mean_spearmanr")),
-            "score_legacy": final.get("mean_pearsonr"),
-            "score_sem": final.get("sem_spearmanr"),
+            "score": final.get("best_spearmanr"),
+            "score_legacy": final.get("best_pearsonr"),
         })
 
-        base = model_dir if (model_dir / "szewczyk_checkpoint_scores.csv").exists() else score_files[-1].parent
-        lw = _read_csv_safe(base / "szewczyk_checkpoint_layerwise.csv")
+        base = model_dir if (model_dir / "nieuwland_paper_item_mean_scores.csv").exists() else score_files[-1].parent
+        lw = _read_csv_safe(base / "nieuwland_paper_item_mean_layerwise.csv")
         if lw is not None and "layer" in lw.columns:
             n_layers = meta.n_layers or (lw["layer"].max() + 1)
             for _, r in lw.iterrows():
                 layer_rows.append({
                     "model_id": model_id, "family": family, "group": meta.group,
-                    "layer": r["layer"], "layer_frac": r["layer"] / max(1, n_layers - 1), "score": r.get("mean_pearsonr"),
+                    "layer": r["layer"], "layer_frac": r["layer"] / max(1, n_layers - 1), "score": r.get("spearmanr"),
                 })
 
     return {
@@ -902,6 +882,58 @@ def load_szewczyk_eeg() -> dict[str, pd.DataFrame]:
         "layer_df": pd.DataFrame(layer_rows),
         "roi_df": pd.DataFrame(),
     }
+
+
+def _load_item_mean_n400_eeg(sweep_root: Path, stem: str, ppl_dir: Path) -> dict[str, pd.DataFrame]:
+    """N400 embedding track on one study's item-mean N400 (same layout as ``load_nieuwland_eeg``).
+
+    Written by scripts/run/embedding/neural/szewczyk_item_mean.py: ``<stem>_item_mean_scores.csv``
+    (one row per model) and ``<stem>_item_mean_layerwise.csv``. ``score`` is the best-layer Spearman of
+    out-of-fold predictions vs item means, normalised against that study's split-half item ceiling
+    (noise_ceilings row ``<stem>``, Spearman).
+    """
+    ppl_df = load_perplexity_dir(ppl_dir)
+
+    model_rows, layer_rows = [], []
+    for family, model_dir, score_files in _iter_model_score_files(sweep_root, f"{stem}_item_mean_scores.csv"):
+        model_id = _model_id_from_dir(model_dir)
+        frames = [d for f in score_files if (d := _read_csv_safe(f)) is not None]
+        if not frames:
+            continue
+        final = _pick_final_row(pd.concat(frames, ignore_index=True))
+        meta = lookup_model_meta(model_id, family, n_params_fallback=final.get("n_params"), n_layers_fallback=final.get("n_layers"))
+        model_rows.append({
+            "model_id": model_id, "family": family, "group": meta.group, "label": meta.label,
+            "n_params": meta.n_params, "n_layers": meta.n_layers,
+            "score": final.get("best_spearmanr"),
+            "score_legacy": final.get("best_pearsonr"),
+        })
+
+        base = model_dir if (model_dir / f"{stem}_item_mean_scores.csv").exists() else score_files[-1].parent
+        lw = _read_csv_safe(base / f"{stem}_item_mean_layerwise.csv")
+        if lw is not None and "layer" in lw.columns:
+            n_layers = meta.n_layers or (lw["layer"].max() + 1)
+            for _, r in lw.iterrows():
+                layer_rows.append({
+                    "model_id": model_id, "family": family, "group": meta.group,
+                    "layer": r["layer"], "layer_frac": r["layer"] / max(1, n_layers - 1), "score": r.get("spearmanr"),
+                })
+
+    return {
+        "model_df": _finalize_model_df(model_rows, ppl_df),
+        "layer_df": pd.DataFrame(layer_rows),
+        "roi_df": pd.DataFrame(),
+    }
+
+
+def load_szewczyk_f2007_eeg() -> dict[str, pd.DataFrame]:
+    return _load_item_mean_n400_eeg(OUTPUTS_JEANZAY / "szewczyk_f2007/embedding_sweep", "szewczyk_f2007",
+                                    OUTPUTS_JEANZAY / "szewczyk_perplexity")
+
+
+def load_szewczyk_h2019_eeg() -> dict[str, pd.DataFrame]:
+    return _load_item_mean_n400_eeg(OUTPUTS_JEANZAY / "szewczyk_h2019/embedding_sweep", "szewczyk_h2019",
+                                    OUTPUTS_JEANZAY / "szewczyk_perplexity")
 
 
 def load_megmasc_meg() -> dict[str, pd.DataFrame]:
@@ -957,9 +989,25 @@ def load_megmasc_meg() -> dict[str, pd.DataFrame]:
     }
 
 
+# sub-001's epochs contain massive uncleaned artifacts (+-2500-3300 uV vs +-60-100 uV for every other
+# subject; see configs/{embedding,surprisal}/neural/broderick.yaml). Raw per-model files from the older
+# runs still carry it, so it is dropped here, from every per-subject file, for every model -- the newer
+# runs (Bloom/FOX/MoLM/RWKV-4) never had it. Files that aggregate over subjects are recomputed from
+# their per-subject/per-channel sources (verified to reproduce the originals exactly on a run without
+# sub-001).
+BRODERICK_EXCLUDE_SUBJECTS: tuple[str, ...] = ("sub-001",)
+BRODERICK_N_SUBJECTS = 18
+
+
 def load_broderick_eeg() -> dict[str, pd.DataFrame]:
-    sweep_root = OUTPUTS_JEANZAY / "broderick_checkpoint_sweep"
+    sweep_root = OUTPUTS_JEANZAY / "broderick" / "embedding_sweep"
     ppl_df = load_perplexity_dir(OUTPUTS_JEANZAY / "broderick/perplexity")
+    excl = BRODERICK_EXCLUDE_SUBJECTS
+
+    def _keep(df: pd.DataFrame | None) -> pd.DataFrame | None:
+        if df is None or "subject" not in df.columns:
+            return df
+        return df[~df["subject"].astype(str).isin(excl)]
 
     model_rows, layer_rows, roi_rows, tc_rows = [], [], [], []
     for family, model_dir, score_files in _iter_model_score_files(sweep_root, "broderick_checkpoint_scores.csv"):
@@ -970,42 +1018,74 @@ def load_broderick_eeg() -> dict[str, pd.DataFrame]:
         scores = pd.concat(frames, ignore_index=True)
         final = _pick_final_row(scores)
         meta = lookup_model_meta(model_id, family, n_params_fallback=final.get("n_params"))
-        n_subjects = final.get("n_subjects")
+        final_base = _final_base(score_files)
+        base = model_dir if (model_dir / "broderick_checkpoint_scores.csv").exists() else score_files[-1].parent
+
+        # legacy headline = mean over channels of each channel's best-layer Pearson (sub-001 dropped)
+        bcl = _keep(_read_csv_safe(final_base / "broderick_by_channel_layerwise.csv"))
+        if bcl is not None and {"subject", "channel", "layer", "pearsonr"} <= set(bcl.columns) and len(bcl):
+            legacy = float(bcl.groupby(["subject", "channel"])["pearsonr"].max().mean())
+        else:
+            bch = _keep(_read_csv_safe(final_base / "broderick_by_channel.csv"))   # single-layer models
+            legacy = (float(bch["pearsonr"].mean()) if bch is not None and "pearsonr" in bch.columns and len(bch)
+                      else final.get("mean_best_pearsonr"))
+        tcl_raw = _read_csv_safe(final_base / "broderick_layerwise_timecourse.csv")
+        if tcl_raw is None or tcl_raw.empty:
+            # single-layer models (CBR-RNN) have no per-layer files: rebuild the same subject x time
+            # table from the per-electrode timecourse (mean over channels per subject and lag).
+            et_fb = _read_csv_safe(final_base / "broderick_electrode_timecourse.csv")
+            if et_fb is not None and {"subject", "time_s", "pearsonr", "spearmanr"} <= set(et_fb.columns):
+                tcl_raw = (et_fb.groupby(["subject", "time_s"])[["pearsonr", "spearmanr"]].mean().reset_index()
+                           .rename(columns={"pearsonr": "pearsonr_mean", "spearmanr": "spearmanr_mean"})
+                           .assign(layer=0))
+        tcl = _keep(tcl_raw)
+        n_subjects = int(tcl["subject"].nunique()) if tcl is not None and "subject" in tcl.columns else final.get("n_subjects")
         model_rows.append({
             "model_id": model_id, "family": family, "group": meta.group, "label": meta.label,
             "n_params": meta.n_params, "n_layers": meta.n_layers,
-            "score": _std_or(_std_from_layerwise_timecourse(
-                _final_base(score_files), "broderick_layerwise_timecourse.csv"),
-                final.get("mean_best_spearmanr")),
-            "score_legacy": final.get("mean_best_pearsonr"),
+            "score": _std_or(_std_from_layerwise_df(tcl, "spearmanr_mean", excl),
+                             final.get("mean_best_spearmanr")),
+            "score_legacy": legacy,
             "n_subjects": n_subjects,
-            "n_subjects_anomalous": bool(pd.notna(n_subjects) and n_subjects < 19),
+            "n_subjects_anomalous": bool(pd.notna(n_subjects) and n_subjects < BRODERICK_N_SUBJECTS),
         })
 
-        base = model_dir if (model_dir / "broderick_checkpoint_scores.csv").exists() else score_files[-1].parent
         lw = _read_csv_safe(base / "broderick_checkpoint_layerwise.csv")
         if lw is not None and "layer" in lw.columns:
             n_layers = meta.n_layers or (lw["layer"].max() + 1)
-            for _, r in lw.iterrows():
-                layer_frac = r["layer_rel"] if "layer_rel" in lw.columns and pd.notna(r.get("layer_rel")) else r["layer"] / max(1, n_layers - 1)
+            rel = dict(zip(lw["layer"], lw["layer_rel"])) if "layer_rel" in lw.columns else {}
+            if bcl is not None and "pearsonr" in bcl.columns and len(bcl):
+                curve = bcl.groupby("layer")["pearsonr"].mean()      # channel-weighted, sub-001 dropped
+            else:
+                curve = lw.set_index("layer")["mean_pearsonr"]
+            for layer, score in curve.items():
+                lf = rel.get(layer)
                 layer_rows.append({
                     "model_id": model_id, "family": family, "group": meta.group,
-                    "layer": r["layer"], "layer_frac": layer_frac, "score": r.get("mean_pearsonr"),
+                    "layer": layer, "layer_frac": lf if pd.notna(lf) else layer / max(1, n_layers - 1), "score": score,
                 })
-        region = _read_csv_safe(base / "broderick_by_region.csv")
+        region = _keep(_read_csv_safe(base / "broderick_by_region.csv"))
         if region is not None and "region" in region.columns and "best_pearsonr_mean" in region.columns:
             for _, r in region.iterrows():
                 roi_rows.append({
                     "model_id": model_id, "family": family, "group": meta.group,
                     "roi": r["region"], "score": r.get("best_pearsonr_mean"),
                 })
-        tc = _read_csv_safe(base / "broderick_mean_timecourse.csv")
-        if tc is not None and "time_s" in tc.columns and "pearsonr" in tc.columns:
-            for _, r in tc.iterrows():
+        et = _keep(_read_csv_safe(base / "broderick_electrode_timecourse.csv"))
+        if et is not None and {"time_s", "pearsonr"} <= set(et.columns) and len(et):
+            for time_s, val in et.groupby("time_s")["pearsonr"].mean().items():   # channel-weighted, sub-001 dropped
                 tc_rows.append({
                     "model_id": model_id, "family": family, "group": meta.group,
-                    "time_s": r["time_s"], "score": r["pearsonr"],
+                    "time_s": time_s, "score": val,
                 })
+        else:
+            tc = _read_csv_safe(base / "broderick_mean_timecourse.csv")
+            if tc is not None and "time_s" in tc.columns and "pearsonr" in tc.columns:
+                for _, r in tc.iterrows():
+                    tc_rows.append({
+                        "model_id": model_id, "family": family, "group": meta.group,
+                        "time_s": r["time_s"], "score": r["pearsonr"],
+                    })
 
     return {
         "model_df": _finalize_model_df(model_rows, ppl_df),
@@ -1063,6 +1143,13 @@ def load_ns_fmri() -> dict[str, pd.DataFrame]:
                         "layer": r["layer"], "layer_frac": r["layer"] / max(1, n_layers - 1), "score": r[value_col],
                     })
         roi = _read_csv_safe(base / "ns_fmri_checkpoint_by_roi.csv") or _read_csv_safe(base / "ns_fmri_by_roi.csv")
+        # language-network-only score (fROI names starting "Lang"; the other 20 are MD) -- same statistic as
+        # ``score`` (mean over fROIs of the per-fROI best-layer Spearman), restricted to the 6 language fROIs
+        model_rows[-1]["score_lang"] = float("nan")
+        if roi is not None and "froi" in roi.columns and "best_spearmanr" in roi.columns:
+            lang = pd.to_numeric(roi.loc[roi["froi"].astype(str).str.startswith("Lang"), "best_spearmanr"], errors="coerce")
+            if lang.notna().any():
+                model_rows[-1]["score_lang"] = float(lang.mean())
         if roi is not None and "froi" in roi.columns and "best_pearsonr" in roi.columns:
             agg = roi.groupby("froi", as_index=False)["best_pearsonr"].mean()
             for _, r in agg.iterrows():
@@ -1249,7 +1336,8 @@ _OUTPUTS = BENCHMARK_SUMMARY_ROOT.parent
 # score_legacy for reference; it is no longer used to pick the primary score.
 NEURAL_SURPRISAL_SPEC: dict[str, tuple[str, str, str, str]] = {
     "nieuwland_eeg__surprisal":     ("nieuwland/lme_summary/all_models_lme_by_layer.csv",     "test_delta_pearsonr", "by_layer", "nieuwland/perplexity"),
-    "szewczyk_eeg__surprisal":      ("szewczyk/lme_summary/all_models_lme_by_layer.csv",      "test_delta_pearsonr", "by_layer", "szewczyk_perplexity"),
+    "szewczyk_f2007_eeg__surprisal": ("szewczyk_f2007/lme_summary/all_models_lme_by_layer.csv", "test_delta_pearsonr", "by_layer", "szewczyk_perplexity"),
+    "szewczyk_h2019_eeg__surprisal": ("szewczyk_h2019/lme_summary/all_models_lme_by_layer.csv", "test_delta_pearsonr", "by_layer", "szewczyk_perplexity"),
     "fedorenko2016_ecog__surprisal":("fedorenko2016/lme_summary/all_models_lme_by_layer.csv", "test_delta_pearsonr", "by_layer", "fedorenko2016/perplexity"),
     # "tuckute/perplexity" doesn't exist as a top-level dir; the ppl_rel here
     # is handled specially in _load_neural_surprisal (nested walk of "tuckute").
@@ -1261,39 +1349,47 @@ NEURAL_SURPRISAL_SPEC: dict[str, tuple[str, str, str, str]] = {
     # _load_ns_fmri_surprisal_full), same as podcast below.
     "ns_fmri__surprisal":           (None,                                                     "mean_test_delta_pearsonr",  "ns_fmri_raw",  "ns_fmri/perplexity"),
     "podcast_ieeg__surprisal":      (None,                                                     "test_delta_pearsonr",       "podcast_raw", "podcast/perplexity"),
+    # ENABLED 2026-09-28 -- see the DatasetInfo comments in benchmark_common.py.
+    "broderick_eeg__surprisal":     ("broderick/lme_summary/all_models_lme_by_layer.csv",     "test_delta_pearsonr", "by_layer", "broderick/perplexity"),
+    "megmasc_meg__surprisal":       ("megmasc/lme_summary/all_models_lme_by_layer.csv",       "test_delta_pearsonr", "by_layer", "megmasc/perplexity"),
 }
 
 
 def _load_podcast_surprisal_full() -> dict[str, pd.DataFrame]:
-    """podcast_ieeg__surprisal, normalized-DLL variant: reads the raw
-    per-model per-lag files directly (small, ~30 rows each) and picks the lag
-    with the max delta_loglik_test as the "peak" (matching the best-layer
-    convention used everywhere else in this pipeline), then scores
-    delta_loglik_test / n_obs_test at that lag."""
-    sweep_root = OUTPUTS_JEANZAY / "podcast/surprisal_sweep"
+    """podcast_ieeg__surprisal, normalized-DLL variant (switched 2026-10-08).
+
+    Per-REGION LME on region-averaged electrodes, last layer, MEAN over the 0-600 ms
+    lags (lags 7-25), no peak picking: ``y ~ wlen_z + freq_z + surprisal_z + (1|subject)``
+    per (region, lag), score = n_obs-weighted mean over regions of the lag-mean
+    delta_loglik_test / n_obs_test, each region first divided by its own ceiling (since 2026-10-09; score here is that
+    normalised value times the dataset ceiling, so score / ceiling is the per-region-normalised score; see scripts/summarize/podcast_region_lme.py, whose
+    aggregation is reused here so the two never diverge). A model is scored only if all of
+    its (region, lag) fits are present and valid. The matching ceiling is the per-lag,
+    per-region split-half DLL ceiling averaged the same way
+    (DLL_CEILING_TAGS["podcast_ieeg__surprisal"]). The older pooled subject:electrode
+    sweep (podcast/surprisal_sweep, peak lag) is no longer read here."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "podcast_region_lme_summary", Path(__file__).with_name("podcast_region_lme.py"))
+    prl = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(prl)
+
     ppl_df = load_perplexity_dir(OUTPUTS_JEANZAY / "podcast/perplexity")
+    sweep = prl.load_sweep(OUTPUTS_JEANZAY / "podcast/surprisal_region_sweep", None)
+    ceil = prl.load_ceilings(OUTPUTS_JEANZAY / "noise_ceilings/podcast_lags_region")
+    if sweep.empty or ceil.empty:
+        return {"model_df": pd.DataFrame(), "layer_df": pd.DataFrame(), "roi_df": pd.DataFrame()}
+    summ, _ = prl.summarize(sweep, ceil)
     rows = []
-    for family, model_dir, score_files in _iter_model_score_files(sweep_root, "podcast_lme_by_lag.csv"):
-        model_id = _model_id_from_dir(model_dir)
-        frames = [d for f in score_files if (d := _read_csv_safe(f)) is not None]
-        if not frames:
-            continue
-        lags = pd.concat(frames, ignore_index=True)
-        peak, _ = _best_last_dll_per_obs(lags, "lag")
-        if peak != peak:  # NaN
-            continue
-        legacy = float("nan")
-        if "test_delta_pearsonr" in lags.columns:
-            leg = _sanitize_delta_col(lags, "test_delta_pearsonr")
-            s = pd.to_numeric(leg["test_delta_pearsonr"], errors="coerce")
-            if s.notna().sum():
-                legacy = float(s.max())
-        meta = lookup_model_meta(model_id, family, n_params_fallback=None)
+    for r in summ[summ["complete"]].itertuples():
+        model_id = model_dir_to_model_id(r.model)
+        meta = lookup_model_meta(model_id, r.family, n_params_fallback=None)
         rows.append({
             "model_id": model_id, "family": meta.family, "group": meta.group, "label": meta.label,
             "n_params": meta.n_params, "n_layers": meta.n_layers,
-            "score": peak, "score_best": peak, "score_last": peak,
-            "score_legacy": legacy,
+            "score": r.score_dll, "score_best": r.score_dll, "score_last": r.score_dll,
+            "score_legacy": float("nan"),
         })
     return {"model_df": _finalize_model_df(rows, ppl_df), "layer_df": pd.DataFrame(), "roi_df": pd.DataFrame()}
 
@@ -1309,6 +1405,7 @@ def _load_ns_fmri_surprisal_full() -> dict[str, pd.DataFrame]:
     sweep_root = OUTPUTS_JEANZAY / "ns_fmri/surprisal_sweep"
     ppl_df = load_perplexity_dir(OUTPUTS_JEANZAY / "ns_fmri/perplexity")
     rows = []
+    roi_records: list[dict] = []   # per (model, fROI) best-layer scores -> roi_scores.csv (language vs MD network kept)
     for family, model_dir, score_files in _iter_model_score_files(sweep_root, "ns_fmri_lme_by_roi.csv"):
         model_id = _model_id_from_dir(model_dir)
         frames = [d for f in score_files if (d := _read_csv_safe(f)) is not None]
@@ -1318,7 +1415,8 @@ def _load_ns_fmri_surprisal_full() -> dict[str, pd.DataFrame]:
         if "froi" not in df.columns:
             continue
         per_unit: list[tuple[float, float]] = []
-        for _, unit_df in df.groupby("froi"):
+        unit_rec: list[tuple[str, str, str, int, float, float]] = []   # (froi, network, hemisphere, layer, dll, n)
+        for froi_name, unit_df in df.groupby("froi"):
             best_dll_n = _best_last_dll_per_obs(unit_df, "layer")
             if best_dll_n[0] != best_dll_n[0]:  # NaN -> this fROI unusable
                 continue
@@ -1333,12 +1431,24 @@ def _load_ns_fmri_surprisal_full() -> dict[str, pd.DataFrame]:
             valid = filter_degenerate_dll_rows(valid)
             if valid.empty:
                 continue
-            best_row = valid.loc[valid["delta_loglik_test"].idxmax()]
+            best_row = select_best_row(valid)   # per-fROI layer chosen on TRAIN dLL
             per_unit.append((float(best_row["delta_loglik_test"]), float(best_row["n_obs_test"])))
+            unit_rec.append((str(froi_name),
+                             str(unit_df["network"].iloc[0]) if "network" in unit_df.columns else "NA",
+                             str(unit_df["hemisphere"].iloc[0]) if "hemisphere" in unit_df.columns else "NA",
+                             int(float(best_row["layer"])), float(best_row["delta_loglik_test"]), float(best_row["n_obs_test"])))
         total_dll, total_n = sum_dll_across_units(per_unit)
         if total_n == 0:
             continue
         score = total_dll / total_n
+        def _net_score(net: str) -> float:
+            sel = [(d_, n_) for _, nw, _, _, d_, n_ in unit_rec if nw == net]
+            return (sum(d_ for d_, _ in sel) / sum(n_ for _, n_ in sel)) if sel and sum(n_ for _, n_ in sel) > 0 else float("nan")
+        score_lang, score_md = _net_score("LANG"), _net_score("MD")
+        for fr, nw, hm, ly, d_, n_ in unit_rec:
+            roi_records.append({"model_id": model_id, "family": family, "froi": fr, "network": nw, "hemisphere": hm,
+                                "best_layer_train_selected": ly, "delta_loglik_test": d_, "n_obs_test": n_,
+                                "dll_per_obs": d_ / n_ if n_ else float("nan")})
         legacy = float("nan")
         if "test_delta_pearsonr" in df.columns:
             leg = _sanitize_delta_col(df, "test_delta_pearsonr")
@@ -1351,7 +1461,12 @@ def _load_ns_fmri_surprisal_full() -> dict[str, pd.DataFrame]:
             "n_params": meta.n_params, "n_layers": meta.n_layers,
             "score": score, "score_best": score, "score_last": score,
             "score_legacy": legacy,
+            "score_lang": score_lang, "score_md": score_md,   # raw per-obs dLL, language network only / MD network only
         })
+    if roi_records:
+        out = BENCHMARK_SUMMARY_ROOT / "ns_fmri__surprisal"
+        out.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(roi_records).to_csv(out / "roi_scores.csv", index=False)
     return {"model_df": _finalize_model_df(rows, ppl_df), "layer_df": pd.DataFrame(), "roi_df": pd.DataFrame()}
 
 
@@ -1364,10 +1479,11 @@ def _load_neural_surprisal(slug: str) -> dict[str, pd.DataFrame]:
     df = _read_csv_safe(_OUTPUTS / csv_rel)
     if df is None or df.empty or score_col not in df.columns or "model_id" not in df.columns:
         return {"model_df": pd.DataFrame(), "layer_df": pd.DataFrame(), "roi_df": pd.DataFrame()}
-    if "converged" in df.columns:
-        conv = df[df["converged"] == True]  # noqa: E712
-        if not conv.empty:
-            df = conv
+    if "family" in df.columns:
+        # lme_summary CSVs are written by scripts/summarize/<dataset>_lme.py, which walks every
+        # family directory in the sweep; drop the checkpoint families that are out of scope.
+        df = df[~df["family"].isin(EXCLUDED_FAMILY_DIRS)]
+    # no convergence filter: results are never dropped (2026-10-01); investigate or rerun instead
     df = df.copy()
     if "delta" in score_col:
         df = _sanitize_delta_col(df, score_col)
@@ -1435,10 +1551,6 @@ def _load_neural_surprisal(slug: str) -> dict[str, pd.DataFrame]:
     return {"model_df": model_df, "layer_df": pd.DataFrame(), "roi_df": pd.DataFrame()}
 
 
-# NOTE: broderick_eeg__surprisal is intentionally not registered: its by-layer LME
-# CSVs carry no `converged` flag and contain non-significant blown-up fits that
-# a max-over-layers picks up. Re-enable (via NEURAL_SURPRISAL_SPEC) once the
-# Broderick LME sweep emits a convergence flag.
 
 
 def _load_secondary(slug: str) -> dict[str, pd.DataFrame]:
@@ -1528,7 +1640,8 @@ LOADERS = {
     "ucl_reading": load_ucl_reading,
     "podcast_ieeg": load_podcast_ieeg,
     "nieuwland_eeg": load_nieuwland_eeg,
-    "szewczyk_eeg": load_szewczyk_eeg,
+    "szewczyk_f2007_eeg": load_szewczyk_f2007_eeg,
+    "szewczyk_h2019_eeg": load_szewczyk_h2019_eeg,
     "broderick_eeg": load_broderick_eeg,
     "ns_fmri": load_ns_fmri,
     "fedorenko2016_ecog": load_fedorenko2016_ecog,
@@ -1597,6 +1710,20 @@ def process_dataset(slug: str) -> None:
         for c in ("score_best", "score_last"):
             model_df[f"{c}_norm"] = model_df[c] / ceiling
         model_df["ceiling_r"] = ceiling
+        if slug in ("ns_fmri", "ns_fmri__surprisal") and "score_lang" in model_df.columns:
+            # Language-network-only score, normalised by the language-network ceiling: the DLL ceiling of
+            # ns_fmri is computed on a canonical language fROI (left IFG), the correlation ceiling has a LANG row.
+            c_lang = ceiling
+            if slug == "ns_fmri":
+                _nc = load_noise_ceilings()
+                _r = _nc[(_nc["dataset"] == "ns_fmri") & (_nc["component"].astype(str) == "LANG")] if _nc is not None else None
+                if _r is not None and len(_r):
+                    c_lang = float(_r["ceiling_r"].iloc[0])
+            model_df["score_lang_norm"] = model_df["score_lang"] / c_lang
+            model_df["score_lang_best_norm"] = model_df["score_lang"] / c_lang
+            model_df["score_lang_last_norm"] = model_df["score_lang"] / c_lang
+            model_df["ceiling_lang"] = c_lang
+            print(f"[{slug}] language-network ceiling {c_lang:.4g} -> score_lang_norm written")
         # Normalise scores by the ceiling but do NOT draw the 1.0 reference line
         # (it forces the y-axis up to 1.0 and crushes the readable 0..0.4 range).
         val_col, ylabel, ceiling_line = "score_norm", NORM_YLABEL, False

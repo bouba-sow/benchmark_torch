@@ -29,6 +29,7 @@ Output: reports/paper/surprisal_dlt_threshold_grid.pdf
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -44,7 +45,8 @@ from matplotlib.ticker import MaxNLocator
 
 from neuroai.analysis.benchmark_common import EXCLUDED_MODEL_IDS, GROUP_COLORS, GROUP_DISPLAY, GROUP_ORDER, REPO_ROOT
 from neuroai.analysis.dlt_difficulty import (
-    LOGLIK_CACHE_DIR, LOGLIK_CACHE_FILES, PODCAST_LOGLIK_CACHE, load_behavioral_dll, load_podcast_dll,
+    LOGLIK_CACHE_DIR, LOGLIK_CACHE_FILES, MAX_BIN_CEILING_THRESHOLD, PODCAST_LOGLIK_CACHE, load_behavioral_dll,
+    load_behavioral_dll_bincal, load_podcast_dll, load_podcast_dll_bincal,
 )
 from neuroai.analysis.paper_style import log_size_map, use_paper_style
 from scripts.summarize.report import _log_range, _pareto_front
@@ -197,11 +199,20 @@ def _draw_behavioral_only_panel(ax, behav: pd.DataFrame, title: str, n_words_beh
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--bin-ceiling", action="store_true",
+                    help="divide each DLT bin by the ceiling computed on that bin's own words; panels restricted to "
+                         "easy, cost >= 1 and >= 2 (thin bins at higher cost have unstable ceilings); output "
+                         "surprisal_dlt_threshold_grid_binceiling.pdf")
+    bin_ceiling = ap.parse_args().bin_ceiling
+    load_behav, load_neural = ((load_behavioral_dll_bincal, load_podcast_dll_bincal) if bin_ceiling
+                               else (load_behavioral_dll, load_podcast_dll))
+    panels = [p for p in PANELS if not (bin_ceiling and p[1] == "hard" and p[2] > MAX_BIN_CEILING_THRESHOLD)]
     use_paper_style()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    ncols = PANEL_NCOLS
-    nrows = -(-len(PANELS) // ncols)  # ceil
+    ncols = len(panels)
+    nrows = -(-len(panels) // ncols)  # ceil
     # constrained_layout instead of a trailing tight_layout(): on this very
     # wide (6 panels, single row), short figure, tight_layout mis-sized the
     # per-panel margins -- each axes box ended up squeezed into roughly the
@@ -211,12 +222,12 @@ def main() -> None:
     # incrementally as artists are added and accounts for text bounding
     # boxes (tick labels, the outlier annotations) directly, which is what
     # tight_layout's single end-of-figure pass was getting wrong here.
-    fig, axes = plt.subplots(nrows, ncols, figsize=(4.6 * ncols, 4.6 * nrows), constrained_layout=True)
+    fig, axes = plt.subplots(nrows, ncols, figsize=((4.6 if not bin_ceiling else 5.4) * ncols, 4.6 * nrows), constrained_layout=True)
     axes = np.atleast_1d(axes).reshape(-1)
-    for ax, (title, dlt_bin, hard_gt) in zip(axes, PANELS):
-        behav = load_behavioral_dll(dlt_bin, hard_gt)
+    for ax, (title, dlt_bin, hard_gt) in zip(axes, panels):
+        behav = load_behav(dlt_bin, hard_gt)
         behav = behav[~behav["model_id"].isin(EXCLUDED_MODEL_IDS) & ~behav["model_id"].isin(EXCLUDED_MODEL_IDS_FIGURE6)]
-        neural = load_podcast_dll(dlt_bin, hard_gt)
+        neural = load_neural(dlt_bin, hard_gt)
         neural = neural[~neural["model_id"].isin(EXCLUDED_MODEL_IDS) & ~neural["model_id"].isin(EXCLUDED_MODEL_IDS_FIGURE6)]
         n_words_behav, n_words_neural, behav_breakdown = _word_counts(dlt_bin, hard_gt)
         print(f"[{title}] behav n={behav['model_id'].nunique() if not behav.empty else 0}, "
@@ -231,7 +242,7 @@ def main() -> None:
             _draw_behavioral_only_panel(ax, behav, title, n_words_behav, behav_breakdown)
             continue
         _draw_pareto_panel(ax, m, title, n_words_behav, n_words_neural, behav_breakdown)
-    for j in range(len(PANELS), len(axes)):
+    for j in range(len(panels), len(axes)):
         axes[j].set_axis_off()
     for row in range(nrows):
         axes[row * ncols].set_ylabel("BehavScore", fontsize=8)
@@ -241,7 +252,7 @@ def main() -> None:
                for g in GROUP_ORDER]
     fig.legend(handles=handles, loc="outside lower center", ncol=len(GROUP_ORDER), frameon=False)
 
-    out = OUT_DIR / "surprisal_dlt_threshold_grid.pdf"
+    out = OUT_DIR / ("surprisal_dlt_threshold_grid_binceiling.pdf" if bin_ceiling else "surprisal_dlt_threshold_grid.pdf")
     fig.savefig(out)
     plt.close(fig)
     print(f"wrote {out}")

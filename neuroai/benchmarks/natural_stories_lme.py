@@ -32,6 +32,16 @@ from ..features.llm import clear_hf_model_cache
 from ..regressors.lme import LmeStyle
 from ..sweep import csv_file_lock
 from .base import ModelConfig
+
+
+def _pw_dir(out_dir):
+    """Per-word prediction directory: mirrors ``out_dir`` under $SCRATCH (word_predictions_root)
+    so large per-word CSVs never land on $WORK (2026-10-12)."""
+    from .base import word_predictions_root
+
+    d = word_predictions_root(out_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 from .natural_stories import NaturalStoriesDataConfig
 
 logger = logging.getLogger(__name__)
@@ -316,7 +326,7 @@ class NaturalStoriesLmeBenchmark:
         )
 
         out_csv = out_dir / "spr_lme_checkpoint_scores.csv"
-        per_word_csv = out_dir / "spr_lme_per_word.csv"
+        per_word_csv = _pw_dir(out_dir) / "spr_lme_per_word.csv"
 
         done_layers: set[int] = set()
         if out_csv.exists():

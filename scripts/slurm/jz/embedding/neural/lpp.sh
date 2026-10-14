@@ -25,6 +25,8 @@
 : "${LPP_FAMILY:?Set LPP_FAMILY before sourcing job_lpp_jz_common.sh}"
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -35,7 +37,7 @@ cd "$BENCHMARK_ROOT" || exit 1
 
 # shellcheck source=scripts/slurm/jz/jz_cache_env.sh
 if [[ -n "${SCRATCH:-}" ]]; then
-  source "${_COMMON_DIR}/jz_cache_env.sh"
+  source "${BENCHMARK_ROOT}/scripts/slurm/jz/jz_cache_env.sh"
 else
   export BENCHMARK_CACHE_ROOT="${BENCHMARK_CACHE_ROOT:-$BENCHMARK_ROOT/.cache}"
   export LPP_FEATURE_CACHE_DIR="${LPP_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/lpp_features}"
@@ -50,7 +52,7 @@ UNTRAINED="${UNTRAINED:-0}"
 UNTRAINED_SEED="${UNTRAINED_SEED:-0}"
 SWEEP_ROOT="${SWEEP_ROOT:-$PWD/outputs_jeanzay/lpp/embedding_sweep}"
 LPP_BIDS_ROOT="${LPP_BIDS_ROOT:-$WORK/benchmark/data/lpp_fmri}"
-LBG_ROOT="${LBG_ROOT:-$WORK/benchmark/data}"
+LBG_ROOT="${LBG_ROOT:-$WORK/benchmark/data/lpp_fmri_extra}"
 
 RIDGE_N_JOBS="${RIDGE_N_JOBS:-1}"
 LAYER_N_JOBS="${LAYER_N_JOBS:-1}"
@@ -85,8 +87,8 @@ lpp_jz_check_data() {
     echo "ERROR: brain mask missing: ${LBG_ROOT}/masks/mask_lpp_en.nii.gz"
     _missing=1
   fi
-  if [[ ! -d "${LBG_ROOT}/lpp_en_average_subject" ]]; then
-    echo "ERROR: precomputed averages missing: ${LBG_ROOT}/lpp_en_average_subject"
+  if [[ ! -d "${LBG_ROOT}/average_subject" ]]; then
+    echo "ERROR: precomputed averages missing: ${LBG_ROOT}/average_subject"
     _missing=1
   fi
   return "$_missing"

@@ -11,8 +11,8 @@ and perplexity is computed against the dataset corpus before moving to
 the next checkpoint.
 
 Output (same convention as the 3-datasets script):
-    outputs_torch/<dataset>_perplexity/<model_safe>/<revision>_<dataset>_perplexity.json
-    outputs_torch/<dataset>_perplexity/<dataset>_perplexity_summary.csv
+    outputs_jeanzay/<dataset>_perplexity/<model_safe>/<revision>_<dataset>_perplexity.json
+    outputs_jeanzay/<dataset>_perplexity/<dataset>_perplexity_summary.csv
 
 Usage:
     .venv/bin/python scripts/perplexity/pythia_checkpoints_n400.py \\
@@ -63,7 +63,7 @@ def _load_texts() -> dict[str, list[str]]:
 
 
 def _out_paths(dataset: str, model_id: str, revision: str) -> tuple[Path, Path]:
-    perplexity_dir = Path("outputs_torch") / f"{dataset}_perplexity"
+    perplexity_dir = Path("outputs_jeanzay") / f"{dataset}_perplexity"
     safe = model_id.replace("/", "_")
     rev_safe = (revision or "main").replace("/", "_")
     out_dir = perplexity_dir / safe
@@ -79,7 +79,7 @@ def _save(dataset: str, model_id: str, revision: str, label: str, n_params: floa
 
     if out_path.is_file() and not force:
         existing = json.loads(out_path.read_text())
-        if "error" not in existing:
+        if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
             logger.info("[%s] already done: %s @ %s — skipping", dataset, model_id, revision)
             return
 
@@ -112,7 +112,7 @@ def collect_summary(dataset: str) -> None:
     """Rebuild <dataset>_perplexity_summary.csv from EVERY *_<dataset>_perplexity.json
     on disk. Single pass, no concurrent-write risk -- run once after all
     sweep jobs finish, not during them."""
-    perplexity_dir = Path("outputs_torch") / f"{dataset}_perplexity"
+    perplexity_dir = Path("outputs_jeanzay") / f"{dataset}_perplexity"
     rows = []
     for p in sorted(perplexity_dir.glob(f"*/*_{dataset}_perplexity.json")):
         try:
@@ -189,7 +189,7 @@ def main() -> None:
             out_path, _ = _out_paths(ds, args.model_id, revision)
             if out_path.is_file() and not args.force:
                 existing = json.loads(out_path.read_text())
-                if "error" not in existing:
+                if "error" not in existing and existing.get("perplexity_method") == "logits_v2_per_word":
                     logger.info("[%s] already done: %s @ %s — skipping", ds, args.model_id, revision)
                     continue
             try:

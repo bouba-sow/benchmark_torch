@@ -151,6 +151,8 @@ def compute_ecog_ceiling_delta_loglik(
     verbose: bool = False,
     n_workers: int = 1,
     out_of_sample: bool = True,
+    mode: str = "split_half",
+    n_repeats: int = 1,
 ) -> ECoGDeltaLoglikCeilingResult:
     """Split-half noise ceiling for a nested subject:electrode ECoG LME's
     delta log-likelihood. ``df`` must have one row per (subject, electrode,
@@ -158,7 +160,15 @@ def compute_ecog_ceiling_delta_loglik(
     ``item_col`` (the word-level grouping the split-half substitute is
     computed over) and, depending on ``dataset``: ``sentence_id``
     (fedorenko2016, renamed to ``chunk`` internally) or ``chunk``
-    (podcast, already present in its raw table)."""
+    (podcast, already present in its raw table).
+
+    ``mode="loso"`` -- leave-one-subject-out oracle: each row's predictor = mean of the
+    other N-1 subjects (its own subject excluded), one pooled fit per repeat (far less noisy than a 2-vs-3 split-half at N=5). ``n_repeats`` repeats
+    the whole LOSO over different train/held-out CHUNK splits (``random_state = seed + rep``;
+    rep 0 is the split the model sweeps use); ``n_splits`` is ignored. Iteration = one repeat,
+    pooled over all held-out subjects."""
+    if mode not in ("split_half", "loso"):
+        raise ValueError(f"mode must be 'split_half' or 'loso', got {mode!r}")
     if dataset not in DATASETS:
         raise ValueError(f"dataset must be one of {DATASETS}, got {dataset!r}")
     chunk_col = "sentence_id" if dataset == "fedorenko2016" else "chunk"
@@ -170,15 +180,29 @@ def compute_ecog_ceiling_delta_loglik(
     rng = np.random.default_rng(seed)
     subjects = np.asarray(sorted(df["subject"].astype(str).unique()))
 
-    tasks: list[tuple[int, int, pd.DataFrame]] = []
-    for it in range(n_splits):
-        perm = rng.permutation(subjects)
-        half = len(perm) // 2
-        halves = (set(perm[:half].tolist()), set(perm[half:].tolist()))
-        for direction, (source_ids, target_ids) in enumerate((halves, halves[::-1])):
-            tgt = _ecog_ceiling_direction_task(df, source_ids, target_ids, item_col)
-            if tgt is not None:
-                tasks.append((it, direction, tgt))
+    tasks: list[tuple[int, int, pd.DataFrame, int]] = []   # (iteration, direction, frame, split seed)
+    if mode == "loso":
+        # ONE pooled fit per repeat (same model as the real sweep: every subject in the fit).
+        # Each row's oracle = item mean over all OTHER subjects' electrodes (its own subject
+        # excluded), so the oracle is built from N-1 subjects instead of a half.
+        n_splits = n_repeats
+        g = df.groupby(item_col)["y"]
+        tot, cnt = g.transform("sum"), g.transform("count")
+        gs = df.groupby([item_col, df["subject"].astype(str)])["y"]
+        own_sum, own_cnt = gs.transform("sum"), gs.transform("count")
+        oracle = (tot - own_sum) / (cnt - own_cnt).where(cnt - own_cnt > 0)
+        tgt = df.assign(surprisal=oracle).dropna(subset=["surprisal"])
+        for rep in range(n_repeats):
+            tasks.append((rep, 0, tgt, seed + rep))
+    else:
+        for it in range(n_splits):
+            perm = rng.permutation(subjects)
+            half = len(perm) // 2
+            halves = (set(perm[:half].tolist()), set(perm[half:].tolist()))
+            for direction, (source_ids, target_ids) in enumerate((halves, halves[::-1])):
+                tgt = _ecog_ceiling_direction_task(df, source_ids, target_ids, item_col)
+                if tgt is not None:
+                    tasks.append((it, direction, tgt, seed))
 
     iter_delta: dict[int, float] = {}
     iter_nobs: dict[int, int] = {}
@@ -206,18 +230,18 @@ def compute_ecog_ceiling_delta_loglik(
                 pool.submit(
                     _ecog_ceiling_direction_worker, it, direction, tgt,
                     dataset=dataset, out_of_sample=out_of_sample,
-                    train_frac=train_frac, random_state=seed, verbose=verbose,
+                    train_frac=train_frac, random_state=rs, verbose=verbose,
                 ): (it, direction)
-                for it, direction, tgt in tasks
+                for it, direction, tgt, rs in tasks
             }
             for fut in as_completed(futures):
                 iteration, direction, delta, n_obs, converged = fut.result()
                 _record(iteration, direction, delta, n_obs, converged)
     else:
-        for it, direction, tgt in tasks:
+        for it, direction, tgt, rs in tasks:
             iteration, direction, delta, n_obs, converged = _ecog_ceiling_direction_worker(
                 it, direction, tgt, dataset=dataset, out_of_sample=out_of_sample,
-                train_frac=train_frac, random_state=seed, verbose=verbose,
+                train_frac=train_frac, random_state=rs, verbose=verbose,
             )
             _record(iteration, direction, delta, n_obs, converged)
 

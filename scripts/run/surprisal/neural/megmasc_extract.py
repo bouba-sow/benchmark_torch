@@ -90,9 +90,9 @@ def main() -> None:
                    help="Override cache.features_dir from the config")
     p.add_argument("--perplexity", action=argparse.BooleanOptionalAction, default=True,
                    help="Also compute + save this model's MEG-MASC-corpus perplexity "
-                        "in this same GPU job (outputs_torch/megmasc/perplexity/). "
+                        "in this same GPU job (outputs_jeanzay/megmasc/perplexity/). "
                         "On by default; --no-perplexity to skip.")
-    p.add_argument("--perplexity_out_dir", default="outputs_torch/megmasc/perplexity")
+    p.add_argument("--perplexity_out_dir", default="outputs_jeanzay/megmasc/perplexity")
     args = p.parse_args()
 
     cfg = load_config(args.config)

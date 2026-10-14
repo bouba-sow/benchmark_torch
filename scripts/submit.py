@@ -230,7 +230,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("dataset", help="dataset slug (e.g. geco, lpp, provo) or 'list'")
     p.add_argument("track", nargs="?", choices=["embedding", "surprisal"])
-    p.add_argument("stage", nargs="?", choices=["fit", "extract", "refit"], help="default: fit (refit: LPP only)")
+    p.add_argument("stage", nargs="?", choices=["fit", "extract", "refit", "paper"], help="default: fit (refit: LPP only; paper: Nieuwland item-mean ridge)")
     sel = p.add_argument_group("what to run")
     sel.add_argument("--family", nargs="+", help="registry family names (gpt2, pythia, opt, ...)")
     sel.add_argument("--all-families", action="store_true", help="every registry family except defaults.excluded_families")

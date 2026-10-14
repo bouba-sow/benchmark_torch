@@ -132,6 +132,13 @@ def _load_reading_measure(dataset_root: str, measure_subdir: str | None, csv_glo
         if not df.empty:
             print(f"    [{dataset_root}/{measure_subdir}] no per-subject data -- "
                   f"using subject-AVERAGED ridge fits from {measure_subdir}_average/ instead")
+    elif df.empty:
+        # no measure subdir (e.g. ucl_reading): the sweep may exist only as <dataset_root>_average/
+        avg_root = base.with_name(base.name + "_average")
+        df = _rows_from_layerwise_tree(avg_root, csv_glob, "pearsonr")
+        if not df.empty:
+            print(f"    [{dataset_root}] no per-subject data -- "
+                  f"using subject-AVERAGED ridge fits from {avg_root.name}/ instead")
     return df
 
 

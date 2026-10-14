@@ -32,39 +32,20 @@ DEFAULT_MAX_LENGTH = 4096
 def _compute_corpus_perplexity(
     model, tokenizer, text: str, device: str, max_length: int, stride: int | None = None,
 ) -> dict:
-    """Stride-based sliding-window perplexity on ``text``.
+    """Per-word sliding-window perplexity on ``text``, from the model's logits.
 
-    Only the non-overlapping suffix of each window contributes to the loss —
-    same recipe as ``compute_lpp_perplexity.compute_perplexity``.
+    Delegates to ``scripts/perplexity/lpp.py::compute_perplexity`` (2026-10-12 audit): the
+    previous implementation trusted ``model(labels=...).loss``, whose contract differs for
+    several trust_remote_code families, and normalised per token.
     """
-    import torch
+    import importlib.util
+    from pathlib import Path
 
-    if stride is None:
-        stride = max_length // 2
-    enc = tokenizer(text, return_tensors="pt", truncation=False)
-    input_ids = enc["input_ids"][0]
-    n_tokens = int(input_ids.size(0))
-
-    nlls = []
-    n_scored = 0
-    prev_end = 0
-    for begin in range(0, n_tokens, stride):
-        end = min(begin + max_length, n_tokens)
-        trg_len = end - prev_end
-        ids = input_ids[begin:end].unsqueeze(0).to(device)
-        target_ids = ids.clone()
-        target_ids[:, :-trg_len] = -100
-        with torch.no_grad():
-            out = model(ids, labels=target_ids)
-            neg_log_likelihood = out.loss.float() * trg_len
-        nlls.append(neg_log_likelihood.cpu())
-        n_scored += trg_len
-        prev_end = end
-        if end == n_tokens:
-            break
-
-    ppl = torch.exp(torch.stack(nlls).sum() / n_scored).item()
-    return {"perplexity": ppl, "n_tokens": n_scored}
+    root = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())
+    spec = importlib.util.spec_from_file_location("_ppl_lpp", root / "scripts/perplexity/lpp.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.compute_perplexity(model, tokenizer, [text], device, max_length, stride=stride)
 
 
 def _max_length_for_model(model, max_length_override: int | None) -> int:
@@ -98,23 +79,9 @@ def save_checkpoint_perplexity(
     Self-contained model load (independent of whatever the embedding
     extraction cached) — safe/idempotent: skips checkpoints already saved
     successfully, recomputes ones whose saved JSON has an ``error`` field.
-
-    Loads via ``neuroai.features.llm._get_cached_causal_lm`` rather than a bare
-    ``AutoModelForCausalLM.from_pretrained`` — required for checkpoints that
-    bypass the standard HF auto-loading path entirely (MoLM/ModuleFormer,
-    forgetting-transformer, FoX; see that function's ``_MOLM_DIRECT_PREFIX`` /
-    ``_FORGETTING_DIRECT_PREFIX`` / ``_FOX_DIRECT_PREFIX`` dispatch and their
-    loader docstrings for why: none of these publish a ``config.json`` with an
-    ``auto_map``, so ``trust_remote_code=True`` alone has nothing to resolve
-    to, regardless of the installed ``transformers`` version). Using the same
-    loader as the embedding-extraction path also means every other special
-    case handled there (VLM prefix-strip, Pythia-2.8B sharding, device_map
-    sizing, gpt-bert's bf16 workaround, ...) is covered here too, rather than
-    reimplemented ad hoc.
     """
     import torch
-
-    from neuroai.features.llm import _get_cached_causal_lm, _model_input_device, clear_hf_model_cache
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 
     perplexity_dir = Path(perplexity_dir)
     safe = model_id.replace("/", "_")
@@ -130,21 +97,38 @@ def save_checkpoint_perplexity(
         logger.warning("Previous perplexity run had error — recomputing: %s", out_path)
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    rev_kw = {"revision": revision} if revision not in (None, "", "main") else {}
+    rc_kw = {"trust_remote_code": True} if trust_remote_code else {}
 
     model = None
     try:
-        load_kw: dict[str, object] = {"torch_dtype": torch.bfloat16 if device.startswith("cuda") else torch.float32}
-        if trust_remote_code:
-            load_kw["trust_remote_code"] = True
-        tokenizer, model = _get_cached_causal_lm(
-            model_id, revision=revision, device=device, load_kw=load_kw, n_params=n_params,
-        )
+        tokenizer = AutoTokenizer.from_pretrained(model_id, **rev_kw, **rc_kw)
         if tokenizer.pad_token_id is None:
             tokenizer.pad_token = tokenizer.eos_token
+        dtype = torch.bfloat16 if device.startswith("cuda") else torch.float32
+        if device.startswith("cuda") and torch.cuda.is_available():
+            # Same V100 bf16-PTX-codegen workaround as neuroai/features/llm.py.
+            major, _ = torch.cuda.get_device_capability()
+            if major < 8:
+                dtype = torch.float32
+        device_map = "auto" if device.startswith("cuda") else None
+        # ibm/MoLM-* ("moduleformer" architecture) isn't a registered AutoConfig
+        # model_type -- AutoModelForCausalLM.from_pretrained raises
+        # ValueError/KeyError before ever reaching the weights. Same bypass as
+        # neuroai/features/llm.py's _get_cached_causal_lm (see
+        # _load_moduleformer_direct's docstring there for the full rationale).
+        from .features.llm import _MOLM_DIRECT_PREFIX, _load_moduleformer_direct
+        if model_id.startswith(_MOLM_DIRECT_PREFIX):
+            model = _load_moduleformer_direct(model_id, rev_kw).to(dtype=dtype)
+            if device.startswith("cuda"):
+                model = model.to(device)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id, dtype=dtype, device_map=device_map, **rev_kw, **rc_kw,
+            )
         model.eval()
-        input_device = _model_input_device(model)
         eff_max_length = _max_length_for_model(model, max_length)
-        result = _compute_corpus_perplexity(model, tokenizer, text, input_device, eff_max_length)
+        result = _compute_corpus_perplexity(model, tokenizer, text, device, eff_max_length)
     except Exception as exc:
         logger.error("perplexity FAILED for %s @ %s: %s", model_id, revision, exc, exc_info=True)
         out_path.write_text(json.dumps({
@@ -155,7 +139,7 @@ def save_checkpoint_perplexity(
         return
     finally:
         if model is not None:
-            clear_hf_model_cache()
+            del model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 

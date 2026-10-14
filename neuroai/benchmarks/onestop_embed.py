@@ -329,7 +329,7 @@ class OnestopEmbedBenchmarkConfig:
     # thousands-of-dims embeddings. OneStop family SLURM jobs already reserve a
     # GPU (for host-RAM headroom, see job_onestop_jz_common.sh), so "cuda" here
     # is free — it uses hardware that would otherwise sit idle.
-    average_ridge_device: str = "cpu"
+    average_ridge_device: str = "cuda"  # himalaya GPU ridge everywhere (2026-10-14)
 
 
 @dataclass
@@ -372,6 +372,7 @@ class OnestopEmbedBenchmark:
         *,
         existing_subject_rows: list[dict] | None = None,
         on_subject_done: tp.Callable[[list[dict]], None] | None = None,
+        on_average_chunk_done: tp.Callable[[list[dict]], None] | None = None,
     ) -> OnestopEmbedBenchmarkResult:
         """Run the full benchmark.
 
@@ -391,6 +392,17 @@ class OnestopEmbedBenchmark:
             subject — each call still carries only that chunk's rows, which
             the sweep script's incremental-CSV-append usage already handles
             fine (just more, smaller writes).
+        on_average_chunk_done
+            Averaged-RT branch (``average_across_subjects``/``average_only``)
+            analogue of ``on_subject_done``: called with one layer-chunk's
+            row dicts immediately after that chunk's ridge fit finishes,
+            before starting the next chunk's (expensive) feature extraction.
+            Without this, the averaged branch only writes anything after
+            every chunk has fit (see ``_finalize_average``, called once after
+            the whole ``run()`` loop) — a timeout on a large/slow-extracting
+            model loses every already-computed layer's score, even though
+            they were fit successfully. Use this to persist each chunk's
+            rows as they complete.
         """
         trial_df = self._load_trials()
         model_name = self.cfg.canonical_model_name or self.cfg.model.model_name
@@ -405,6 +417,10 @@ class OnestopEmbedBenchmark:
                 trial_df, item_key_cols=("story_id", "zone"),
                 min_subjects_per_item=self.cfg.min_subjects_per_item,
             )
+            # CV groups = ARTICLE (story_id // 100 drops paragraph and difficulty digits):
+            # grouping by story_id let the Adv/Ele versions of one paragraph, which share
+            # most of their text, fall on both sides of a fold (2026-10-12 audit).
+            avg_item_df["article_group"] = avg_item_df["story_id"].astype(int) // 100
             logger.info(
                 "[%s][%s] averaged-RT branch: %d items (available-case mean across subjects)",
                 model_name, measure, len(avg_item_df),
@@ -449,7 +465,7 @@ class OnestopEmbedBenchmark:
                     avg_chunk_rows, avg_per_item = fit_averaged_layers_gpu(
                         avg_item_df, emb_lookup_chunk,
                         item_key_cols=("story_id", "zone"),
-                        group_col="story_id" if self.cfg.group_cv_by_story else None,
+                        group_col="article_group" if self.cfg.group_cv_by_story else None,
                         n_splits=rcfg.n_splits, alpha=rcfg.alpha, scale=rcfg.scale,
                         random_state=rcfg.random_state,
                         layer_offset=lo, total_n_layers=n_layers,
@@ -461,7 +477,7 @@ class OnestopEmbedBenchmark:
                     avg_chunk_rows, avg_per_item = fit_averaged_layers(
                         avg_item_df, emb_lookup_chunk,
                         item_key_cols=("story_id", "zone"),
-                        group_col="story_id" if self.cfg.group_cv_by_story else None,
+                        group_col="article_group" if self.cfg.group_cv_by_story else None,
                         n_splits=rcfg.n_splits, alpha=rcfg.alpha, scale=rcfg.scale,
                         random_state=rcfg.random_state, print_chosen_alpha=rcfg.print_chosen_ridge_alpha,
                         thread_n_jobs=self.cfg.n_jobs,
@@ -470,6 +486,8 @@ class OnestopEmbedBenchmark:
                         return_oof_for_layer=oof_layer,
                     )
                 average_rows.extend(avg_chunk_rows)
+                if on_average_chunk_done is not None:
+                    on_average_chunk_done(avg_chunk_rows)
                 if avg_per_item is not None:
                     self._save_average_predictions(avg_per_item)
 
@@ -828,7 +846,7 @@ class OnestopEmbedBenchmark:
                 emb_sub = np.stack(
                     [emb_lookup[(int(r.story_id), int(r.zone))] for r in sub_df.itertuples()], axis=0,
                 )
-                groups = sub_df["story_id"].to_numpy() if self.cfg.group_cv_by_story else None
+                groups = (sub_df["story_id"].astype(int) // 100).to_numpy() if self.cfg.group_cv_by_story else None  # article
                 word_ids = sub_df[word_id_cols].reset_index(drop=True) if save_word_predictions else None
                 yield pid, emb_sub, rt, groups, word_ids
 

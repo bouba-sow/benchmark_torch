@@ -471,9 +471,10 @@ def _cbr_surprisal_one_pair(
             dtype=np.float64,
         )
         if len(target_ids) > 0
-        else np.array([0.0], dtype=np.float64)
+        else np.array([np.nan], dtype=np.float64)
     )
-    return np.array([float(surp.mean())], dtype=np.float32)
+    # Word surprisal = SUM over the target's tokens (was the mean before the 2026-10-12 audit).
+    return np.array([float(surp.sum())], dtype=np.float32)
 
 
 def _cbr_batch_surprisal_cache_path(
@@ -482,7 +483,7 @@ def _cbr_batch_surprisal_cache_path(
     section: int,
 ) -> Path:
     safe_model = model_name.replace("/", "_")
-    return Path(cache_dir) / f"{safe_model}__sec{section:02d}__cbrrnn_batch_surprisal.npz"
+    return Path(cache_dir) / f"{safe_model}__sec{section:02d}__cbrrnn_batch_surprisal_v2sum.npz"
 
 
 def batch_surprisal_cbr_rnn(

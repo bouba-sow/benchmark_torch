@@ -1,6 +1,6 @@
-"""Linear mixed-effects helpers for Broderick 2018 EEG, fit SEPARATELY PER
-SUBJECT (then averaged across subjects downstream), independently per LM
-layer, region-averaged (per-layer logit-lens surprisal, not embeddings).
+"""Linear mixed-effects helpers for Broderick 2018 EEG, fit POOLED across
+all subjects, one model per LM layer, region-averaged (per-layer logit-lens
+surprisal, not embeddings).
 
 Design rationale
 -----------------
@@ -12,44 +12,42 @@ more parameters). Region-averaging Broderick's 128 BioSemi channels into 4
 anatomical groups (left/right/posterior/occipital, via
 ``neuroai/datasets/broderick.py::channel_region``) had already cut the
 pooled table from ~28M to ~870K rows, but in production this STILL failed
-to complete even a single layer fit within a 1-4h walltime. Since ZuCo's
-pooled LME hit the identical wall at ~5M rows (~6x more data than
-Broderick's ~870K), the bottleneck is the COVARIANCE SEARCH DIMENSIONALITY
-from the rich correlated ``subject`` slope, not data volume — consistent
-with LPP's pooled LME (``regressors/lpp_pooled_lme.py``) being fast
-precisely because it has no ``subject`` random effect at all (average-
-subject BOLD).
+to complete even a single layer fit within a 1-4h walltime. A follow-up
+per-subject version (fit separately per subject, then averaged downstream)
+avoided that wall but was never trusted for the report: with no single
+model per layer, there was no natural place to attach a convergence check,
+and the per-subject-then-averaged numbers silently mixed in blown-up,
+non-significant fits that a max-over-layers pick would happily surface.
 
-This version applies that lesson directly: fit one LME PER SUBJECT (so
-``subject`` is never a grouping factor — with only one subject in the data,
-a between-subject variance isn't even identifiable), keeping only
-``region`` as a random effect with its slope on ``surprisal_z``. This is
-structurally identical to LPP's one-random-slope-group formula, and mirrors
-this codebase's own per-subject ridge/TRF encoder (``benchmarks/
-broderick.py``), which likewise fits independently per subject and averages
-results afterward — the mixed-effects analogue of that same pattern, not a
-new one. Region-averaging is still applied (see
-``benchmarks/broderick_lme.py``), just now per-subject rather than pooled.
+The diagnosis of the original wall was never "``subject`` as a random
+effect is too slow" — it was specifically the CORRELATED RANDOM SLOPE on
+``subject`` (the 15-parameter covariance search). A random-INTERCEPT-only
+term is a completely different cost: one variance component, no covariance
+search, same complexity class as ``region``'s own intercept. ``region`` is
+also a genuinely CROSSED factor here (same 4 labels — left/right/posterior/
+occipital — for every subject, from a fixed BioSemi A/B/C/D channel-name
+lookup, not anything subject-specific), so ``(1 | subject) + (1 | region)``
+is a valid crossed-random-intercepts design, not a nested one. This mirrors
+``regressors/lpp_pooled_lme.py``'s ``persubject=True`` variant, which
+already adds exactly this kind of intercept-only ``(1 | subject)`` on top
+of its region-with-slope structure in production.
 
-    baseline: eeg ~ wlen_z + freq_z + (1 | region)
+    baseline: eeg ~ wlen_z + freq_z + (1 | subject) + (1 | region)
     full:     eeg ~ wlen_z + freq_z + surprisal_z + prev_surprisal_z +
-                     (1 + surprisal_z | region)
+                     (1 | subject) + (1 + surprisal_z | region)
 
-``prev_surprisal_z`` spillover control and ``region``'s random slope
-(scoped to ``surprisal_z`` only) are unchanged from the pooled version.
-What changes is only that between-subject variability is no longer modeled
-explicitly inside the LME — it's captured by fitting per subject and
-averaging the resulting per-subject estimates (beta, delta_loglik_test, ...)
-downstream, the same two-stage pattern (within-subject fit -> across-
-subject average) used throughout neuroimaging and by this codebase's own
-ridge/TRF encoders.
+This restores a single pooled fit per layer — the natural place to attach
+one real ``converged`` flag per layer (no averaging across per-subject
+convergence outcomes needed) — while sidestepping the covariance-search
+blowup that killed the original pooled attempt. ``prev_surprisal_z``
+spillover control and ``region``'s random slope (scoped to
+``surprisal_z`` only) are unchanged from both earlier versions.
 
-Barr et al. (2013) fallback ladder is now just 2 steps (only one random
-slope left to simplify): drop the ``region`` slope-intercept correlation,
-then drop the ``region`` random slope entirely (intercept-only) — same
-pattern as ``regressors/podcast_lme.py``'s single-grouping-factor ladder.
-With only 4 region levels, expect this to trigger more than LPP's 10-region
-case, but each fit is now cheap regardless.
+Barr et al. (2013) fallback ladder is 2 steps on the ``region`` slope only
+(the ``subject`` term is intercept-only throughout, nothing to simplify
+there): drop the ``region`` slope-intercept correlation, then drop the
+``region`` random slope entirely (intercept-only) — same pattern as
+``regressors/podcast_lme.py``'s single-slope-term ladder.
 
 Train/held-out split reuses ``regressors/fmri_lme.py::split_train_test_chunks``
 with ``chunk = segment_id`` (Broderick's 20 audiobook segments) — the
@@ -83,39 +81,43 @@ from .lme import (
 logger = logging.getLogger(__name__)
 
 _REQUIRED_COLS = {
-    "region", "chunk", "word_idx", "wlen", "freq", "prev_surprisal", "surprisal", "eeg",
+    "subject", "region", "chunk", "word_idx", "wlen", "freq", "prev_surprisal", "surprisal", "eeg",
 }
 
 
 def broderick_lme_formulas() -> tuple[str, str]:
-    """Baseline/full formulas for the per-subject Broderick EEG LME (one LM layer).
+    """Baseline/full formulas for the pooled Broderick EEG LME (one LM layer).
 
-    No ``subject`` term — this formula is fit separately per subject (see
-    module docstring), so there is exactly one random-effect grouping factor
-    (``region``), matching LPP's one-random-slope-group structure.
+    Two crossed random-effect grouping factors: ``subject`` (intercept-only)
+    and ``region`` (intercept-only in baseline, slope-on-``surprisal_z`` in
+    full) — see module docstring for why intercept-only ``subject`` avoids
+    the covariance-search blowup that killed the original pooled attempt.
     """
     nuisances = "wlen_z + freq_z"
+    re_subject = "(1 | subject)"
     re_region_base = "(1 | region)"
     re_region_full = "(1 + surprisal_z | region)"
 
-    baseline = f"eeg ~ {nuisances} + {re_region_base}"
-    full = f"eeg ~ {nuisances} + surprisal_z + prev_surprisal_z + {re_region_full}"
+    baseline = f"eeg ~ {nuisances} + {re_subject} + {re_region_base}"
+    full = f"eeg ~ {nuisances} + surprisal_z + prev_surprisal_z + {re_subject} + {re_region_full}"
     return baseline, full
 
 
 def prepare_broderick_lme_frame(df: pd.DataFrame) -> pl.DataFrame:
-    """Factor columns + z-scored predictors for the per-subject Broderick EEG LME.
+    """Factor columns + z-scored predictors for the pooled Broderick EEG LME.
 
-    ``df`` is expected to already be restricted to ONE subject's rows — no
-    ``subject`` column is required or used. ``region`` values (left/right/
-    posterior/occipital) are fixed canonical labels derived from the same
-    BioSemi A/B/C/D quadrant convention for every participant.
+    ``df`` is expected to hold ALL subjects' rows (one row per (subject,
+    region, word)), with a ``subject`` column. ``region`` values (left/
+    right/posterior/occipital) are fixed canonical labels derived from the
+    same BioSemi A/B/C/D quadrant convention for every participant, so
+    ``region`` is a genuinely crossed factor across subjects.
     """
     missing = _REQUIRED_COLS - set(df.columns)
     if missing:
-        raise ValueError(f"Missing columns for Broderick per-subject LME: {sorted(missing)}")
+        raise ValueError(f"Missing columns for Broderick pooled LME: {sorted(missing)}")
 
     out = df.copy()
+    out["subject"] = out["subject"].astype(str)
     out["region"] = out["region"].astype(str)
     out["chunk"] = out["chunk"].astype(str)  # reuse split_train_test_chunks as-is
     out["wlen_z"] = zscore_series(out["wlen"])
@@ -125,7 +127,7 @@ def prepare_broderick_lme_frame(df: pd.DataFrame) -> pl.DataFrame:
     out["eeg"] = out["eeg"].astype(float)
 
     cols = [
-        "region", "chunk", "word_idx",
+        "subject", "region", "chunk", "word_idx",
         "wlen_z", "freq_z", "prev_surprisal_z", "surprisal_z", "eeg",
     ]
     return pl.from_pandas(out[cols].copy())
@@ -140,12 +142,12 @@ def fit_broderick_lme_one_layer(
     allow_slope_fallback: bool = True,
     save_per_word: bool = False,
 ) -> LmeFitResult:
-    """Fit the per-subject Broderick EEG LME for one LM layer.
+    """Fit the pooled (all-subjects) Broderick EEG LME for one LM layer.
 
-    ``df`` must have one row per (region, word) for a SINGLE subject, with
-    columns ``region, chunk, word_idx, wlen, freq, prev_surprisal, surprisal,
-    eeg`` — ``eeg`` is the region-averaged, window-averaged EEG amplitude;
-    ``surprisal`` is this specific layer's logit-lens surprisal.
+    ``df`` must have one row per (subject, region, word), with columns
+    ``subject, region, chunk, word_idx, wlen, freq, prev_surprisal,
+    surprisal, eeg`` — ``eeg`` is the region-averaged, window-averaged EEG
+    amplitude; ``surprisal`` is this specific layer's logit-lens surprisal.
 
     If the full model fails to converge, and ``allow_slope_fallback=True``,
     retries without the ``region`` slope-intercept correlation, then drops
@@ -186,10 +188,11 @@ def fit_broderick_lme_one_layer(
     converged = _converged(full_model)
 
     nuisances = "wlen_z + freq_z"
+    re_subject = "(1 | subject)"
     slope_dropped = False
     if allow_slope_fallback and not (base_ok and converged):
         logger.warning(
-            "Broderick per-subject LME: full/baseline model failed to "
+            "Broderick pooled LME: full/baseline model failed to "
             "converge — retrying without the region slope-intercept correlation."
         )
         full_formula_step1 = full_formula.replace(
@@ -200,11 +203,13 @@ def fit_broderick_lme_one_layer(
         converged = _converged(full_model)
         if not (base_ok and converged):
             logger.warning(
-                "Broderick per-subject LME: still not converged — dropping "
+                "Broderick pooled LME: still not converged — dropping "
                 "the region random slope on surprisal_z entirely."
             )
-            baseline_formula = f"eeg ~ {nuisances} + (1 | region)"
-            full_formula = f"eeg ~ {nuisances} + surprisal_z + prev_surprisal_z + (1 | region)"
+            baseline_formula = f"eeg ~ {nuisances} + {re_subject} + (1 | region)"
+            full_formula = (
+                f"eeg ~ {nuisances} + surprisal_z + prev_surprisal_z + {re_subject} + (1 | region)"
+            )
             baseline_model = _fit(baseline_formula)
             base_ok = _converged(baseline_model)
             full_model = _fit(full_formula)

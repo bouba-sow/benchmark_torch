@@ -22,7 +22,7 @@ ANALYSIS_DIR = next(p for p in Path(__file__).resolve().parents if (p / "pyproje
 # The N400 datasets plus 2 non-N400 datasets with
 # the strongest Memory-Constrained perplexity reversal (LPP fMRI, Podcast iEEG),
 # so the figure shows both "where it's strong" and "where it's absent/weak".
-SLUGS = ["nieuwland_eeg", "szewczyk_eeg", "lpp_fmri", "podcast_ieeg"]
+SLUGS = ["nieuwland_eeg", "szewczyk_f2007_eeg", "szewczyk_h2019_eeg", "lpp_fmri", "podcast_ieeg"]
 
 
 def main() -> None:

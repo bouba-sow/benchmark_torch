@@ -154,6 +154,7 @@ def _benchmark_config(
     trust_remote_code: bool = False,
     n_workers: int = 10,
     layer_stride: int = 1,
+    last_layer_only: bool = False,
     save_word_predictions: bool = True,
 ) -> OnestopLmeBenchmarkConfig:
     ds = cfg["dataset"]
@@ -197,6 +198,7 @@ def _benchmark_config(
             # there should fail fast (see run/surprisal/behavioral/provo_fit.py).
             require_cached_surprisal=bool(lme.get("require_cached_surprisal", device == "cpu")),
             layer_stride=layer_stride,
+            last_layer_only=last_layer_only,
             n_workers=n_workers,
             save_word_predictions=save_word_predictions,
         ),
@@ -219,6 +221,7 @@ def run_model_sweep(
     model_cfg: dict[str, Any] | None = None,
     n_workers: int = 10,
     layer_stride: int = 1,
+    last_layer_only: bool = False,
     save_word_predictions: bool = True,
 ) -> pd.DataFrame:
     """Fit every layer for every checkpoint.
@@ -247,6 +250,7 @@ def run_model_sweep(
             trust_remote_code=bool((model_cfg or {}).get("trust_remote_code", False)),
             n_workers=n_workers,
             layer_stride=layer_stride,
+            last_layer_only=last_layer_only,
             save_word_predictions=save_word_predictions,
         )
 
@@ -370,13 +374,15 @@ def main() -> None:
                    help="Concurrent worker processes fitting layers (default 10)")
     p.add_argument("--layer_stride", type=int, default=1,
                    help="Fit every Nth layer (default 1 = all layers)")
+    p.add_argument("--last_layer_only", action="store_true",
+                   help="Fit only the deepest layer (overrides --layer_stride).")
     p.add_argument("--save_word_predictions", action=argparse.BooleanOptionalAction, default=True,
                    help="Save each held-out word's true value + baseline/full predictions "
                         "and per-word delta log-likelihood to onestop_{measure}_lme_per_word.csv. "
                         "On by default; pass --no-save_word_predictions to disable.")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("ONESTOP_PERPLEXITY_DIR", "outputs_torch/onestop/perplexity"),
+        default=os.environ.get("ONESTOP_PERPLEXITY_DIR", "outputs_jeanzay/onestop/perplexity"),
         help="Perplexity JSON/CSV root for scaling-vs-PPL plots",
     )
     args = p.parse_args()
@@ -429,6 +435,7 @@ def main() -> None:
                 model_cfg=model_cfgs[0],
                 n_workers=args.n_workers,
                 layer_stride=args.layer_stride,
+                last_layer_only=args.last_layer_only,
                 save_word_predictions=args.save_word_predictions,
             )
             return
@@ -457,6 +464,7 @@ def main() -> None:
                 model_cfg=m,
                 n_workers=args.n_workers,
                 layer_stride=args.layer_stride,
+                last_layer_only=args.last_layer_only,
                 save_word_predictions=args.save_word_predictions,
             )
 

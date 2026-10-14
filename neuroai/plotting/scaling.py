@@ -414,8 +414,8 @@ def plot_neural_layerwise(
         Draw individual electrode lines (semi-transparent).
     """
     if title is None:
-        title = f"Neural brain score by layer — {model_name}" if model_name else \
-                "Neural brain score by layer"
+        title = f"BrainScore by layer — {model_name}" if model_name else \
+                "BrainScore by layer"
 
     n_electrodes, n_layers = layerwise_matrix.shape
     layers = np.arange(n_layers)

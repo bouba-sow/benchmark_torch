@@ -38,6 +38,8 @@
 # would otherwise leak in and silently write output into the wrong directory.
 
 set -euo pipefail
+# Fit only the final layer (2026-10-12; caches keep every layer). EMBED_LAST_LAYER_ONLY=0 for the full sweep.
+export EMBED_LAST_LAYER_ONLY="${EMBED_LAST_LAYER_ONLY:-1}"
 
 : "${WORK:?Set WORK to your Jean Zay fswork project}"
 export WORK
@@ -153,7 +155,7 @@ geco_jz_run_array_task_gpu() {
   echo "GECO_WORD_PREDICTIONS_ROOT=${GECO_WORD_PREDICTIONS_ROOT:-unset (falls back to SWEEP_ROOT)}"
   echo "GECO_AVERAGE_ACROSS_SUBJECTS=${GECO_AVERAGE_ACROSS_SUBJECTS:-0}"
   echo "GECO_AVERAGE_ONLY=${GECO_AVERAGE_ONLY:-0}"
-  echo "GECO_AVERAGE_RIDGE_DEVICE=${GECO_AVERAGE_RIDGE_DEVICE:-cpu}"
+  echo "GECO_AVERAGE_RIDGE_DEVICE=${GECO_AVERAGE_RIDGE_DEVICE:-cuda}"
 
   geco_jz_check_data || exit 1
   geco_jz_setup_env

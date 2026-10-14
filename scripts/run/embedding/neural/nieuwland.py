@@ -6,7 +6,7 @@ hidden states across all model families and training checkpoints.
 
 Output structure
 ----------------
-outputs_torch/nieuwland/checkpoint_sweep/
+outputs_jeanzay/nieuwland/checkpoint_sweep/
   <family>/                    # e.g. gpt2, pythia, mamba
     <model_short>/
       nieuwland_checkpoint_scores.csv       # per-checkpoint summary (best layer)
@@ -31,7 +31,7 @@ python scripts/run/embedding/neural/nieuwland.py \\
 # Summary after all SLURM jobs:
 python scripts/run/embedding/neural/nieuwland.py \\
     --config configs/embedding/neural/nieuwland.yaml \\
-    --summary_only --out_dir outputs_torch/nieuwland/checkpoint_sweep
+    --summary_only --out_dir outputs_jeanzay/nieuwland/checkpoint_sweep
 """
 
 from __future__ import annotations
@@ -172,6 +172,61 @@ def _build_encoder_config(
         n_params=float(n_params),
         save_word_predictions=save_word_predictions,
     )
+
+
+# ---------------------------------------------------------------------------
+# Stage 1 — activations only (no regression) — for RSA cache backfill
+# ---------------------------------------------------------------------------
+
+def run_activations_only(
+    checkpoints: list[CheckpointItem],
+    *,
+    model_id: str,
+    n_params: float,
+    batch_size: int,
+    cfg: dict,
+    device: str,
+    feature_cache_dir: Path | None,
+    model_cfg: dict | None = None,
+) -> None:
+    """Extract and cache LLM sentence-target-noun features for every
+    checkpoint, skipping the ridge fit entirely -- mirrors podcast.py's
+    run_activations_only. Needs epoch metadata loaded first (sentence
+    contexts / target nouns come from the EEG epochs table), but never
+    touches EEG data itself or runs any regression."""
+    if feature_cache_dir is None:
+        raise ValueError(
+            "--activations_only requires a feature cache directory. "
+            "Set cache.features_dir in the YAML or pass --feature_cache_dir."
+        )
+    for ckpt in checkpoints:
+        logger.info("\n[%s] activations ── %s (step=%d) ──", model_id, ckpt.revision, ckpt.step)
+        load_model_id = resolve_load_model_id(model_cfg, ckpt.revision) if model_cfg else model_id
+        enc_cfg = _build_encoder_config(
+            cfg,
+            model_id=model_id,
+            revision=ckpt.revision,
+            n_params=n_params,
+            batch_size=batch_size,
+            device=device,
+            output_dir=feature_cache_dir,  # unused for activations, just needs a Path
+            feature_cache_dir=feature_cache_dir,
+            epoch_cache_dir=None,
+            regression_device="cpu",
+            n_layer_workers=1,
+            load_model_id=load_model_id,
+            trust_remote_code=bool((model_cfg or {}).get("trust_remote_code", False)),
+        )
+        encoder = NieuwlandErpEncoder(enc_cfg)
+        try:
+            _epochs_result, items_df = encoder._load_epochs()
+            emb = encoder._extract_features(items_df)
+            logger.info("[%s] %s — done, shape %s", model_id, ckpt.revision,
+                        "×".join(str(d) for d in emb.shape))
+        except Exception:
+            logger.error("[%s] %s — failed", model_id, ckpt.revision, exc_info=True)
+        finally:
+            free_gpu()
 
 
 # ---------------------------------------------------------------------------
@@ -367,6 +422,11 @@ def build_parser() -> argparse.ArgumentParser:
              "(one .npz per model, ~80 items) for post-hoc per-item DLT-cost "
              "difficulty splits.",
     )
+    p.add_argument(
+        "--activations_only", action="store_true",
+        help="Stage 1: extract and cache LLM sentence-target-noun features only "
+             "(no ridge fit). Run on GPU; follow with the full sweep once cache is warm.",
+    )
     return p
 
 
@@ -375,7 +435,7 @@ def main() -> None:
 
     cfg = load_config(args.config)
 
-    output_dir = Path(args.out_dir or cfg.get("output_dir", "outputs_torch/nieuwland/checkpoint_sweep"))
+    output_dir = Path(args.out_dir or cfg.get("output_dir", "outputs_jeanzay/nieuwland/checkpoint_sweep"))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.summary_only:
@@ -447,6 +507,19 @@ def main() -> None:
             output_dir, model_id, family=args.family
         )
         out_dir_m.mkdir(parents=True, exist_ok=True)
+
+        if args.activations_only:
+            run_activations_only(
+                [CheckpointItem(revision=revision, step=step, tokens_seen=tokens_seen)],
+                model_id=model_id,
+                n_params=n_params,
+                batch_size=batch_size,
+                cfg=cfg,
+                device=args.device,
+                feature_cache_dir=feature_cache_dir,
+                model_cfg=model_cfg_dict,
+            )
+            return
 
         scores_csv = out_dir_m / "nieuwland_checkpoint_scores.csv"
         existing = load_existing_csv(scores_csv)

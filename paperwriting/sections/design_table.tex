@@ -1,0 +1,26 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Design-based comparisons. Within architecture: the six memory-limited architectures of \citet{bu2026staticlinearattentionconstraints}, each trained on BabyLM 10M, BabyLM 100M and the Pile at 2 and 4 layers, so that architecture, code and size are fixed and only the training data differ (random intercepts for architecture, model and unit; no size or perplexity adjustment, since perplexity is an outcome of the data). Matched pairs: the two Forgetting Transformer models against their own softmax-attention baselines (mean difference across dataset units; $p$ from a $t$ test across units). By mechanism: the memory-only contrast of Table~\ref{tab:main-regression} estimated separately for each memory mechanism. Coefficients (SE) in normalized score units; $^*p<.05$, $^{**}p<.01$, $^{***}p<.001$.}
+\label{tab:design}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrr}
+\toprule
+& \multicolumn{2}{c}{Embeddings} & \multicolumn{2}{c}{Surprisal}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+& Behavioral & Neural & Behavioral & Neural\\
+\midrule
+\multicolumn{5}{l}{\textit{Within architecture (36 models; reference: Pile)}} \\
+\quad BabyLM 100M & $-.006\ (.005)$ & $.027\ (.010)^{*}$ & $-.005\ (.008)$ & $.052\ (.034)$ \\
+\quad BabyLM 10M & $-.012\ (.005)^{*}$ & $.004\ (.010)$ & $-.006\ (.008)$ & $.038\ (.034)$ \\
+\multicolumn{5}{l}{\textit{Matched pairs (2 pairs, same data and size)}} \\
+\quad Forget gate $-$ softmax baseline & $-.001\ (.004)$ & $-.039\ (.018)$ & $-.004\ (.005)$ & $.006\ (.094)$ \\
+\multicolumn{5}{l}{\textit{Memory only, by mechanism (vs Standard LLMs, preferred specification)}} \\
+\quad Distance bias (ALiBi, BLOOM) & $.008\ (.014)$ & $-.026\ (.013)$ & $.016\ (.014)$ & $-.109\ (.093)$ \\
+\quad Forget gate (Forgetting, FoX) & $.004\ (.011)$ & $-.059\ (.012)^{***}$ & $-.003\ (.011)$ & $-.153\ (.091)$ \\
+\quad Stick-breaking (incl.\ MoLM) & $.012\ (.014)$ & $.009\ (.013)$ & $.013\ (.014)$ & $-.100\ (.096)$ \\
+\quad Hard $n$-gram window & $.041\ (.014)^{**}$ & $-.016\ (.014)$ & $-.030\ (.014)^{*}$ & $.044\ (.104)$ \\
+\quad CBR-RNN & $.037\ (.025)$ & $-.025\ (.023)$ & $.000\ (.032)$ & $.291\ (.176)$ \\
+\bottomrule
+\end{tabular}}
+\end{table}

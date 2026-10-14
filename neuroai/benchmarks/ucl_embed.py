@@ -97,7 +97,7 @@ import pandas as pd
 from ..datasets.ucl_reading import UCLReadingDataset, sentence_word_lists
 from ..regressors.ridge import CVScore, LayerwiseRidgeResults, cv_ridge_score_multioutput_gpu
 from .base import ModelConfig, RegressionConfig, word_predictions_root, word_predictions_dir
-from .subject_average import average_items_across_subjects, fit_averaged_layers
+from .subject_average import average_items_across_subjects, fit_averaged_layers, fit_averaged_layers_gpu
 
 logger = logging.getLogger(__name__)
 
@@ -286,6 +286,11 @@ class UclReadingEmbedBenchmarkConfig:
     # rationale (the two are independent computations; per-subject fitting
     # alone can be too slow to finish for huge models like opt-66b).
     average_only: bool = False
+    # Ridge fit device for the averaged-RT branch specifically (default: cpu).
+    # 'cuda' uses fit_averaged_layers_gpu (himalaya SVD-based GCV) instead of
+    # sklearn's nested-CV grid search -- see GecoEmbedBenchmarkConfig's
+    # identically-named field for the full rationale.
+    average_ridge_device: str = "cpu"
 
 
 @dataclass
@@ -349,6 +354,18 @@ class UclReadingEmbedBenchmark:
             trial_df, emb_lookup,
             existing_subject_rows=existing_subject_rows, on_subject_done=on_subject_done,
         )
+
+    def run_extract_only(self) -> None:
+        """Populate the embedding cache without fitting any regression.
+
+        THROWAWAY-BACKFILL HELPER: loads trials just to get the set of
+        (story_id, zone) words actually used, then calls ``_embed_words``,
+        which is what writes to ``dcfg.feature_cache_dir``. No ridge fit, no
+        CSV writes — safe to call even when the real sweep's scores CSV
+        already has this checkpoint marked done.
+        """
+        trial_df = self._load_trials()
+        self._embed_words(trial_df)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -723,16 +740,29 @@ class UclReadingEmbedBenchmark:
             trial_df, item_key_cols=("story_id", "zone"),
             min_subjects_per_item=self.cfg.min_subjects_per_item,
         )
-        rows, per_item = fit_averaged_layers(
-            item_df, emb_lookup,
-            item_key_cols=("story_id", "zone"),
-            group_col="story_id" if self.cfg.group_cv_by_story else None,
-            n_splits=rcfg.n_splits, alpha=rcfg.alpha, scale=rcfg.scale,
-            random_state=rcfg.random_state, print_chosen_alpha=rcfg.print_chosen_ridge_alpha,
-            thread_n_jobs=self.cfg.n_jobs,
-            extra_fields=dict(model_name=model_name),
-            return_oof_for_layer=(n_layers - 1) if self.cfg.save_word_predictions else None,
-        )
+        if self.cfg.average_ridge_device == "cuda":
+            _himalaya_gpu_warmup()
+            rows, per_item = fit_averaged_layers_gpu(
+                item_df, emb_lookup,
+                item_key_cols=("story_id", "zone"),
+                group_col="story_id" if self.cfg.group_cv_by_story else None,
+                n_splits=rcfg.n_splits, alpha=rcfg.alpha, scale=rcfg.scale,
+                random_state=rcfg.random_state,
+                extra_fields=dict(model_name=model_name),
+                return_oof_for_layer=(n_layers - 1) if self.cfg.save_word_predictions else None,
+                n_layer_workers=self.cfg.n_jobs,
+            )
+        else:
+            rows, per_item = fit_averaged_layers(
+                item_df, emb_lookup,
+                item_key_cols=("story_id", "zone"),
+                group_col="story_id" if self.cfg.group_cv_by_story else None,
+                n_splits=rcfg.n_splits, alpha=rcfg.alpha, scale=rcfg.scale,
+                random_state=rcfg.random_state, print_chosen_alpha=rcfg.print_chosen_ridge_alpha,
+                thread_n_jobs=self.cfg.n_jobs,
+                extra_fields=dict(model_name=model_name),
+                return_oof_for_layer=(n_layers - 1) if self.cfg.save_word_predictions else None,
+            )
         if per_item is not None:
             self._save_average_predictions(per_item)
 

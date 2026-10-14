@@ -39,6 +39,7 @@ import pandas as pd
 
 sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())))
 
+from neuroai.analysis.benchmark_common import select_best_row
 from neuroai.regressors.megmasc_lme import (  # noqa: E402
     DEFAULT_NUISANCES,
     PARITY_NUISANCES,
@@ -79,7 +80,8 @@ def _sweep_delta_loglik_per_obs() -> pd.DataFrame:
             d = d.loc[d["error"].isna() & d["delta_loglik_test"].notna()]
             if d.empty:
                 continue
-            best = d.loc[d["delta_loglik_test"].astype(float).idxmax()]
+            d = d.assign(delta_loglik_test=d["delta_loglik_test"].astype(float))
+            best = select_best_row(d)   # layer chosen on TRAIN dLL (benchmark_common.select_best_row)
             n_test = float(best.get("n_obs_test", np.nan))
             if not np.isfinite(n_test) or n_test <= 0:
                 continue

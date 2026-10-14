@@ -129,7 +129,7 @@ def _build_benchmark_config(
         verbose=bool(lme.get("verbose", False)),
         allow_slope_fallback=bool(lme.get("allow_slope_fallback", True)),
         layer_stride=layer_stride,
-        last_layer_only=last_layer_only,
+        last_layer_only=last_layer_only or bool(lme.get("last_layer_only", False)),
         use_persubject=(
             use_persubject if use_persubject is not None else bool(lme.get("use_persubject", True))
         ),
@@ -155,6 +155,7 @@ def _build_benchmark_config(
             save_word_predictions if save_word_predictions is not None
             else bool(lme.get("save_word_predictions", True))
         ),
+        roi_wise=bool(lme.get("roi_wise", False)),
     )
     return LppLmeBenchmarkConfig(
         data=data_cfg,

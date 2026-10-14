@@ -270,12 +270,9 @@ def _fit_stats(model) -> tuple[float, float, float, bool]:
     loglik = float(stats["logLik"].item())
     aic = float(stats["AIC"].item())
     bic = float(stats["BIC"].item())
-    converged = True
-    if getattr(model, "convergence_status", None) is not None:
-        try:
-            converged = bool(model.convergence_status[0])
-        except (TypeError, IndexError, KeyError):
-            converged = True
+    from .lme import parse_converged
+
+    converged = parse_converged(getattr(model, "convergence_status", None))
     return loglik, aic, bic, converged
 
 
@@ -340,8 +337,15 @@ def _partition_loglik_detailed(
     y = np.asarray(data[outcome], dtype=np.float64)
     yhat = _predict_or_nan(model, data)
     per_obs = _gaussian_loglik_per_obs(y, yhat, _residual_sigma(model))
-    total = float(np.nansum(per_obs)) if np.isfinite(per_obs).sum() >= 3 else np.nan
-    return total, per_obs
+    n_fin = int(np.isfinite(per_obs).sum())
+    # Guard (2026-10-01): a held-out sum that silently covers only a fraction of the test rows
+    # (non-finite terms are skipped by nansum) is not comparable to the other model's sum, and
+    # produced absurd delta-loglik values (+-2e4) in a few fits. Require >= 99% finite terms.
+    if n_fin < max(3, int(0.99 * per_obs.size)):
+        if n_fin:
+            logger.warning("Held-out loglik: only %d/%d finite per-observation terms -> NaN", n_fin, per_obs.size)
+        return np.nan, per_obs
+    return float(np.nansum(per_obs)), per_obs
 
 
 def _partition_loglik(model, data: pl.DataFrame, *, outcome: str) -> float:
@@ -394,8 +398,11 @@ def _split_train_test(
     test_idx = np.asarray(sorted(set(int(i) for i in test_indices)), dtype=int)
     test_mask = np.isin(split_id, test_idx)
     if test_mask.sum() < 10:
+        # Too few held-out rows: EMPTY test set (held-out metrics -> NaN) instead of
+        # silently scoring on the full data, training rows included.
+        logger.warning("held-out partition has only %d rows -> no held-out score", int(test_mask.sum()))
         train_df = pl.from_pandas(pdf.loc[train_mask].drop(columns="_split_id").reset_index(drop=True))
-        return train_df, data
+        return train_df, data.head(0)
 
     train_df = pl.from_pandas(pdf.loc[train_mask].drop(columns="_split_id").reset_index(drop=True))
     test_df = pl.from_pandas(pdf.loc[test_mask].drop(columns="_split_id").reset_index(drop=True))
