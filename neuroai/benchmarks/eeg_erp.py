@@ -104,7 +104,7 @@ class NieuwlandErpConfig:
     regression_device: str = "cpu"
     n_layer_workers: int = 36
     # Output
-    out_dir: str | Path = "outputs_jeanzay/nieuwland_encoding"
+    out_dir: str | Path = "outputs_torch/nieuwland_encoding"
     n_params: float = 0.0      # informational only (filled by sweep script)
     # Save each channel's best-layer out-of-fold predicted item-mean ERP (from
     # the item-mean regression path, ~80 items) alongside the actual ERP —

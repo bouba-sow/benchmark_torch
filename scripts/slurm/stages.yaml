@@ -23,14 +23,23 @@ profiles:
     account: torch_pr_287_general
     partition: cs
     cpus: 40
+    mem: 64G   # Torch's bare default (no --mem given) is 2G -- OOM-kills any real job; see docs/torch_cluster.md
   gpu:
     account: torch_pr_287_general
     gres: gpu:1
     constraint: h100|h200|a100   # excludes L40S: no sm_89 kernels in this repo's CUDA 12.4 wheel
     cpus: 24
+    # Fair per-GPU share of host RAM = node RealMemory / GPUs-on-node, floored to the
+    # smallest node type --constraint= can land on (so scheduling never fails). Verified
+    # via `sinfo -N -o "%N %m %G %c"` 2026-09-22: A100 512000MB/4gpu=128G (most common;
+    # some A100 nodes are 1028000MB/4gpu=257G), H100 1545000MB/4gpu=386G,
+    # H200 2061000MB/8gpu=258G -- A100's 128G is the binding floor. MoLM-700M-8B
+    # (8B total params) needed >64G, ran fine at 128G -- confirmed 2026-09-22.
+    mem: 120G
 large_model:
   min_params: 20000000000.0
   gres: gpu:2
+  mem: 240G   # 2x the gpu profile's per-GPU floor (120G) -- see that profile's comment
   cpus: 48
 family_runtime:
   alibi:

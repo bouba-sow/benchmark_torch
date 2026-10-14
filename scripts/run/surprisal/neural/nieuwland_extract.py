@@ -58,7 +58,7 @@ def load_config(config_path: str | Path) -> dict[str, Any]:
     return yaml.safe_load(raw)
 
 
-_PERPLEXITY_DIR = Path("outputs_jeanzay") / "nieuwland/perplexity"
+_PERPLEXITY_DIR = Path("outputs_torch") / "nieuwland/perplexity"
 
 
 def _save_nieuwland_perplexity(
@@ -150,7 +150,7 @@ def main() -> None:
                    help="Skip the post-extraction Nieuwland-corpus perplexity computation "
                         "(on by default -- reuses the already-loaded model)")
     p.add_argument("--collect_perplexity_summary", action="store_true",
-                   help="Rebuild outputs_jeanzay/nieuwland/perplexity/nieuwland_perplexity_summary.csv "
+                   help="Rebuild outputs_torch/nieuwland/perplexity/nieuwland_perplexity_summary.csv "
                         "from every *_nieuwland_perplexity.json on disk and exit.")
     args = p.parse_args()
 

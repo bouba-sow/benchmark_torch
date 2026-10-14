@@ -71,6 +71,17 @@ in the right pool; **don't pass `--qos=` by hand** — my own association only l
 even though `_cds`/`gpu48`/etc. clearly govern real jobs, so the actual QOS is assigned behind
 the scenes from the account/partition combo, not chosen client-side.
 
+**Correction (verified 2026-09-22, `scontrol show job` / `squeue -O qos`)**: the account/partition
+combo does NOT reliably land you in the matching group QOS. `--account=torch_pr_287_cds
+--partition=a100_cds --gres=gpu:1` was assigned `QOS=gpu48` (the shared-pool, 16-GPU/user QOS),
+not `a100_cds` (the group's guaranteed 24-GPU slice) — despite explicitly requesting the `_cds`
+account and `_cds` partition. So submitting under `_cds` is not a reliable way to draw on the
+group's dedicated reservation; check the assigned QOS per job (`squeue -j <id> -O qos`,
+or `scontrol show job <id> | grep QOS`) rather than assuming it from the account/partition you
+requested. A transient `QOSMaxGRESPerUser` reason in `squeue` that clears on the next poll (a few
+seconds later) is not a real cap hit — cross-check against the QOS's actual `MaxTRESPU` before
+treating it as blocked.
+
 **GPU inventory** (`sinfo`, node×GPU/node):
 
 | Type | Nodes | GPUs/node | Total GPUs | Kernel note |

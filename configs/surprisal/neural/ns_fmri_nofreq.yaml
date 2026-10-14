@@ -109,7 +109,7 @@ lme:
   require_cached_surprisal: null
 
 output:
-  save_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/ns_fmri_checkpoint_sweep_lme_nofreq
+  save_dir: ${BENCHMARK_ROOT}/outputs_torch/ns_fmri_checkpoint_sweep_lme_nofreq
 
 cache:
   # Reuses the same cache root as the Natural Stories SPR LME sweep — this is

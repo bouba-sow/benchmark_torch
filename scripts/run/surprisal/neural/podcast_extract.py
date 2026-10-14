@@ -162,7 +162,7 @@ def _save_podcast_perplexity(
     model_id: str, revision: str, n_params: float | None,
     perplexity: float, n_tokens: int, max_length: int,
 ) -> None:
-    perplexity_dir = Path("outputs_jeanzay") / "podcast/lme_perplexity"
+    perplexity_dir = Path("outputs_torch") / "podcast/lme_perplexity"
     safe = model_id.replace("/", "_")
     rev_safe = (revision or "main").replace("/", "_")
     out_dir = perplexity_dir / safe
@@ -180,7 +180,7 @@ def _save_podcast_perplexity(
 def _collect_podcast_perplexity_summary() -> None:
     import pandas as pd
 
-    perplexity_dir = Path("outputs_jeanzay") / "podcast/lme_perplexity"
+    perplexity_dir = Path("outputs_torch") / "podcast/lme_perplexity"
     rows = []
     for p in sorted(perplexity_dir.glob("*/*_podcast_perplexity.json")):
         try:
@@ -206,8 +206,8 @@ def _extract_perplexity(
     run/surprisal/neural/lpp_extract.py's module docstring for why re-calling
     _get_cached_causal_lm here, BEFORE clear_hf_model_cache() runs, is a
     cache hit and not a second GPU load). This is a SEPARATE cache namespace
-    (outputs_jeanzay/podcast/lme_perplexity/) from the pre-existing standalone
-    scripts/perplexity/podcast.py's (outputs_jeanzay/podcast_
+    (outputs_torch/podcast/lme_perplexity/) from the pre-existing standalone
+    scripts/perplexity/podcast.py's (outputs_torch/podcast_
     perplexity/) -- that script's own --checkpoints --family pythia_checkpoints
     --all mode already works end-to-end and could be run instead/as well, but
     would reload every one of the 110 checkpoints from scratch a second time;
@@ -218,7 +218,7 @@ def _extract_perplexity(
     model_id = task.load_model_id
     revision = task.revision if task.revision not in ("main", "") else None
     out_path = (
-        Path("outputs_jeanzay") / "podcast/lme_perplexity" / model_id.replace("/", "_")
+        Path("outputs_torch") / "podcast/lme_perplexity" / model_id.replace("/", "_")
         / f"{(revision or 'main').replace('/', '_')}_podcast_perplexity.json"
     )
     if out_path.is_file():
@@ -311,7 +311,7 @@ def main() -> None:
     p.add_argument("--skip_perplexity", action="store_true",
                    help="Skip the post-extraction Podcast-corpus perplexity computation")
     p.add_argument("--collect_perplexity_summary", action="store_true",
-                   help="Rebuild outputs_jeanzay/podcast/lme_perplexity/podcast_perplexity_summary.csv "
+                   help="Rebuild outputs_torch/podcast/lme_perplexity/podcast_perplexity_summary.csv "
                         "from every *_podcast_perplexity.json on disk and exit.")
     args = p.parse_args()
 

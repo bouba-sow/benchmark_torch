@@ -117,10 +117,10 @@ def resolve_resources(cfg: dict, stage: dict, args: argparse.Namespace, *, large
     res.update(cfg["profiles"][stage["profile"]])
     if large and stage["profile"] == "gpu":
         res.update({k: v for k, v in cfg.get("large_model", {}).items() if k != "min_params"})
-    for key in ("cpus", "gres", "account", "constraint", "partition", "qos", "time", "mem"):
+    for key in ("cpus", "gres", "account", "constraint", "partition", "qos", "time", "mem", "comment"):
         if key in stage:
             res[key] = stage[key]
-    for key in ("cpus", "gres", "account", "constraint", "partition", "qos", "time", "mem"):
+    for key in ("cpus", "gres", "account", "constraint", "partition", "qos", "time", "mem", "comment"):
         val = getattr(args, key, None)
         if val is not None:
             res[key] = val
@@ -133,7 +133,7 @@ def sbatch_options(res: dict, *, name: str, log: str, array: str, args: argparse
     if res.get("hint"):
         opts.append(f"--hint={res['hint']}")
     for key, flag in (("gres", "--gres"), ("constraint", "--constraint"), ("partition", "--partition"),
-                      ("qos", "--qos"), ("mem", "--mem")):
+                      ("qos", "--qos"), ("mem", "--mem"), ("comment", "--comment")):
         if res.get(key):
             opts.append(f"{flag}={res[key]}")
     if args.dependency:
@@ -242,6 +242,7 @@ def build_parser() -> argparse.ArgumentParser:
     res = p.add_argument_group("resources (default: stages.yaml)")
     res.add_argument("--time"); res.add_argument("--account"); res.add_argument("--partition"); res.add_argument("--qos")
     res.add_argument("--gres"); res.add_argument("--constraint"); res.add_argument("--mem")
+    res.add_argument("--comment", help='Torch advanced options, e.g. \'gpu_mps=yes\' or \'preemption=yes;requeue=true\'')
     res.add_argument("--cpus", type=int)
     res.add_argument("--max-concurrent", type=int, help="cap simultaneous array tasks (the %%N in --array)")
     res.add_argument("--dependency", help="e.g. afterok:12345")

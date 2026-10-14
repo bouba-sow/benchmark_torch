@@ -8,7 +8,7 @@ identical recipe to ``perplexity/nieuwland.py`` (shared helpers from
 ``perplexity/lpp.py``).
 
 Output: ``<out_dir>/<model_safe>/perplexity.json`` (default out_dir
-``outputs_jeanzay/megmasc/perplexity``), the layout ``load_perplexity_dir``
+``outputs_torch/megmasc/perplexity``), the layout ``load_perplexity_dir``
 in ``neuroai/analysis/benchmark_common.py`` expects.
 
 Runs standalone, and is also invoked automatically by
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 SUMMARY_CSV = "megmasc_perplexity_summary.csv"
 CORPUS_LABEL = "megmasc"
-DEFAULT_OUT = Path("outputs_jeanzay/megmasc/perplexity")
+DEFAULT_OUT = Path("outputs_torch/megmasc/perplexity")
 
 
 def _import_lpp_perplexity():

@@ -70,6 +70,6 @@ cache:
 
 output:
   # Per SLURM job: <save_dir>/<family>/<model_short>/nieuwland_checkpoint_scores.csv
-  save_dir: outputs_jeanzay/nieuwland/checkpoint_sweep
+  save_dir: outputs_torch/nieuwland/checkpoint_sweep
 
 models: []  # unused — registry scripts use --from-registry

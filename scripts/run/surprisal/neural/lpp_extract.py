@@ -9,7 +9,7 @@ GPU for larger models) and LME fitting (needs R, CPU-only) must run as
 separate jobs sharing a cache directory, not one combined job.
 
 Also computes and caches this (model, revision)'s perplexity on the LPP text
-corpus itself (``outputs_jeanzay/lpp/perplexity/...``, same convention as
+corpus itself (``outputs_torch/lpp/perplexity/...``, same convention as
 ``scripts/perplexity/pythia_checkpoints_n400.py``) right after
 surprisal extraction, reusing the SAME already-loaded model: ``_get_cached_
 causal_lm``'s cache key is ``(model_name, revision, device, tokenizer_no_
@@ -60,7 +60,7 @@ def _save_lpp_perplexity(
     model_id: str, revision: str, n_params: float | None,
     perplexity: float, n_tokens: int, max_length: int,
 ) -> None:
-    perplexity_dir = Path("outputs_jeanzay") / "lpp/perplexity"
+    perplexity_dir = Path("outputs_torch") / "lpp/perplexity"
     safe = model_id.replace("/", "_")
     rev_safe = (revision or "main").replace("/", "_")
     out_dir = perplexity_dir / safe
@@ -82,7 +82,7 @@ def _collect_lpp_perplexity_summary() -> None:
     scripts/perplexity/pythia_checkpoints_n400.py's collect_summary)."""
     import pandas as pd
 
-    perplexity_dir = Path("outputs_jeanzay") / "lpp/perplexity"
+    perplexity_dir = Path("outputs_torch") / "lpp/perplexity"
     rows = []
     for p in sorted(perplexity_dir.glob("*/*_lpp_perplexity.json")):
         try:
@@ -156,7 +156,7 @@ def main() -> None:
                    help="Skip the post-extraction LPP-corpus perplexity computation "
                         "(on by default -- reuses the already-loaded model, see module docstring)")
     p.add_argument("--collect_perplexity_summary", action="store_true",
-                   help="Rebuild outputs_jeanzay/lpp/perplexity/lpp_perplexity_summary.csv from "
+                   help="Rebuild outputs_torch/lpp/perplexity/lpp_perplexity_summary.csv from "
                         "every *_lpp_perplexity.json on disk and exit (run once after all "
                         "extraction jobs finish, not concurrently with them).")
     args = p.parse_args()
@@ -225,7 +225,7 @@ def _extract_perplexity(
 
     revision = model_cfg.model_revision
     out_path = (
-        Path("outputs_jeanzay") / "lpp/perplexity" / model_id.replace("/", "_")
+        Path("outputs_torch") / "lpp/perplexity" / model_id.replace("/", "_")
         / f"{(revision or 'main').replace('/', '_')}_lpp_perplexity.json"
     )
     if out_path.is_file():

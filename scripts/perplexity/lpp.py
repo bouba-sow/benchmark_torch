@@ -670,8 +670,8 @@ def parse_args() -> argparse.Namespace:
                    default=Path("data/lpp_fmri"),
                    help="LPP BIDS root (needs annotation/ for TextGrids)")
     p.add_argument("--out_dir", type=Path,
-                   default=Path("outputs_jeanzay/lpp/perplexity"),
-                   help="Output directory (default: outputs_jeanzay/lpp/perplexity)")
+                   default=Path("outputs_torch/lpp/perplexity"),
+                   help="Output directory (default: outputs_torch/lpp/perplexity)")
     p.add_argument("--force", action="store_true",
                    help="Recompute even if output already exists")
     p.add_argument("--all", action="store_true",

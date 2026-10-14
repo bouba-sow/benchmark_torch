@@ -53,7 +53,7 @@ dataset:
   max_length: null
   # Path to output dir of data/podcast/electrode_selection.py (contains selected_electrodes.csv).
   # Set to null to use all channels (no language-responsiveness filtering).
-  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/podcast/electrode_selection
+  electrode_selection_dir: ${BENCHMARK_ROOT}/outputs_torch/podcast/electrode_selection
 
 regression:
   alpha: null             # null → 5-value log-spaced grid [10^3.5 … 10^8]: [~3162, ~42170, ~562341, ~7.5M, 1e8]

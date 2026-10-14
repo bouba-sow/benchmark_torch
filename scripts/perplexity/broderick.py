@@ -306,7 +306,7 @@ def parse_args() -> argparse.Namespace:
                    default=Path("data/broderick"),
                    help="Broderick BIDS root (default: data/broderick)")
     p.add_argument("--out_dir", type=Path,
-                   default=Path("outputs_jeanzay/broderick/perplexity"))
+                   default=Path("outputs_torch/broderick/perplexity"))
     p.add_argument("--force", action="store_true")
     p.add_argument("--all", action="store_true")
     p.add_argument("--list", action="store_true")

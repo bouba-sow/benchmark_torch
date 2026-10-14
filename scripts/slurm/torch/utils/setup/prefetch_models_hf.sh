@@ -31,6 +31,14 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Sanity checks
 # ---------------------------------------------------------------------------
+# On Torch, `hf` lives inside the benchmark .venv, not on the login-node PATH
+# (unlike Jean Zay, where a global install/module made it available already).
+if ! command -v hf >/dev/null 2>&1; then
+    _venv_hf="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)/.venv/bin/hf"
+    if [[ -x "${_venv_hf}" ]]; then
+        export PATH="$(dirname "${_venv_hf}"):${PATH}"
+    fi
+fi
 if ! command -v hf >/dev/null 2>&1; then
     echo "error: 'hf' not found. Install huggingface_hub and use the hf CLI." >&2
     exit 1

@@ -12,16 +12,15 @@ papers/
 # Local tool/cache directories
 .uv-cache/
 .venv/
-.venv-dlt/
 .cache/
-
-# Prebuilt wheel binaries (regenerate with wheels/build_wheels.sh; keep the scripts, not the .whl)
-wheels/*.whl
-wheels/*.log
 
 # Raw data and results (too large for the repository; see docs/data.md)
 data/
 logs/
+
+# Prebuilt wheel binaries (regenerate with wheels/build_wheels.sh; keep the scripts, not the .whl)
+wheels/*.whl
+wheels/*.log
 
 # Python / notebooks / environments
 __pycache__/

@@ -563,7 +563,7 @@ def main() -> None:
     )
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("GECO_PERPLEXITY_DIR", "outputs_jeanzay/geco/perplexity"),
+        default=os.environ.get("GECO_PERPLEXITY_DIR", "outputs_torch/geco/perplexity"),
         help="Save each checkpoint's corpus perplexity here too (merges into the "
              "existing geco_perplexity_summary.csv tree). Set to '' to disable.",
     )

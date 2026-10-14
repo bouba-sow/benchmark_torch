@@ -536,7 +536,7 @@ def main() -> None:
                         "On by default; pass --no-save_word_predictions to disable.")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("ZUCO_READING_PERPLEXITY_DIR", "outputs_jeanzay/zuco_reading/perplexity"),
+        default=os.environ.get("ZUCO_READING_PERPLEXITY_DIR", "outputs_torch/zuco_reading/perplexity"),
         help="Save each checkpoint's corpus perplexity here too (merges into the "
              "existing zuco_reading_<task>_perplexity_summary.csv tree). Set to '' to disable.",
     )

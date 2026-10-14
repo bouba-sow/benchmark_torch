@@ -382,7 +382,7 @@ def main() -> None:
                         "Off by default (this pipeline's own convention).")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("UCL_READING_PERPLEXITY_DIR", "outputs_jeanzay/ucl_reading/perplexity"),
+        default=os.environ.get("UCL_READING_PERPLEXITY_DIR", "outputs_torch/ucl_reading/perplexity"),
         help="Perplexity JSON/CSV root for scaling-vs-PPL plots",
     )
     p.add_argument("--dry_run", action="store_true")

@@ -32,7 +32,7 @@ cd "$BENCHMARK_ROOT" || exit 1
 export PYTHONPATH="${BENCHMARK_ROOT}/forgetting-transformer/src:${BENCHMARK_ROOT}/stickbreaking-attention${PYTHONPATH:+:$PYTHONPATH}"  # constrained-arch Lanni-ni models
 
 if [[ -n "${SCRATCH:-}" ]]; then
-  source "${_COMMON_DIR}/torch_cache_env.sh"
+  source "${BENCHMARK_ROOT}/scripts/slurm/torch/torch_cache_env.sh"
 else
   export BENCHMARK_CACHE_ROOT="${BENCHMARK_CACHE_ROOT:-$BENCHMARK_ROOT/.cache}"
   export MEGMASC_FEATURE_CACHE_DIR="${MEGMASC_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/megmasc_features}"

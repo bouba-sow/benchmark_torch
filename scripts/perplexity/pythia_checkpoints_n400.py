@@ -11,8 +11,8 @@ and perplexity is computed against the dataset corpus before moving to
 the next checkpoint.
 
 Output (same convention as the 3-datasets script):
-    outputs_jeanzay/<dataset>_perplexity/<model_safe>/<revision>_<dataset>_perplexity.json
-    outputs_jeanzay/<dataset>_perplexity/<dataset>_perplexity_summary.csv
+    outputs_torch/<dataset>_perplexity/<model_safe>/<revision>_<dataset>_perplexity.json
+    outputs_torch/<dataset>_perplexity/<dataset>_perplexity_summary.csv
 
 Usage:
     .venv/bin/python scripts/perplexity/pythia_checkpoints_n400.py \\
@@ -63,7 +63,7 @@ def _load_texts() -> dict[str, list[str]]:
 
 
 def _out_paths(dataset: str, model_id: str, revision: str) -> tuple[Path, Path]:
-    perplexity_dir = Path("outputs_jeanzay") / f"{dataset}_perplexity"
+    perplexity_dir = Path("outputs_torch") / f"{dataset}_perplexity"
     safe = model_id.replace("/", "_")
     rev_safe = (revision or "main").replace("/", "_")
     out_dir = perplexity_dir / safe
@@ -112,7 +112,7 @@ def collect_summary(dataset: str) -> None:
     """Rebuild <dataset>_perplexity_summary.csv from EVERY *_<dataset>_perplexity.json
     on disk. Single pass, no concurrent-write risk -- run once after all
     sweep jobs finish, not during them."""
-    perplexity_dir = Path("outputs_jeanzay") / f"{dataset}_perplexity"
+    perplexity_dir = Path("outputs_torch") / f"{dataset}_perplexity"
     rows = []
     for p in sorted(perplexity_dir.glob(f"*/*_{dataset}_perplexity.json")):
         try:

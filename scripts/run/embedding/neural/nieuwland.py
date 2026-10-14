@@ -6,7 +6,7 @@ hidden states across all model families and training checkpoints.
 
 Output structure
 ----------------
-outputs_jeanzay/nieuwland/checkpoint_sweep/
+outputs_torch/nieuwland/checkpoint_sweep/
   <family>/                    # e.g. gpt2, pythia, mamba
     <model_short>/
       nieuwland_checkpoint_scores.csv       # per-checkpoint summary (best layer)
@@ -31,7 +31,7 @@ python scripts/run/embedding/neural/nieuwland.py \\
 # Summary after all SLURM jobs:
 python scripts/run/embedding/neural/nieuwland.py \\
     --config configs/embedding/neural/nieuwland.yaml \\
-    --summary_only --out_dir outputs_jeanzay/nieuwland/checkpoint_sweep
+    --summary_only --out_dir outputs_torch/nieuwland/checkpoint_sweep
 """
 
 from __future__ import annotations
@@ -375,7 +375,7 @@ def main() -> None:
 
     cfg = load_config(args.config)
 
-    output_dir = Path(args.out_dir or cfg.get("output_dir", "outputs_jeanzay/nieuwland/checkpoint_sweep"))
+    output_dir = Path(args.out_dir or cfg.get("output_dir", "outputs_torch/nieuwland/checkpoint_sweep"))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.summary_only:

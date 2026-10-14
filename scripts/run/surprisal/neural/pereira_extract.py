@@ -12,7 +12,7 @@ This is a very light GPU stage: 627 sentences, one forward pass per
 sentence — not a full narrative's worth of sliding-window chunks.
 
 Also computes and caches this (model, revision)'s perplexity on the Pereira
-sentence corpus itself (``outputs_jeanzay/pereira/perplexity/...``, same
+sentence corpus itself (``outputs_torch/pereira/perplexity/...``, same
 convention as ``scripts/perplexity/pythia_checkpoints_n400.py``)
 right after surprisal extraction, reusing the SAME already-loaded model —
 see ``run/surprisal/neural/lpp_extract.py``'s module docstring for why this is
@@ -61,7 +61,7 @@ def _save_pereira_perplexity(
     model_id: str, revision: str, n_params: float | None,
     perplexity: float, n_tokens: int, max_length: int,
 ) -> None:
-    perplexity_dir = Path("outputs_jeanzay") / "pereira/perplexity"
+    perplexity_dir = Path("outputs_torch") / "pereira/perplexity"
     safe = model_id.replace("/", "_")
     rev_safe = (revision or "main").replace("/", "_")
     out_dir = perplexity_dir / safe
@@ -79,7 +79,7 @@ def _save_pereira_perplexity(
 def _collect_pereira_perplexity_summary() -> None:
     import pandas as pd
 
-    perplexity_dir = Path("outputs_jeanzay") / "pereira/perplexity"
+    perplexity_dir = Path("outputs_torch") / "pereira/perplexity"
     rows = []
     for p in sorted(perplexity_dir.glob("*/*_pereira_perplexity.json")):
         try:
@@ -108,7 +108,7 @@ def _extract_perplexity(
 
     revision = model_cfg.model_revision
     out_path = (
-        Path("outputs_jeanzay") / "pereira/perplexity" / model_id.replace("/", "_")
+        Path("outputs_torch") / "pereira/perplexity" / model_id.replace("/", "_")
         / f"{(revision or 'main').replace('/', '_')}_pereira_perplexity.json"
     )
     if out_path.is_file():
@@ -171,7 +171,7 @@ def main() -> None:
     p.add_argument("--skip_perplexity", action="store_true",
                    help="Skip the post-extraction Pereira-corpus perplexity computation")
     p.add_argument("--collect_perplexity_summary", action="store_true",
-                   help="Rebuild outputs_jeanzay/pereira/perplexity/pereira_perplexity_summary.csv "
+                   help="Rebuild outputs_torch/pereira/perplexity/pereira_perplexity_summary.csv "
                         "from every *_pereira_perplexity.json on disk and exit.")
     args = p.parse_args()
 

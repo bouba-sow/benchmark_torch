@@ -541,7 +541,7 @@ def main() -> None:
         default=os.environ.get("ONESTOP_PERPLEXITY_DIR", ""),
         help="Save each checkpoint's corpus perplexity here too. Default: skip — "
              "OneStop perplexity is already populated by the LME sweep at "
-             "outputs_jeanzay/onestop/perplexity/. Pass a path to merge into it.",
+             "outputs_torch/onestop/perplexity/. Pass a path to merge into it.",
     )
     args = p.parse_args()
     perplexity_dir = args.perplexity_dir or None

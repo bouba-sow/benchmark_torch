@@ -527,7 +527,7 @@ def main() -> None:
     p.add_argument("--dry_run", action="store_true")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("PROVO_PERPLEXITY_DIR", "outputs_jeanzay/provo/perplexity"),
+        default=os.environ.get("PROVO_PERPLEXITY_DIR", "outputs_torch/provo/perplexity"),
         help="Save each checkpoint's corpus perplexity here too (merges into the "
              "existing provo_perplexity_summary.csv tree). Set to '' to disable.",
     )

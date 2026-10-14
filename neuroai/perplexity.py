@@ -98,9 +98,23 @@ def save_checkpoint_perplexity(
     Self-contained model load (independent of whatever the embedding
     extraction cached) — safe/idempotent: skips checkpoints already saved
     successfully, recomputes ones whose saved JSON has an ``error`` field.
+
+    Loads via ``neuroai.features.llm._get_cached_causal_lm`` rather than a bare
+    ``AutoModelForCausalLM.from_pretrained`` — required for checkpoints that
+    bypass the standard HF auto-loading path entirely (MoLM/ModuleFormer,
+    forgetting-transformer, FoX; see that function's ``_MOLM_DIRECT_PREFIX`` /
+    ``_FORGETTING_DIRECT_PREFIX`` / ``_FOX_DIRECT_PREFIX`` dispatch and their
+    loader docstrings for why: none of these publish a ``config.json`` with an
+    ``auto_map``, so ``trust_remote_code=True`` alone has nothing to resolve
+    to, regardless of the installed ``transformers`` version). Using the same
+    loader as the embedding-extraction path also means every other special
+    case handled there (VLM prefix-strip, Pythia-2.8B sharding, device_map
+    sizing, gpt-bert's bf16 workaround, ...) is covered here too, rather than
+    reimplemented ad hoc.
     """
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    from neuroai.features.llm import _get_cached_causal_lm, _model_input_device, clear_hf_model_cache
 
     perplexity_dir = Path(perplexity_dir)
     safe = model_id.replace("/", "_")
@@ -116,22 +130,21 @@ def save_checkpoint_perplexity(
         logger.warning("Previous perplexity run had error — recomputing: %s", out_path)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    rev_kw = {"revision": revision} if revision not in (None, "", "main") else {}
-    rc_kw = {"trust_remote_code": True} if trust_remote_code else {}
 
     model = None
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_id, **rev_kw, **rc_kw)
+        load_kw: dict[str, object] = {"torch_dtype": torch.bfloat16 if device.startswith("cuda") else torch.float32}
+        if trust_remote_code:
+            load_kw["trust_remote_code"] = True
+        tokenizer, model = _get_cached_causal_lm(
+            model_id, revision=revision, device=device, load_kw=load_kw, n_params=n_params,
+        )
         if tokenizer.pad_token_id is None:
             tokenizer.pad_token = tokenizer.eos_token
-        dtype = torch.bfloat16 if device.startswith("cuda") else torch.float32
-        device_map = "auto" if device.startswith("cuda") else None
-        model = AutoModelForCausalLM.from_pretrained(
-            model_id, dtype=dtype, device_map=device_map, **rev_kw, **rc_kw,
-        )
         model.eval()
+        input_device = _model_input_device(model)
         eff_max_length = _max_length_for_model(model, max_length)
-        result = _compute_corpus_perplexity(model, tokenizer, text, device, eff_max_length)
+        result = _compute_corpus_perplexity(model, tokenizer, text, input_device, eff_max_length)
     except Exception as exc:
         logger.error("perplexity FAILED for %s @ %s: %s", model_id, revision, exc, exc_info=True)
         out_path.write_text(json.dumps({
@@ -142,7 +155,7 @@ def save_checkpoint_perplexity(
         return
     finally:
         if model is not None:
-            del model
+            clear_hf_model_cache()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 

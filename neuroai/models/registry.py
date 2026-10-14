@@ -379,10 +379,16 @@ LPP_FAMILIES: dict[str, list[LppModelSpec]] = {
     # params (incl. inactive experts) were 4,142,526,464 / 4,142,526,464 /
     # 8,182,046,720; swap n_params to those if the scaling analysis should
     # key on stored size instead.
+    # Model ids use the "ibm-research/" org, not the registry's original "ibm/" --
+    # HF 307-redirects "ibm/MoLM-*" to "ibm-research/MoLM-*", which works fine online
+    # but NOT under HF_HUB_OFFLINE=1 (every GPU job sets this): offline cache lookup is
+    # a literal repo_id match against the cache folder name, and redirect resolution
+    # itself needs a live request, so the "ibm/" alias 404s offline even when the
+    # weights are already cached under "ibm-research/". Verified 2026-09-22.
     "molm": [
-        _main_only("ibm/MoLM-350M-4B", "MoLM-350M-4B", 25, 350e6, 8, trust_remote_code=True),
-        _main_only("ibm/MoLM-700M-4B", "MoLM-700M-4B", 25, 700e6, 8, trust_remote_code=True),
-        _main_only("ibm/MoLM-700M-8B", "MoLM-700M-8B", 49, 700e6, 4, trust_remote_code=True),
+        _main_only("ibm-research/MoLM-350M-4B", "MoLM-350M-4B", 25, 350e6, 8, trust_remote_code=True),
+        _main_only("ibm-research/MoLM-700M-4B", "MoLM-700M-4B", 25, 700e6, 8, trust_remote_code=True),
+        _main_only("ibm-research/MoLM-700M-8B", "MoLM-700M-8B", 49, 700e6, 4, trust_remote_code=True),
     ],
     # CBR-RNN: custom architecture (PyTorchModelHubMixin, not AutoModelForCausalLM).
     # Surprisal is computed via neuroai.features.cbr_rnn.batch_surprisal_cbr_rnn.

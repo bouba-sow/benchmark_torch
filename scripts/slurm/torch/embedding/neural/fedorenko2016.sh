@@ -12,7 +12,7 @@ cd "$BENCHMARK_ROOT" || exit 1
 
 if [[ -n "${SCRATCH:-}" ]]; then
   # shellcheck source=scripts/slurm/torch/torch_cache_env.sh
-  source "${_COMMON_DIR}/torch_cache_env.sh"
+  source "${BENCHMARK_ROOT}/scripts/slurm/torch/torch_cache_env.sh"
 fi
 
 export TRANSFORMERS_NO_ADVISORY_WARNINGS=1

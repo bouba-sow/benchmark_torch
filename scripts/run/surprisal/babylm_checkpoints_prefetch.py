@@ -94,11 +94,11 @@ _d("FEDORENKO2016_LME_FEATURE_CACHE_DIR", f"{_CR}/fedorenko2016_lme_features")
 _d("PODCAST_FEATURE_CACHE_DIR", f"{_CR}/podcast_features")
 
 # per-dataset perplexity dirs (outputs live under the repo, not $SCRATCH)
-_d("GECO_PERPLEXITY_DIR", f"{_BENCH}/outputs_jeanzay/geco/perplexity")
-_d("MECO_PERPLEXITY_DIR", f"{_BENCH}/outputs_jeanzay/meco/perplexity")
-_d("PROVO_PERPLEXITY_DIR", f"{_BENCH}/outputs_jeanzay/provo/perplexity")
-_d("UCL_READING_PERPLEXITY_DIR", f"{_BENCH}/outputs_jeanzay/ucl_reading/perplexity")
-_d("ZUCO_READING_PERPLEXITY_DIR", f"{_BENCH}/outputs_jeanzay/zuco_reading/perplexity")
+_d("GECO_PERPLEXITY_DIR", f"{_BENCH}/outputs_torch/geco/perplexity")
+_d("MECO_PERPLEXITY_DIR", f"{_BENCH}/outputs_torch/meco/perplexity")
+_d("PROVO_PERPLEXITY_DIR", f"{_BENCH}/outputs_torch/provo/perplexity")
+_d("UCL_READING_PERPLEXITY_DIR", f"{_BENCH}/outputs_torch/ucl_reading/perplexity")
+_d("ZUCO_READING_PERPLEXITY_DIR", f"{_BENCH}/outputs_torch/zuco_reading/perplexity")
 
 # dataset roots
 _d("GECO_DATA_ROOT", f"{_WORK}/benchmark/data/geco")
@@ -246,7 +246,7 @@ def _naturalstories_perplexity(task, device: str) -> None:
     rev = task.revision if task.revision not in (None, "", "main") else None
     rev_safe = (task.revision or "main").replace("/", "_")
     safe = task.load_model_id.replace("/", "_")
-    out_path = Path("outputs_jeanzay") / "naturalstories/spr_perplexity" / safe / f"{rev_safe}_naturalstories_spr_perplexity.json"
+    out_path = Path("outputs_torch") / "naturalstories/spr_perplexity" / safe / f"{rev_safe}_naturalstories_spr_perplexity.json"
     if out_path.is_file():
         log.info("naturalstories_spr perplexity already cached for %s — skipping", task.revision)
         return

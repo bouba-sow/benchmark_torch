@@ -384,7 +384,7 @@ def main() -> None:
                         "On by default; pass --no-save_word_predictions to disable.")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("MECO_PERPLEXITY_DIR", "outputs_jeanzay/meco/perplexity"),
+        default=os.environ.get("MECO_PERPLEXITY_DIR", "outputs_torch/meco/perplexity"),
         help="Perplexity JSON/CSV root for scaling-vs-PPL plots",
     )
     args = p.parse_args()

@@ -344,7 +344,7 @@ def parse_args() -> argparse.Namespace:
                    default=Path("data/zuco_reading/osfstorage"),
                    help="ZuCo osfstorage root containing task1- SR/, task2 - NR/, etc.")
     p.add_argument("--out_dir", type=Path,
-                   default=Path("outputs_jeanzay/zuco_reading/perplexity"))
+                   default=Path("outputs_torch/zuco_reading/perplexity"))
     p.add_argument("--force", action="store_true")
     p.add_argument("--all", action="store_true")
     p.add_argument("--list", action="store_true")

@@ -505,7 +505,7 @@ def main() -> None:
     p.add_argument("--dry_run", action="store_true")
     p.add_argument(
         "--perplexity_dir",
-        default=os.environ.get("UCL_READING_PERPLEXITY_DIR", "outputs_jeanzay/ucl_reading/perplexity"),
+        default=os.environ.get("UCL_READING_PERPLEXITY_DIR", "outputs_torch/ucl_reading/perplexity"),
         help="Save each checkpoint's corpus perplexity here too (merges into the "
              "existing ucl_reading_perplexity_summary.csv tree). Set to '' to disable.",
     )

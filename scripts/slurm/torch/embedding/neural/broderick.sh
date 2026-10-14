@@ -45,7 +45,7 @@ _COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$BENCHMARK_ROOT" || exit 1
 
 if [[ -n "${SCRATCH:-}" ]]; then
-  source "${_COMMON_DIR}/torch_cache_env.sh"
+  source "${BENCHMARK_ROOT}/scripts/slurm/torch/torch_cache_env.sh"
 else
   export BENCHMARK_CACHE_ROOT="${BENCHMARK_CACHE_ROOT:-$BENCHMARK_ROOT/.cache}"
   export BRODERICK_FEATURE_CACHE_DIR="${BRODERICK_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/broderick_features}"

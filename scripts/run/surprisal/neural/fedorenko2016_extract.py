@@ -12,7 +12,7 @@ This is a very light GPU stage: 52 sentences (8 words each), one forward
 pass per sentence — not a full narrative's worth of sliding-window chunks.
 
 Also computes and caches this (model, revision)'s perplexity on the
-Fedorenko2016 sentence corpus itself (``outputs_jeanzay/fedorenko2016_
+Fedorenko2016 sentence corpus itself (``outputs_torch/fedorenko2016_
 perplexity/...``, same convention as ``scripts/compute_pythia_checkpoint_
 perplexity_n400.py``) right after surprisal extraction, reusing the SAME
 already-loaded model — see ``run/surprisal/neural/lpp_extract.py``'s module
@@ -61,7 +61,7 @@ def _save_fedorenko2016_perplexity(
     model_id: str, revision: str, n_params: float | None,
     perplexity: float, n_tokens: int, max_length: int,
 ) -> None:
-    perplexity_dir = Path("outputs_jeanzay") / "fedorenko2016/perplexity"
+    perplexity_dir = Path("outputs_torch") / "fedorenko2016/perplexity"
     safe = model_id.replace("/", "_")
     rev_safe = (revision or "main").replace("/", "_")
     out_dir = perplexity_dir / safe
@@ -79,7 +79,7 @@ def _save_fedorenko2016_perplexity(
 def _collect_fedorenko2016_perplexity_summary() -> None:
     import pandas as pd
 
-    perplexity_dir = Path("outputs_jeanzay") / "fedorenko2016/perplexity"
+    perplexity_dir = Path("outputs_torch") / "fedorenko2016/perplexity"
     rows = []
     for p in sorted(perplexity_dir.glob("*/*_fedorenko2016_perplexity.json")):
         try:
@@ -108,7 +108,7 @@ def _extract_perplexity(
 
     revision = model_cfg.model_revision
     out_path = (
-        Path("outputs_jeanzay") / "fedorenko2016/perplexity" / model_id.replace("/", "_")
+        Path("outputs_torch") / "fedorenko2016/perplexity" / model_id.replace("/", "_")
         / f"{(revision or 'main').replace('/', '_')}_fedorenko2016_perplexity.json"
     )
     if out_path.is_file():
@@ -170,7 +170,7 @@ def main() -> None:
     p.add_argument("--skip_perplexity", action="store_true",
                    help="Skip the post-extraction Fedorenko2016-corpus perplexity computation")
     p.add_argument("--collect_perplexity_summary", action="store_true",
-                   help="Rebuild outputs_jeanzay/fedorenko2016/perplexity/fedorenko2016_perplexity_summary.csv "
+                   help="Rebuild outputs_torch/fedorenko2016/perplexity/fedorenko2016_perplexity_summary.csv "
                         "from every *_fedorenko2016_perplexity.json on disk and exit.")
     args = p.parse_args()
 

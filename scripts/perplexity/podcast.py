@@ -455,8 +455,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--bids_root", type=Path, default=Path("data/podcast"),
                    help="Podcast BIDS root containing stimuli/podcast_transcript.csv")
     p.add_argument("--out_dir", type=Path,
-                   default=Path("outputs_jeanzay/podcast/perplexity"),
-                   help="Output directory (default: outputs_jeanzay/podcast/perplexity)")
+                   default=Path("outputs_torch/podcast/perplexity"),
+                   help="Output directory (default: outputs_torch/podcast/perplexity)")
     p.add_argument("--architecture", default=None, choices=("cbr_rnn",))
     p.add_argument("--force", action="store_true")
     p.add_argument("--all", action="store_true",

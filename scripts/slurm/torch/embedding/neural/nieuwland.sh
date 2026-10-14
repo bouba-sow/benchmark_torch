@@ -32,7 +32,7 @@ cd "$BENCHMARK_ROOT" || exit 1
 
 # shellcheck source=scripts/slurm/torch/torch_cache_env.sh
 if [[ -n "${SCRATCH:-}" ]]; then
-  source "${_COMMON_DIR}/torch_cache_env.sh"
+  source "${BENCHMARK_ROOT}/scripts/slurm/torch/torch_cache_env.sh"
 else
   export BENCHMARK_CACHE_ROOT="${BENCHMARK_CACHE_ROOT:-$BENCHMARK_ROOT/.cache}"
   export NIEUWLAND_FEATURE_CACHE_DIR="${NIEUWLAND_FEATURE_CACHE_DIR:-$BENCHMARK_CACHE_ROOT/nieuwland_features}"

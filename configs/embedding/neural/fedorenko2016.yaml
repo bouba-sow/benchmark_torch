@@ -42,7 +42,7 @@ cache:
   features_dir: ${FEDORENKO_FEATURE_CACHE_DIR}
 
 output:
-  save_dir: ${BENCHMARK_ROOT}/outputs_jeanzay/fedorenko2016/embedding_sweep
+  save_dir: ${BENCHMARK_ROOT}/outputs_torch/fedorenko2016/embedding_sweep
 
 models: []  # unused — registry scripts use --from-registry
 

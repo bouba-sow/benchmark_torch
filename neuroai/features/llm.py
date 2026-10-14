@@ -1090,7 +1090,7 @@ def _load_forgetting_direct(model_name: str, model_rev_fp: dict[str, object]) ->
     return model
 
 
-_MOLM_DIRECT_PREFIX = "ibm/MoLM-"
+_MOLM_DIRECT_PREFIX = "ibm-research/MoLM-"
 
 _MOLM_CONFIG_IGNORED_KEYS = {
     "architectures", "auto_map", "transformers_version", "model_type", "torch_dtype",
@@ -1098,7 +1098,7 @@ _MOLM_CONFIG_IGNORED_KEYS = {
 
 
 def _load_moduleformer_direct(model_name: str, model_rev_fp: dict[str, object]) -> tp.Any:
-    """Load an ``ibm/MoLM-*`` checkpoint via the vendored ``moduleformer``
+    """Load an ``ibm-research/MoLM-*`` checkpoint via the vendored ``moduleformer``
     classes (``moduleformer/moduleformer/`` at the repo root), bypassing
     ``AutoModelForCausalLM``/``AutoConfig`` entirely.
 
@@ -1144,7 +1144,7 @@ def _load_moduleformer_direct(model_name: str, model_rev_fp: dict[str, object]) 
             weights_path = hf_hub_download(model_name, "pytorch_model.bin", revision=revision)
             state_dict = torch.load(weights_path, map_location="cpu")
         except Exception:
-            # Sharded checkpoint (e.g. ibm/MoLM-700M-8B ships
+            # Sharded checkpoint (e.g. ibm-research/MoLM-700M-8B ships
             # pytorch_model-0000N-of-0000M.bin + an index, no single-file
             # model.safetensors/pytorch_model.bin) -- merge every shard named
             # in the index's weight_map.
@@ -1176,7 +1176,7 @@ def _load_fox_direct(model_name: str, model_rev_fp: dict[str, object]) -> tp.Any
     (and locally patched) ``forgetting_transformer`` classes, bypassing
     ``AutoModelForCausalLM``/``AutoConfig`` entirely.
 
-    Like ``ibm/MoLM-*``, these were never published as standard HF
+    Like ``ibm-research/MoLM-*``, these were never published as standard HF
     ``trust_remote_code`` repos -- ``config.json`` has no ``auto_map`` entry
     and ships no ``.py`` files at all, and their model_types
     (``forgetting_transformer-project_fox`` / ``transformer-project_fox``)
@@ -1451,14 +1451,21 @@ def _get_cached_causal_lm(
         _missing: list[str] = []
     elif model_name.startswith(_MOLM_DIRECT_PREFIX):
         # Bypass the unregistered "moduleformer" AutoConfig model_type -- see
-        # _load_moduleformer_direct's docstring. total params (incl. inactive
-        # MoE experts) are up to 8B, so device_map may still be needed.
-        use_device_map = _apply_device_map_if_needed(model_kw, device, n_params=n_params)
+        # _load_moduleformer_direct's docstring. Always single-GPU .to(device)
+        # below (like the forgetting/FoX direct-load branches) -- unlike the
+        # generic AutoModelForCausalLM path, _load_moduleformer_direct never
+        # implements real accelerate device_map sharding, so trusting
+        # _apply_device_map_if_needed()'s True here (it returns True for
+        # essentially any real GPU job) left the model silently stranded on
+        # CPU while callers moved their inputs to cuda -- "Expected all
+        # tensors to be on the same device" crashes in eeg_erp.py's
+        # extract_sentence_features. All 3 MoLM checkpoints (up to 8B total
+        # params, ~16 GiB in bf16) fit comfortably on one A100/H100/H200 GPU
+        # anyway. Confirmed 2026-09-23.
+        use_device_map = False
         model = _load_moduleformer_direct(model_name, model_rev_fp)
         _dtype = model_kw.get("torch_dtype", torch.bfloat16)
         model = model.to(dtype=_dtype)
-        if not use_device_map:
-            model = model.to(device)
         _missing: list[str] = []
     elif model_name.startswith(_FOX_DIRECT_PREFIX):
         # Bypass trust_remote_code entirely -- see _load_fox_direct's
